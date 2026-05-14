@@ -1,3 +1,4 @@
+<!--suppress ALL -->
 <project xmlns="http://maven.apache.org/POM/4.0.0" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
          xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/xsd/maven-4.0.0.xsd">
     <modelVersion>4.0.0</modelVersion>
@@ -11,34 +12,34 @@
     <!-- 指定打包方式 -->
     <packaging>jar</packaging>
 
-    <artifactId>lucky-seckill-app</artifactId>
+    <artifactId>lucky-seckill-gateway</artifactId>
     <name>${artifactId}</name>
-    <description>启动模块，负责整合所有业务模块</description>
+    <description>网关模块，负责路由转发和统一入口</description>
 
 
     <dependencies>
-        <!-- 引入订单模块 -->
+        <!-- Spring Cloud Gateway -->
         <dependency>
-            <groupId>com.luckySeckill</groupId>
-            <artifactId>lucky-seckill-order</artifactId>
+            <groupId>org.springframework.cloud</groupId>
+            <artifactId>spring-cloud-starter-gateway</artifactId>
         </dependency>
 
-        <!-- 引入用户模块 -->
+        <!-- Nacos 注册发现 -->
         <dependency>
-            <groupId>com.luckySeckill</groupId>
-            <artifactId>lucky-seckill-user</artifactId>
+            <groupId>com.alibaba.cloud</groupId>
+            <artifactId>spring-cloud-starter-alibaba-nacos-discovery</artifactId>
         </dependency>
 
-        <!-- 引入商品模块 -->
+        <!-- Nacos 配置中心 -->
         <dependency>
-            <groupId>com.luckySeckill</groupId>
-            <artifactId>lucky-seckill-goods</artifactId>
+            <groupId>com.alibaba.cloud</groupId>
+            <artifactId>spring-cloud-starter-alibaba-nacos-config</artifactId>
         </dependency>
 
-        <!-- Spring Boot Web -->
+        <!-- Spring Boot Actuator -->
         <dependency>
             <groupId>org.springframework.boot</groupId>
-            <artifactId>spring-boot-starter-web</artifactId>
+            <artifactId>spring-boot-starter-actuator</artifactId>
         </dependency>
 
         <!-- Spring Boot Test 单元测试 -->
@@ -47,6 +48,12 @@
             <artifactId>spring-boot-starter-test</artifactId>
             <scope>test</scope>
         </dependency>
+
+        <dependency>
+            <groupId>org.springframework.cloud</groupId>
+            <artifactId>spring-cloud-starter-loadbalancer</artifactId>
+        </dependency>
+
     </dependencies>
 
     <build>
@@ -58,4 +65,3 @@
         </plugins>
     </build>
 </project>
-

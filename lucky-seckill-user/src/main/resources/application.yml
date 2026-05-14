@@ -1,0 +1,39 @@
+spring:
+  application:
+    name: lucky-seckill-user
+  profiles:
+    active: dev
+  cloud:
+    nacos:
+      discovery:
+        server-addr: 127.0.0.1:8848
+        namespace: public
+        ip: 127.0.0.1
+      config:
+        server-addr: 127.0.0.1:8848
+        namespace: public
+        file-extension: yml
+        import-check:
+          enabled: false
+  datasource:
+    url: jdbc:mysql://localhost:3306/seckill_mall?useUnicode=true&characterEncoding=utf-8&serverTimezone=Asia/Shanghai&allowPublicKeyRetrieval=true&useSSL=false
+    username: root
+    password: yang2004
+    driver-class-name: com.mysql.cj.jdbc.Driver
+    hikari:
+      pool-name: SeckillHikariPool
+      minimum-idle: 10
+      maximum-pool-size: 50
+      idle-timeout: 300000
+      max-lifetime: 900000
+      connection-timeout: 30000
+      connection-test-query: SELECT 1
+
+server:
+  port: 8081
+
+management:
+  endpoints:
+    web:
+      exposure:
+        include: '*'
