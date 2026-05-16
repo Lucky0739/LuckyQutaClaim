@@ -31,3 +31,14 @@ mybatis:
   configuration:
     # 开发阶段打印 SQL 语句，方便调试
     log-impl: org.apache.ibatis.logging.stdout.StdOutImpl
+
+# 自定义线程池配置
+thread-pool:
+  # 核心线程数
+  core-pool-size: 2
+  # 最大线程数
+  max-pool-size: 5
+  # 队列容量
+  queue-capacity: 100
+  # 空闲线程存活时间（秒）
+  keep-alive-seconds: 60

@@ -1,7 +1,7 @@
 package com.lucky.seckill.user;
 
-import com.lucky.seckill.user.domain.dataobject.UserDO;
-import com.lucky.seckill.user.mapper.UserDOMapper;
+import com.lucky.seckill.user.mapper.UserMapper;
+import com.lucky.seckill.user.model.entity.User;
 import org.springframework.beans.factory.annotation.Autowired;
 import java.time.LocalDateTime;
 import org.junit.jupiter.api.Test;
@@ -11,11 +11,11 @@ import org.springframework.boot.test.context.SpringBootTest;
 public class UserTests {
 
     @Autowired
-    private UserDOMapper userDOMapper;
+    private UserMapper userMapper;
 
     @Test
     public void testInsertUser() {
-        userDOMapper.insert(UserDO.builder()
+        userMapper.insert(User.builder()
                 .nickname("犬小哈")
                 .password("123456")
                 .mobile("18019988888")
