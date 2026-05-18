@@ -95,8 +95,31 @@
             <artifactId>spring-webmvc</artifactId>
         </dependency>
 
+        <!-- 腾讯云 COS 对象存储（适配 SpringBoot 3.x） -->
+        <dependency>
+            <groupId>com.qcloud</groupId>
+            <artifactId>cos_api</artifactId>
+            <version>5.6.227</version>
+            <!-- 必须排除，否则 SpringBoot3 日志/bean 冲突 -->
+            <exclusions>
+                <exclusion>
+                    <groupId>org.slf4j</groupId>
+                    <artifactId>slf4j-log4j12</artifactId>
+                </exclusion>
+                <exclusion>
+                    <groupId>log4j</groupId>
+                    <artifactId>log4j</artifactId>
+                </exclusion>
+            </exclusions>
+        </dependency>
+
+        <!-- Spring Boot 配置处理器（用于 @ConfigurationProperties） -->
+        <dependency>
+            <groupId>org.springframework.boot</groupId>
+            <artifactId>spring-boot-configuration-processor</artifactId>
+            <optional>true</optional>
+        </dependency>
+
     </dependencies>
 
-    <!-- 纯公共库：不要启用 spring-boot-maven-plugin 的 repackage。
-         否则打成的可执行 JAR 会把类放到 BOOT-INF/classes，依赖方按普通 jar 引入时类不在 classpath 根下，会出现 ClassNotFoundException。 -->
 </project>

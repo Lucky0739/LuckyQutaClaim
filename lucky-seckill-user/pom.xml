@@ -126,7 +126,17 @@
             <artifactId>tianai-captcha-springboot-starter</artifactId>
             <version>1.5.5</version>
         </dependency>
+        <!-- Sa-Token 权限认证框架（适配 Spring Boot 3） -->
+        <dependency>
+            <groupId>cn.dev33</groupId>
+            <artifactId>sa-token-spring-boot3-starter</artifactId>
+        </dependency>
 
+        <!-- Sa-Token 整合 RedisTemplate -->
+        <dependency>
+            <groupId>cn.dev33</groupId>
+            <artifactId>sa-token-redis-template</artifactId>
+        </dependency>
 
     </dependencies>
 

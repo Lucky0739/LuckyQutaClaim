@@ -1,5 +1,7 @@
 package com.lucky.seckill.common.exception;
 
+import cn.dev33.satoken.exception.NotRoleException;
+import cn.dev33.satoken.exception.SaTokenException;
 import com.lucky.seckill.common.enums.ResponseCodeEnum;
 import com.lucky.seckill.common.utils.Response;
 import jakarta.servlet.http.HttpServletRequest;
@@ -32,6 +34,7 @@ public class GlobalExceptionHandler {
         log.warn("{} request fail, errorCode: {}, errorMessage: {}", request.getRequestURI(), e.getErrorCode(), e.getErrorMessage());
         return Response.fail(e);
     }
+
 
     /**
      * 捕获参数校验异常

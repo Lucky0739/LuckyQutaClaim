@@ -3,6 +3,9 @@ spring:
     name: lucky-seckill-user
   profiles:
     active: dev
+  config:
+    import:
+      - optional:nacos:lucky-seckill-user-dev.yml
   cloud:
     nacos:
       discovery:
@@ -13,8 +16,6 @@ spring:
         server-addr: 127.0.0.1:8848
         namespace: public
         file-extension: yml
-        import-check:
-          enabled: false
 
 server:
   port: 8081
@@ -41,8 +42,8 @@ captcha:
   # 如果项目中使用到了 Redis，滑块验证码会自动把验证码数据存到 Redis 中， 这里配置 Redis 的 key 的前缀,默认是 captcha:slider
   prefix: captcha
   expire: # 验证码过期时间，默认是2分钟,单位毫秒， 可以根据自身业务进行调整
-    default: 10000 # 默认缓存时间 2分钟
-    WORD_IMAGE_CLICK: 20000 # 针对 点选验证码 过期时间设置为 2分钟， 因为点选验证码验证比较慢，把过期时间调整大一些
+    default: 1000000 # 默认缓存时间 2分钟
+    WORD_IMAGE_CLICK: 2000000 # 针对 点选验证码 过期时间设置为 2分钟， 因为点选验证码验证比较慢，把过期时间调整大一些
   secondary:
     enabled: true # 二次验证，开启后支持在登录时进行验证码二次校验
     expire: 120000 # 二次验证过期时间，默认 2 分钟

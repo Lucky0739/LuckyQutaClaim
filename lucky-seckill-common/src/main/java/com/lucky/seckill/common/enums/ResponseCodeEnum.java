@@ -20,6 +20,7 @@ public enum ResponseCodeEnum implements BaseExceptionInterface {
 
 
     // ----------- 业务异常状态码 -----------
+
     // ----------- 用户模块异常状态码 -----------
     USER_MOBILE_EXISTS("20001", "该手机号已注册"),
     USER_VERIFY_CODE_ERROR("20002", "验证码错误"),
@@ -32,6 +33,9 @@ public enum ResponseCodeEnum implements BaseExceptionInterface {
     LOGIN_FAIL_TOO_MANY("20009", "密码错误次数过多，请 30 分钟后再试"),
     USER_LOGIN_CREDENTIAL_ERROR("20011", "手机号或密码错误"),
     CAPTCHA_VERIFICATION_FAILED("20012", "行为验证码校验失败，请重新验证"),
+    PERMISSION_DENIED("20013", "权限不足"),
+    USER_NOT_LOGIN("20014", "用户未登录，请先登录"),
+    USER_PERMISSION_DENIED("20015", "该用户没有权限"),
 
     ;
 

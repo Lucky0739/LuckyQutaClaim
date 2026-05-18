@@ -1,17 +1,23 @@
 package com.lucky.seckill.user.controller;
 
+import cn.dev33.satoken.annotation.SaCheckLogin;
+import cn.dev33.satoken.annotation.SaCheckPermission;
+import cn.dev33.satoken.annotation.SaCheckRole;
+import cn.dev33.satoken.annotation.SaIgnore;
 import cn.dev33.satoken.stp.StpUtil;
 import com.lucky.seckill.common.aspect.ApiOperationLog;
+import com.lucky.seckill.common.model.file.UploadPictureResult;
 import com.lucky.seckill.common.utils.Response;
-import com.lucky.seckill.user.model.dto.LoginUserRequest;
-import com.lucky.seckill.user.model.dto.RegisterUserRequest;
-import com.lucky.seckill.user.model.dto.SendVerifyCodeRequest;
+import com.lucky.seckill.user.model.dto.*;
 import com.lucky.seckill.user.model.vo.LoginUserRspVO;
+import com.lucky.seckill.user.model.vo.UserProfileVO;
 import com.lucky.seckill.user.service.UserService;
+import com.lucky.seckill.user.service.impl.UserServiceImpl;
 import jakarta.annotation.Resource;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.validation.annotation.Validated;
 import org.springframework.web.bind.annotation.*;
+import org.springframework.web.multipart.MultipartFile;
 
 /**
  * @Author: Lucky
@@ -30,8 +36,8 @@ public class UserController {
     /**
      * 用户注册
      */
+    @SaIgnore
     @PostMapping("/register")
-    @ApiOperationLog(description = "用户注册")
     public Response<?> register(@Validated @RequestBody RegisterUserRequest registerUserRequest) {
         return userService.register(registerUserRequest);
     }
@@ -39,45 +45,94 @@ public class UserController {
     /**
      * 用户登录
      */
+    @SaIgnore
     @PostMapping("/login")
-    @ApiOperationLog(description = "用户登录")
     public Response<LoginUserRspVO> login(@Validated @RequestBody LoginUserRequest loginUserRequest) {
         return userService.login(loginUserRequest);
     }
 
-    /**
-     * 测试是否真的登录了
-     */
-    @GetMapping("/test/isLogin")
-    public Response<?> isLogin() {
-        // 调用 SaToken 提供的方法，判断当前请求是否已登录
-        boolean isLogin = StpUtil.isLogin();
 
-        if (isLogin) {
-            // 已登录，获取当前登录的用户 ID
-            long loginId = StpUtil.getLoginIdAsLong();
-            log.info("==> 当前已登录, userId: {}", loginId);
-            return Response.success("当前登录用户 ID: " + loginId);
-        } else {
-            // 未登录
-            return Response.success("当前未登录");
-        }
-    }
     /**
      * 发送验证码
      */
+    @SaIgnore
     @PostMapping("/code/send")
-    @ApiOperationLog(description = "发送验证码")
-    public Response<?> sendVerifyCode(@Validated @RequestBody SendVerifyCodeRequest sendVerifyCodeRequest) {
+    public Response<Boolean> sendVerifyCode(@Validated @RequestBody SendVerifyCodeRequest sendVerifyCodeRequest) {
         return userService.sendVerifyCode(sendVerifyCodeRequest);
     }
+
     /**
      * 退出登录
      */
     @PostMapping("/logout")
-    @ApiOperationLog(description = "退出登录")
     public Response<?> logout() {
         return userService.logout();
     }
-}
 
+    /**
+     * 完善用户资料（本人操作）
+     */
+    @SaCheckLogin
+    @PostMapping("/profile/update")
+    @ApiOperationLog(description = "完善用户资料")
+    public Response<?> updateUserProfile(@Validated @RequestBody UpdateUserProfileRequest updateUserProfileRequest) {
+        return userService.updateUserProfile(updateUserProfileRequest);
+    }
+
+    /**
+     * 上传用户头像（本人操作）
+     */
+    @PostMapping("/avatar/upload")
+    @ApiOperationLog(description = "上传用户头像")
+    public Response<UploadPictureResult> uploadAvatar(@RequestParam("file") MultipartFile file) {
+        return userService.uploadAvatar(file);
+    }
+
+    /**
+     * 管理员为用户上传头像
+     */
+    @SaCheckRole("admin")
+    @PostMapping("/admin/avatar/upload/{userId}")
+    @ApiOperationLog(description = "管理员为用户上传头像")
+    public Response<UploadPictureResult> adminUploadAvatar(@PathVariable("userId") Long userId,
+                                                           @RequestParam("file") MultipartFile file) {
+        log.info("==> 管理员上传用户头像, adminId: {}, targetUserId: {}",
+                StpUtil.getLoginId(), userId);
+        return userService.adminUploadAvatar(userId, file);
+    }
+
+    /**
+     * 管理员修改用户资料
+     */
+    @SaCheckRole("admin")
+    @PostMapping("/admin/profile/update")
+    @ApiOperationLog(description = "管理员修改用户资料")
+    public Response<?> adminUpdateUserProfile(@Validated @RequestBody AdminUpdateUserProfileRequest request) {
+        log.info("==> 管理员修改用户资料, adminId: {}, targetUserId: {}",
+                StpUtil.getLoginId(), request.getUserId());
+        return userService.adminUpdateUserProfile(request);
+    }
+
+    /**
+     * 查看用户资料（优先从 Redis 缓存获取）
+     */
+    @SaCheckLogin
+    @GetMapping("/profile")
+    public Response<UserProfileVO> getUserProfile() {
+        return userService.getUserProfile();
+    }
+
+    /**
+     * 管理员禁用/启用用户
+     */
+    @SaCheckRole("admin")
+    @PostMapping("/status/update")
+    public Response<?> updateUserStatus(@RequestParam("userId") Long userId, @RequestParam("status") Integer status) {
+        log.info("==> [DEBUG] 进入管理员接口");
+        log.info("==> [DEBUG] 当前登录用户ID: {}", StpUtil.getLoginId());
+        log.info("==> [DEBUG] 当前用户角色列表: {}", StpUtil.getRoleList());
+        log.info("==> [DEBUG] 请求参数 - userId: {}, status: {}", userId, status);
+
+        return userService.updateUserStatus(userId, status);
+    }
+}
