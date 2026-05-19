@@ -79,9 +79,8 @@ public interface UserService {
      */
     Response<?> updateUserStatus(Long userId, Integer status);
 
-    /**
-     * 管理员上传用户头像
-     */
+    Response<?> assignMerchantRole(Long userId, Long roleId);
+
     Response<UploadPictureResult> adminUploadAvatar(Long userId, MultipartFile file);
 }
 

@@ -135,4 +135,16 @@ public class UserController {
 
         return userService.updateUserStatus(userId, status);
     }
+
+    /**
+     * 管理员分配商户角色
+     * @param userId
+     * @param roleId
+     * @return
+     */
+    @PostMapping("/role/assign")
+    public Response<?> assignMerchantRole(@RequestParam("userId") Long userId, @RequestParam("roleId") Long roleId) {
+        log.info("==> 收到分配角色请求, userId: {}, roleId: {}", userId, roleId);
+        return userService.assignMerchantRole(userId, roleId);
+    }
 }

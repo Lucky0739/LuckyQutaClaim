@@ -1,7 +1,6 @@
 package com.lucky.seckill.user.service.impl;
 
 import cloud.tianai.captcha.application.ImageCaptchaApplication;
-import cn.dev33.satoken.session.SaSession;
 import cn.dev33.satoken.stp.StpUtil;
 import cn.hutool.core.util.IdUtil;
 import cn.hutool.core.util.RandomUtil;
@@ -27,6 +26,7 @@ import com.lucky.seckill.user.service.UserService;
 import jakarta.annotation.Resource;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.core.io.ClassPathResource;
+import org.springframework.data.redis.core.RedisTemplate;
 import org.springframework.data.redis.core.StringRedisTemplate;
 import org.springframework.data.redis.core.script.DefaultRedisScript;
 import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
@@ -67,6 +67,9 @@ public class UserServiceImpl implements UserService {
     private StringRedisTemplate stringRedisTemplate;
 
     @Resource
+    private RedisTemplate<String, Object> redisTemplate;
+
+    @Resource
     private ImageCaptchaApplication imageCaptchaApplication;
 
     @Resource
@@ -93,6 +96,12 @@ public class UserServiceImpl implements UserService {
     private static final Integer LOGIN_FAIL_MAX_COUNT = 5;
     // 账号临时锁定时间（分钟）
     private static final Long LOGIN_LOCK_MINUTES = 30L;
+    // Redis 中用户资料缓存的 Key 前缀（独立Key，不存储在Session中）
+    private static final String USER_PROFILE_KEY_PREFIX = "user:profile:";
+    // 用户资料缓存过期时间（小时）
+    private static final Long USER_PROFILE_EXPIRE_HOURS = 24L;
+    // Redis 中用户角色缓存的 Key 前缀（独立Key，不存储在Session中）
+    private static final String USER_ROLES_KEY_PREFIX = "user:roles:";
 
 
     /**
@@ -325,23 +334,28 @@ public class UserServiceImpl implements UserService {
             checkVerifyCode(loginUserRequest.getVerifyCode(), mobile, VerifyCodeTypeEnum.LOGIN.getPurpose());
         }
 
-        // 5. 调用 SaToken 执行登录，传入用户 ID
-        StpUtil.login(user.getId());
-
-        // 6. 查询用户角色并缓存到 Sa-Token Session（底层自动存储到 Redis）
+        // 5. 使用 Sa-Token 登录（不持久化 Session）
+        // 使用 login(id, false) 方式，不创建 Session 对象
+        StpUtil.login(user.getId(), false);
+        
+        // 6. 获取 Sa-Token 生成的 Token
+        String token = StpUtil.getTokenValue();
+        
+        // 7. 查询用户角色并缓存到 Redis（使用独立Key，不存储在Session中）
         List<Role> roles = roleMapper.selectRolesByUserId(user.getId());
         if (roles != null && !roles.isEmpty()) {
             List<String> roleCodes = roles.stream()
                     .map(Role::getRoleCode)
                     .collect(Collectors.toList());
-            StpUtil.getSession().set("roles", roleCodes);
-            log.info("==> 用户角色已缓存到 Redis, userId: {}, roles: {}", user.getId(), roleCodes);
+            String rolesKey = USER_ROLES_KEY_PREFIX + user.getId();
+            redisTemplate.opsForValue().set(rolesKey, roleCodes, USER_PROFILE_EXPIRE_HOURS, TimeUnit.HOURS);
+            log.info("==> 用户角色已缓存到 Redis, userId: {}, roles: {}, key: {}", user.getId(), roleCodes, rolesKey);
         }
 
-        // 6. 获取 SaToken 生成的 Token
-        String token = StpUtil.getTokenValue();
+        // 8. 登录成功后立即将用户资料缓存到 Redis（避免延迟加载）
+        refreshUserProfileCache(user.getId());
 
-        // 7. 构建返参对象
+        // 9. 构建返参对象
         LoginUserRspVO loginUserRspVO = LoginUserRspVO.builder()
                 .token(token)
                 .userInfo(LoginUserRspVO.UserInfo.builder()
@@ -613,6 +627,9 @@ public class UserServiceImpl implements UserService {
         // 更新用户信息
         userMapper.updateByPrimaryKeySelective(user);
 
+        // 刷新目标用户的缓存（使用独立Redis Key）
+        refreshUserProfileCache(targetUserId);
+
         log.info("==> 管理员修改用户资料成功, adminId: {}, targetUserId: {}, nickname: {}",
                 adminId, targetUserId, request.getNickname());
 
@@ -715,10 +732,8 @@ public class UserServiceImpl implements UserService {
                 .build();
         userMapper.updateByPrimaryKeySelective(user);
 
-        // 6. 清除目标用户的缓存（因为管理员操作的是别人的账号）
-        // 注意：StpUtil.getSession() 获取的是当前管理员的 Session，所以不能直接 set。
-        // 如果需要精确清除目标用户缓存，可以使用 stringRedisTemplate 删除对应的 Key，
-        // 或者简单地让目标用户下次查询时自动刷新。
+        // 6. 刷新目标用户的缓存（使用独立Redis Key，不涉及Session）
+        refreshUserProfileCache(userId);
 
         log.info("==> 管理员为用户上传头像成功, adminId: {}, targetUserId: {}, avatarUrl: {}",
                 adminId, userId, uploadResult.getImageUrl());
@@ -757,7 +772,7 @@ public class UserServiceImpl implements UserService {
 
 
     /**
-     * 刷新用户资料缓存（从数据库拉取最新数据存入 Redis）
+     * 刷新用户资料缓存（从数据库拉取最新数据存入 Redis，使用独立Key，不存储在Session中）
      *
      * @param userId 用户 ID
      */
@@ -777,14 +792,15 @@ public class UserServiceImpl implements UserService {
                 .status(user.getStatus())
                 .build();
 
-        // 3. 更新 Sa-Token Session (Redis) 中的缓存
-        StpUtil.getSession().set("user_profile", profileVO);
+        // 3. 使用独立的Redis Key存储用户资料，避免Session带来的数据一致性问题
+        String profileKey = USER_PROFILE_KEY_PREFIX + userId;
+        redisTemplate.opsForValue().set(profileKey, profileVO, USER_PROFILE_EXPIRE_HOURS, TimeUnit.HOURS);
 
-        log.debug("==> 用户资料缓存已主动刷新, userId: {}", userId);
+        log.debug("==> 用户资料缓存已主动刷新, userId: {}, key: {}", userId, profileKey);
     }
 
     /**
-     * 查看用户资料（优先从 Redis 缓存获取）
+     * 查看用户资料（优先从 Redis 缓存获取，使用独立Key）
      *
      * @return
      */
@@ -793,12 +809,12 @@ public class UserServiceImpl implements UserService {
         // 1. 获取当前登录用户 ID
         Long userId = StpUtil.getLoginIdAsLong();
 
-        // 2. 尝试从 Sa-Token Session (Redis) 中获取用户资料缓存
-        SaSession session = StpUtil.getSession();
-        UserProfileVO cachedProfile = (UserProfileVO) session.get("user_profile");
+        // 2. 尝试从 Redis 独立Key中获取用户资料缓存
+        String profileKey = USER_PROFILE_KEY_PREFIX + userId;
+        UserProfileVO cachedProfile = (UserProfileVO) redisTemplate.opsForValue().get(profileKey);
 
         if (cachedProfile != null) {
-            log.info("==> 从 Redis 缓存获取用户资料, userId: {}", userId);
+            log.info("==> 从 Redis 缓存获取用户资料, userId: {}, key: {}", userId, profileKey);
             return Response.success(cachedProfile);
         }
 
@@ -806,8 +822,8 @@ public class UserServiceImpl implements UserService {
         log.info("==> 缓存未命中，从数据库查询用户资料, userId: {}", userId);
         refreshUserProfileCache(userId);
 
-        // 4. 再次从 Session 获取刚刚存入的数据
-        UserProfileVO freshProfile = (UserProfileVO) session.get("user_profile");
+        // 4. 再次从 Redis 获取刚刚存入的数据
+        UserProfileVO freshProfile = (UserProfileVO) redisTemplate.opsForValue().get(profileKey);
         return Response.success(freshProfile);
     }
 
@@ -870,9 +886,75 @@ public class UserServiceImpl implements UserService {
             } else {
                 log.info("==> 用户已被禁用，但该用户当前未在线, userId: {}", userId);
             }
+            
+            // 清除用户缓存（禁用用户不需要缓存）
+            String profileKey = USER_PROFILE_KEY_PREFIX + userId;
+            String rolesKey = USER_ROLES_KEY_PREFIX + userId;
+            redisTemplate.delete(profileKey);
+            redisTemplate.delete(rolesKey);
+            log.info("==> 已清除禁用用户的缓存, userId: {}", userId);
+        } else {
+            // 启用用户，刷新缓存
+            refreshUserProfileCache(userId);
+            log.info("==> 已刷新启用用户的缓存, userId: {}", userId);
         }
 
         log.info("==> 用户状态更新成功, userId: {}, status: {}", userId, status);
+
+        return Response.success();
+    }
+
+    /**
+     * 为用户分配商家角色
+     * @param userId
+     * @param roleId
+     * @return
+     */
+    @Override
+    public Response<?> assignMerchantRole(Long userId, Long roleId) {
+        log.info("==> 为用户分配商家角色, userId: {}, roleId: {}", userId, roleId);
+
+        User existUser = userMapper.selectByPrimaryKey(userId);
+        if (existUser == null) {
+            throw new BizException(ResponseCodeEnum.PARAM_NOT_VALID, "用户不存在");
+        }
+
+        UserRole existingUserRole = userRoleMapper.selectByUserId(userId);
+        if (Objects.nonNull(existingUserRole) && existingUserRole.getRoleId().equals(roleId)) {
+            log.info("==> 用户已拥有该角色，无需重复分配, userId: {}, roleId: {}", userId, roleId);
+            return Response.success();
+        }
+
+        if (Objects.nonNull(existingUserRole)) {
+            UserRole userRole = UserRole.builder()
+                    .id(existingUserRole.getId())
+                    .roleId(roleId)
+                    .isDelete(0)
+                    .build();
+            userRoleMapper.updateByPrimaryKeySelective(userRole);
+            log.info("==> 更新用户角色成功, userId: {}, roleId: {}", userId, roleId);
+        } else {
+            UserRole userRole = UserRole.builder()
+                    .id(IdUtil.getSnowflakeNextId())
+                    .userId(userId)
+                    .roleId(roleId)
+                    .isDelete(0)
+                    .createTime(new java.util.Date())
+                    .build();
+            userRoleMapper.insertSelective(userRole);
+            log.info("==> 新增用户角色成功, userId: {}, roleId: {}", userId, roleId);
+        }
+
+        // 刷新用户角色缓存（使用独立Redis Key）
+        List<Role> roles = roleMapper.selectRolesByUserId(userId);
+        if (roles != null && !roles.isEmpty()) {
+            List<String> roleCodes = roles.stream()
+                    .map(Role::getRoleCode)
+                    .collect(Collectors.toList());
+            String rolesKey = USER_ROLES_KEY_PREFIX + userId;
+            redisTemplate.opsForValue().set(rolesKey, roleCodes, USER_PROFILE_EXPIRE_HOURS, TimeUnit.HOURS);
+            log.info("==> 用户角色缓存已刷新, userId: {}, roles: {}, key: {}", userId, roleCodes, rolesKey);
+        }
 
         return Response.success();
     }

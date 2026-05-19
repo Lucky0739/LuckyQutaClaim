@@ -37,6 +37,15 @@ spring:
           uri: lb://lucky-seckill-user
           predicates:
             - Path=/captcha/**
+          # 商店模块路径
+        - id: shop-service
+          uri: lb://lucky-seckill-shop
+          predicates:
+            - Path=/shop/**
+        - id: notify-service
+          uri: lb://lucky-seckill-notify
+          predicates:
+            - Path=/notify/**
 
 server:
   port: 8888

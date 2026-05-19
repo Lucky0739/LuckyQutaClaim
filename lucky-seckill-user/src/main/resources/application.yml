@@ -5,7 +5,7 @@ spring:
     active: dev
   config:
     import:
-      - optional:nacos:lucky-seckill-user-dev.yml
+      - optional:nacos:lucky-seckill-dev.yml
   cloud:
     nacos:
       discovery:
@@ -36,6 +36,15 @@ sa-token:
   is-share: true
   token-style: uuid
   is-log: true
+  # 禁用 Sa-Token 的会话（Session）持久化，只保留 Token 验证功能
+  is-session: false
+
+## 消息队列rocketmq
+rocketmq:
+  name-server: 127.0.0.1:9876
+  producer:
+    group: merchant-apply-producer
+    send-message-timeout: 3000
 
 ############## 行为验证码配置 ##############
 captcha:
