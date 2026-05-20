@@ -47,6 +47,11 @@ spring:
           uri: lb://lucky-seckill-notify
           predicates:
             - Path=/notify/**
+          # 商品模块路径
+        - id: goods-service
+          uri: lb://lucky-seckill-goods
+          predicates:
+            - Path=/goods/**
 
 server:
   port: 8888

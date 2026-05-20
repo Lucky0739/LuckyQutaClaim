@@ -11,7 +11,7 @@ import com.lucky.seckill.user.model.vo.UserProfileVO;
 import org.springframework.web.multipart.MultipartFile;
 
 /**
- * @Author: 犬小哈
+ * @Author: Lucky
  * @Date: 2026/4/10 18:09
  * @Version: v1.0.0
  * @Description: 用户业务

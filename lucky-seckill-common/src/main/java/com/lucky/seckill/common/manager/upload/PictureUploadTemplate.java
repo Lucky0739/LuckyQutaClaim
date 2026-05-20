@@ -86,8 +86,8 @@ public abstract class PictureUploadTemplate {
                     // 头像：只返回 webp 压缩图，不需要缩略图
                     return buildResult(originFilename, compressCiObject, null, imageInfo);
                 } else {
-                    // 帖子图片：压缩图 + 缩略图 全都返回
-                    return buildResult(originFilename, compressCiObject, thumbnailCiObject, imageInfo);
+                    // 图片：压缩图 + 缩略图 全都返回
+                    return buildResult(originFilename, compressCiObject, null, imageInfo);
                 }
             }
             return buildResult(originFilename, null, uploadPath, imageInfo);

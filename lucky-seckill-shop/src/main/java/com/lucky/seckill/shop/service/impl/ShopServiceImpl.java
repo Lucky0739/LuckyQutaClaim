@@ -13,7 +13,7 @@ import com.lucky.seckill.shop.model.vo.ShopApplyVO;
 import com.lucky.seckill.user.feign.UserFeignClient;
 import com.lucky.seckill.common.manager.upload.FilePictureUpload;
 import com.lucky.seckill.common.model.entity.Notify;
-import com.lucky.seckill.common.mq.MerchantApplyProducer;
+import com.lucky.seckill.shop.mq.MerchantApplyProducer;
 import com.lucky.seckill.common.model.entity.MerchantApplyMessage;
 import com.lucky.seckill.common.model.file.UploadPictureResult;
 import com.lucky.seckill.common.utils.Response;

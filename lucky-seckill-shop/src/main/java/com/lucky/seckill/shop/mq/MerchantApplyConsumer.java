@@ -4,7 +4,7 @@ import cn.hutool.core.util.IdUtil;
 import com.lucky.seckill.common.model.entity.MerchantApplyMessage;
 import com.lucky.seckill.common.model.entity.Notify;
 import com.lucky.seckill.notify.feign.NotifyFeignClient;
-import com.lucky.seckill.common.mq.MerchantApplyProducer;
+import com.lucky.seckill.common.mq.MqConstants;
 import com.lucky.seckill.common.utils.Response;
 import jakarta.annotation.Resource;
 import lombok.extern.slf4j.Slf4j;
@@ -22,8 +22,8 @@ import java.time.LocalDateTime;
 @Component
 @Slf4j
 @RocketMQMessageListener(
-        topic = MerchantApplyProducer.MERCHANT_APPLY_TOPIC,
-        selectorExpression = MerchantApplyProducer.MERCHANT_APPLY_TAG,
+        topic = MqConstants.MERCHANT_APPLY_TOPIC,
+        selectorExpression = MqConstants.MERCHANT_APPLY_TAG,
         consumerGroup = "merchant-apply-consumer-group"
 )
 public class MerchantApplyConsumer implements RocketMQListener<MerchantApplyMessage> {
