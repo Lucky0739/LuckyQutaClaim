@@ -964,26 +964,26 @@ public class UserServiceImpl implements UserService {
     /**
      * 管理员分页查询用户列表
      *
-     * @param request
+     * @param adminUserQueryRequest
      * @return
      */
     @Override
-    public Response<PageResult<AdminUserListVO>> getUserListByAdmin(AdminUserQueryRequest request) {
+    public Response<PageResult<AdminUserListVO>> getUserListByAdmin(AdminUserQueryRequest adminUserQueryRequest) {
         log.info("==> 管理员查询用户列表, 昵称: {}, 手机号: {}, 状态: {}, 时间范围: {} - {}",
-                request.getNickname(), request.getMobile(), request.getStatus(),
-                request.getStartTime(), request.getEndTime());
+                adminUserQueryRequest.getNickname(), adminUserQueryRequest.getMobile(), adminUserQueryRequest.getStatus(),
+                adminUserQueryRequest.getStartTime(), adminUserQueryRequest.getEndTime());
 
-        Integer pageNum = request.getPageNum() != null ? request.getPageNum() : 1;
-        Integer pageSize = request.getPageSize() != null ? request.getPageSize() : 10;
+        Integer pageNum = adminUserQueryRequest.getPageNum() != null ? adminUserQueryRequest.getPageNum() : 1;
+        Integer pageSize = adminUserQueryRequest.getPageSize() != null ? adminUserQueryRequest.getPageSize() : 10;
 
         PageHelper.startPage(pageNum, pageSize);
 
         List<User> userList = userMapper.selectUserListByAdmin(
-                request.getNickname(),
-                request.getMobile(),
-                request.getStatus(),
-                request.getStartTime() != null ? Date.from(request.getStartTime().atZone(java.time.ZoneId.systemDefault()).toInstant()) : null,
-                request.getEndTime() != null ? Date.from(request.getEndTime().atZone(java.time.ZoneId.systemDefault()).toInstant()) : null
+                adminUserQueryRequest.getNickname(),
+                adminUserQueryRequest.getMobile(),
+                adminUserQueryRequest.getStatus(),
+                adminUserQueryRequest.getStartTime() != null ? Date.from(adminUserQueryRequest.getStartTime().atZone(java.time.ZoneId.systemDefault()).toInstant()) : null,
+                adminUserQueryRequest.getEndTime() != null ? Date.from(adminUserQueryRequest.getEndTime().atZone(java.time.ZoneId.systemDefault()).toInstant()) : null
         );
 
         Page<User> page = (Page<User>) userList;

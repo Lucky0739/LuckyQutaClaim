@@ -1,5 +1,6 @@
 package com.lucky.seckill.notify.controller;
 
+import cn.hutool.db.Page;
 import com.lucky.seckill.common.utils.Response;
 import com.lucky.seckill.notify.model.entity.Notify;
 import com.lucky.seckill.notify.service.NotifyService;
@@ -51,8 +52,10 @@ public class NotifyController {
         notifyService.markApplyNotifyRead(notifyType, businessId);
         return Response.success();
     }
+
     /**
      * 获取消息列表
      */
-
+   /* @PostMapping("/list")
+    public Response<Page>*/
 }
