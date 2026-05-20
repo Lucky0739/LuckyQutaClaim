@@ -37,9 +37,11 @@ mybatis:
   configuration:
     log-impl: org.apache.ibatis.logging.stdout.StdOutImpl
 
-
 management:
   endpoints:
     web:
       exposure:
         include: '*'
+
+sa-token:
+  ignore-paths: /user/login,/user/register,/user/send-verify-code

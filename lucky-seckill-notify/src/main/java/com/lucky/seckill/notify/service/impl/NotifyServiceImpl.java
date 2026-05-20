@@ -3,8 +3,8 @@ package com.lucky.seckill.notify.service.impl;
 import cn.hutool.core.util.IdUtil;
 import com.lucky.seckill.common.enums.ResponseCodeEnum;
 import com.lucky.seckill.common.exception.BizException;
-import com.lucky.seckill.common.model.entity.Notify;
 import com.lucky.seckill.notify.mapper.NotifyMapper;
+import com.lucky.seckill.notify.model.entity.Notify;
 import com.lucky.seckill.notify.service.NotifyService;
 import jakarta.annotation.Resource;
 import lombok.extern.slf4j.Slf4j;
@@ -21,7 +21,7 @@ public class NotifyServiceImpl implements NotifyService {
     private NotifyMapper notifyMapper;
 
     @Override
-    public void saveNotify(Notify notify) {
+    public Boolean saveNotify(Notify notify) {
         fillDefaultFields(notify, notify.getId() == null);
         int result = notifyMapper.insertSelective(notify);
         if (result <= 0) {
@@ -29,6 +29,7 @@ public class NotifyServiceImpl implements NotifyService {
         }
         log.info("==> 保存通知成功, id: {}, notifyType: {}, businessId: {}",
                 notify.getId(), notify.getNotifyType(), notify.getBusinessId());
+        return true;
     }
 
     @Override

@@ -1,9 +1,11 @@
 package com.lucky.seckill.user.service;
 
 
+import com.lucky.seckill.common.model.entity.PageResult;
 import com.lucky.seckill.common.model.file.UploadPictureResult;
 import com.lucky.seckill.common.utils.Response;
 import com.lucky.seckill.user.model.dto.*;
+import com.lucky.seckill.user.model.vo.AdminUserListVO;
 import com.lucky.seckill.user.model.vo.LoginUserRspVO;
 import com.lucky.seckill.user.model.vo.UserProfileVO;
 import org.springframework.web.multipart.MultipartFile;
@@ -82,5 +84,12 @@ public interface UserService {
     Response<?> assignMerchantRole(Long userId, Long roleId);
 
     Response<UploadPictureResult> adminUploadAvatar(Long userId, MultipartFile file);
+
+    /**
+     * 管理员分页查询用户列表
+     * @param request
+     * @return
+     */
+    Response<PageResult<AdminUserListVO>> getUserListByAdmin(AdminUserQueryRequest request);
 }
 

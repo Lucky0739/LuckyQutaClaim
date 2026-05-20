@@ -42,6 +42,7 @@ spring:
           uri: lb://lucky-seckill-shop
           predicates:
             - Path=/shop/**
+          # 消息模块路径
         - id: notify-service
           uri: lb://lucky-seckill-notify
           predicates:

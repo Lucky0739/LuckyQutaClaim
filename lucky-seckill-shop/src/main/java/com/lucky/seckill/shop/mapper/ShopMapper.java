@@ -3,6 +3,9 @@ package com.lucky.seckill.shop.mapper;
 import com.lucky.seckill.shop.model.entity.Shop;
 import io.lettuce.core.dynamic.annotation.Param;
 
+import java.util.Date;
+import java.util.List;
+
 public interface ShopMapper {
 
     int deleteByPrimaryKey(Long id);
@@ -23,7 +26,13 @@ public interface ShopMapper {
     Shop selectByUserId(@Param("userId") Long userId);
 
     /**
-     * 查询待审核的店铺列表
+     * 查询商家申请列表（支持多条件筛选）
      */
-    java.util.List<Shop> selectPendingAuditList();
+    List<Shop> selectShopApplyList(
+            @Param("username") String username,
+            @Param("shopName") String shopName,
+            @Param("auditStatus") Integer auditStatus,
+            @Param("startTime") Date startTime,
+            @Param("endTime") Date endTime
+    );
 }

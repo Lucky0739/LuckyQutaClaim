@@ -2,14 +2,19 @@ package com.lucky.seckill.shop.service.impl;
 
 import cn.dev33.satoken.stp.StpUtil;
 import cn.hutool.core.util.IdUtil;
+import com.github.pagehelper.Page;
+import com.github.pagehelper.PageHelper;
 import com.lucky.seckill.common.enums.ResponseCodeEnum;
 import com.lucky.seckill.common.exception.BizException;
-import com.lucky.seckill.common.feign.NotifyFeignClient;
-import com.lucky.seckill.common.feign.UserFeignClient;
+import com.lucky.seckill.common.model.entity.PageResult;
+import com.lucky.seckill.notify.feign.NotifyFeignClient;
+import com.lucky.seckill.shop.model.dto.ShopApplyQueryRequest;
+import com.lucky.seckill.shop.model.vo.ShopApplyVO;
+import com.lucky.seckill.user.feign.UserFeignClient;
 import com.lucky.seckill.common.manager.upload.FilePictureUpload;
+import com.lucky.seckill.common.model.entity.Notify;
 import com.lucky.seckill.common.mq.MerchantApplyProducer;
 import com.lucky.seckill.common.model.entity.MerchantApplyMessage;
-import com.lucky.seckill.common.model.entity.Notify;
 import com.lucky.seckill.common.model.file.UploadPictureResult;
 import com.lucky.seckill.common.utils.Response;
 import com.lucky.seckill.shop.mapper.ShopMapper;
@@ -24,8 +29,11 @@ import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.multipart.MultipartFile;
 
 import java.time.LocalDateTime;
+import java.time.ZoneId;
+import java.util.Date;
 import java.util.List;
 import java.util.Objects;
+import java.util.stream.Collectors;
 
 /**
  * 店铺服务实现类
@@ -53,6 +61,7 @@ public class ShopServiceImpl implements ShopService {
 
     /**
      * 申请店铺
+     *
      * @param createShopRequest
      * @return
      */
@@ -67,6 +76,23 @@ public class ShopServiceImpl implements ShopService {
             throw new BizException(ResponseCodeEnum.PARAM_NOT_VALID, "您已经拥有店铺，无法重复开店");
         }
 
+        // 获取用户信息，设置 username
+        String username = null;
+        try {
+            Object userObj = userFeignClient.getUserById(userId);
+            if (userObj != null) {
+                // 尝试从用户对象中获取 nickname 或 mobile 作为 username
+                if (userObj instanceof java.util.Map) {
+                    java.util.Map<?, ?> userMap = (java.util.Map<?, ?>) userObj;
+                    Object nickname = userMap.get("nickname");
+                    Object mobile = userMap.get("mobile");
+                    username = nickname != null ? nickname.toString() : (mobile != null ? mobile.toString() : null);
+                }
+            }
+        } catch (Exception e) {
+            log.warn("==> 获取用户信息失败，userId: {}, error: {}", userId, e.getMessage());
+        }
+
         long shopId = IdUtil.getSnowflakeNextId();
         Shop shop = Shop.builder()
                 .id(shopId)
@@ -74,8 +100,10 @@ public class ShopServiceImpl implements ShopService {
                 .shopAvatar(createShopRequest.getShopAvatar())
                 .shopDesc(createShopRequest.getShopDesc())
                 .userId(userId)
+                .username(username)
                 .auditStatus(0)
                 .shopStatus(1)
+                .isDelete(0)
                 .createTime(new java.util.Date())
                 .updateTime(new java.util.Date())
                 .build();
@@ -91,7 +119,7 @@ public class ShopServiceImpl implements ShopService {
         Notify notify = Notify.builder()
                 .id(notifyId)
                 .sendUserId(userId)
-                .receiveUserId(0L)
+                .receiveUserId(5L)
                 .title("新开店申请")
                 .content("有新的开店申请，请到店铺审核界面查看详情并处理")
                 .notifyType(1)
@@ -104,7 +132,7 @@ public class ShopServiceImpl implements ShopService {
                 .build();
 
         try {
-            Response<Void> notifyResponse = notifyFeignClient.saveNotify(notify);
+            Response<Boolean> notifyResponse = notifyFeignClient.saveNotify(notify);
             checkFeignResponse(notifyResponse, "开店申请消息保存失败");
         } catch (Exception e) {
             log.error("==> 调用消息服务保存开店申请通知失败, shopId: {}, error: {}", shopId, e.getMessage(), e);
@@ -134,6 +162,7 @@ public class ShopServiceImpl implements ShopService {
 
     /**
      * 审核店铺
+     *
      * @param shopAuditRequest
      * @return
      */
@@ -173,39 +202,37 @@ public class ShopServiceImpl implements ShopService {
                     shopAuditRequest.getShopId(), e.getMessage(), e);
             throw new BizException(ResponseCodeEnum.SYSTEM_ERROR, "开店申请通知标记已读失败");
         }
-
         Long adminId = StpUtil.getLoginIdAsLong();
-        String title = shopAuditRequest.getAuditStatus().equals(1) ? "开店申请已通过" : "开店申请被拒绝";
-        String content = shopAuditRequest.getAuditStatus().equals(1) 
-                ? String.format("恭喜！您的店铺【%s】开店申请已通过审核！", shop.getShopName())
-                : String.format("抱歉，您的店铺【%s】开店申请未通过：%s", shop.getShopName(), shopAuditRequest.getAuditRemark());
-
-        Notify auditNotify = Notify.builder()
-                .id(IdUtil.getSnowflakeNextId())
-                .sendUserId(adminId)
-                .receiveUserId(shop.getUserId())
-                .title(title)
-                .content(content)
-                .notifyType(4)
-                .businessId(shopAuditRequest.getShopId())
-                .subType(0)
-                .isRead(0)
-                .isDelete(0)
-                .createTime(LocalDateTime.now())
-                .updateTime(LocalDateTime.now())
-                .build();
-
-        try {
-            Response<Void> auditNotifyResponse = notifyFeignClient.saveNotify(auditNotify);
-            checkFeignResponse(auditNotifyResponse, "审核结果通知发送失败");
-        } catch (Exception e) {
-            log.error("==> 调用消息服务发送审核结果通知失败, shopId: {}, error: {}",
-                    shopAuditRequest.getShopId(), e.getMessage(), e);
-            throw new BizException(ResponseCodeEnum.SYSTEM_ERROR, "审核结果通知发送失败");
-        }
-        log.info("==> 审核结果通知已发送, notifyId: {}", auditNotify.getId());
 
         if (shopAuditRequest.getAuditStatus().equals(ShopAuditRequest.AUDIT_PASS)) {
+            String title = "开店申请已通过";
+            String content = String.format("恭喜！您的店铺【%s】开店申请已通过审核！", shop.getShopName());
+
+            Notify auditNotify = Notify.builder()
+                    .id(IdUtil.getSnowflakeNextId())
+                    .sendUserId(adminId)
+                    .receiveUserId(shop.getUserId())
+                    .title(title)
+                    .content(content)
+                    .notifyType(4)
+                    .businessId(shopAuditRequest.getShopId())
+                    .subType(0)
+                    .isRead(0)
+                    .isDelete(0)
+                    .createTime(LocalDateTime.now())
+                    .updateTime(LocalDateTime.now())
+                    .build();
+
+            try {
+                Response<Boolean> auditNotifyResponse = notifyFeignClient.saveNotify(auditNotify);
+                checkFeignResponse(auditNotifyResponse, "审核通过通知发送失败");
+            } catch (Exception e) {
+                log.error("==> 调用消息服务发送审核通过通知失败, shopId: {}, error: {}",
+                        shopAuditRequest.getShopId(), e.getMessage(), e);
+                throw new BizException(ResponseCodeEnum.SYSTEM_ERROR, "审核通过通知发送失败");
+            }
+            log.info("==> 审核通过通知已发送, notifyId: {}", auditNotify.getId());
+
             log.info("==> 审核通过，调用用户服务为用户分配商家角色, userId: {}, roleId: {}",
                     shop.getUserId(), SHOP_OWNER_ROLE_ID);
 
@@ -217,6 +244,35 @@ public class ShopServiceImpl implements ShopService {
                         shop.getUserId(), e.getMessage(), e);
                 throw new BizException(ResponseCodeEnum.SYSTEM_ERROR, "商家角色分配失败");
             }
+        } else {
+            String title = "开店申请被拒绝";
+            String content = String.format("抱歉，您的店铺【%s】开店申请未通过：%s",
+                    shop.getShopName(), shopAuditRequest.getAuditRemark());
+
+            Notify rejectNotify = Notify.builder()
+                    .id(IdUtil.getSnowflakeNextId())
+                    .sendUserId(adminId)
+                    .receiveUserId(shop.getUserId())
+                    .title(title)
+                    .content(content)
+                    .notifyType(4)
+                    .businessId(shopAuditRequest.getShopId())
+                    .subType(0)
+                    .isRead(0)
+                    .isDelete(0)
+                    .createTime(LocalDateTime.now())
+                    .updateTime(LocalDateTime.now())
+                    .build();
+
+            try {
+                Response<Boolean> rejectNotifyResponse = notifyFeignClient.saveNotify(rejectNotify);
+                checkFeignResponse(rejectNotifyResponse, "审核拒绝通知发送失败");
+            } catch (Exception e) {
+                log.error("==> 调用消息服务发送审核拒绝通知失败, shopId: {}, error: {}",
+                        shopAuditRequest.getShopId(), e.getMessage(), e);
+                throw new BizException(ResponseCodeEnum.SYSTEM_ERROR, "审核拒绝通知发送失败");
+            }
+            log.info("==> 审核拒绝通知已发送, notifyId: {}", rejectNotify.getId());
         }
 
         log.info("==> 商家申请审批完成, shopId: {}, auditStatus: {}",
@@ -225,12 +281,86 @@ public class ShopServiceImpl implements ShopService {
         return Response.success();
     }
 
+
+    /**
+     * 查询商家申请列表（支持多条件筛选和分页）
+     */
     @Override
-    public Response<?> getPendingApplyList() {
-        log.info("==> 查询待审核商家申请列表");
-        List<Shop> pendingList = shopMapper.selectPendingAuditList();
-        log.info("==> 查询到待审核申请数量: {}", pendingList.size());
-        return Response.success(pendingList);
+    public Response<PageResult<ShopApplyVO>> getShopApplyList(ShopApplyQueryRequest queryRequest) {
+        log.info("==> 查询商家申请列表, 用户名: {}, 店铺名: {}, 审核状态: {}, 时间范围: {} - {}",
+                queryRequest.getUsername(), queryRequest.getShopName(),
+                queryRequest.getAuditStatus(), queryRequest.getStartTime(), queryRequest.getEndTime());
+
+        // 设置默认分页参数
+        Integer pageNum = queryRequest.getPageNum() != null ? queryRequest.getPageNum() : 1;
+        Integer pageSize = queryRequest.getPageSize() != null ? queryRequest.getPageSize() : 10;
+
+        // 开启分页
+        PageHelper.startPage(pageNum, pageSize);
+
+        // 查询数据
+        List<Shop> shopList = shopMapper.selectShopApplyList(
+                queryRequest.getUsername(),
+                queryRequest.getShopName(),
+                queryRequest.getAuditStatus(),
+                queryRequest.getStartTime() != null ? Date.from(queryRequest.getStartTime().atZone(ZoneId.systemDefault()).toInstant()) : null,
+                queryRequest.getEndTime() != null ? Date.from(queryRequest.getEndTime().atZone(ZoneId.systemDefault()).toInstant()) : null
+        );
+
+        // 获取分页信息
+        Page<Shop> page = (Page<Shop>) shopList;
+
+        // 转换为 VO
+        List<ShopApplyVO> voList = shopList.stream().map(shop -> {
+            ShopApplyVO vo = new ShopApplyVO();
+            vo.setId(shop.getId());
+            vo.setShopName(shop.getShopName());
+            vo.setShopAvatar(shop.getShopAvatar());
+            vo.setShopDesc(shop.getShopDesc());
+            vo.setUserId(shop.getUserId());
+            vo.setUsername(shop.getUsername());
+            vo.setAuditStatus(shop.getAuditStatus());
+            vo.setAuditStatusDesc(getAuditStatusDesc(shop.getAuditStatus()));
+            vo.setAuditRemark(shop.getAuditRemark());
+            vo.setShopStatus(shop.getShopStatus());
+            vo.setCreateTime(shop.getCreateTime() != null ?
+                    LocalDateTime.ofInstant(shop.getCreateTime().toInstant(), ZoneId.systemDefault()) : null);
+            vo.setUpdateTime(shop.getUpdateTime() != null ?
+                    LocalDateTime.ofInstant(shop.getUpdateTime().toInstant(), ZoneId.systemDefault()) : null);
+            return vo;
+        }).collect(Collectors.toList());
+
+        // 构建分页结果
+        PageResult<ShopApplyVO> pageResult = PageResult.<ShopApplyVO>builder()
+                .records(voList)
+                .total(page.getTotal())
+                .pageNum(pageNum)
+                .pageSize(pageSize)
+                .totalPages((int) Math.ceil((double) page.getTotal() / pageSize))
+                .build();
+
+        log.info("==> 查询商家申请列表完成, 总数: {}, 当前页: {}", page.getTotal(), pageNum);
+
+        return Response.success(pageResult);
+    }
+
+    /**
+     * 获取审核状态描述
+     */
+    private String getAuditStatusDesc(Integer auditStatus) {
+        if (auditStatus == null) {
+            return "未知";
+        }
+        switch (auditStatus) {
+            case 0:
+                return "待审核";
+            case 1:
+                return "审核通过";
+            case 2:
+                return "审核拒绝";
+            default:
+                return "未知";
+        }
     }
 
     /**

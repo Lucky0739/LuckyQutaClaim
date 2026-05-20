@@ -5,9 +5,11 @@ import cn.dev33.satoken.stp.StpUtil;
 import cn.hutool.core.util.IdUtil;
 import cn.hutool.core.util.RandomUtil;
 import cn.hutool.core.util.StrUtil;
+import com.lucky.seckill.common.constant.RedisKeyConstants;
 import com.lucky.seckill.common.enums.ResponseCodeEnum;
 import com.lucky.seckill.common.exception.BizException;
 import com.lucky.seckill.common.manager.upload.FilePictureUpload;
+import com.lucky.seckill.common.model.entity.PageResult;
 import com.lucky.seckill.common.model.file.UploadPictureResult;
 import com.lucky.seckill.common.utils.Response;
 import com.lucky.seckill.user.enums.LoginTypeEnum;
@@ -20,6 +22,7 @@ import com.lucky.seckill.user.model.dto.*;
 import com.lucky.seckill.user.model.entity.Role;
 import com.lucky.seckill.user.model.entity.User;
 import com.lucky.seckill.user.model.entity.UserRole;
+import com.lucky.seckill.user.model.vo.AdminUserListVO;
 import com.lucky.seckill.user.model.vo.LoginUserRspVO;
 import com.lucky.seckill.user.model.vo.UserProfileVO;
 import com.lucky.seckill.user.service.UserService;
@@ -33,11 +36,14 @@ import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
 import org.springframework.stereotype.Service;
 import org.springframework.web.multipart.MultipartFile;
 
+import com.github.pagehelper.Page;
+import com.github.pagehelper.PageHelper;
 import java.time.Duration;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.time.LocalTime;
 import java.util.Collections;
+import java.util.Date;
 import java.util.List;
 import java.util.Objects;
 import java.util.concurrent.Executor;
@@ -100,10 +106,6 @@ public class UserServiceImpl implements UserService {
     private static final String USER_PROFILE_KEY_PREFIX = "user:profile:";
     // 用户资料缓存过期时间（小时）
     private static final Long USER_PROFILE_EXPIRE_HOURS = 24L;
-    // Redis 中用户角色缓存的 Key 前缀（独立Key，不存储在Session中）
-    private static final String USER_ROLES_KEY_PREFIX = "user:roles:";
-
-
     /**
      * 验证码校验 Lua 脚本
      */
@@ -347,7 +349,7 @@ public class UserServiceImpl implements UserService {
             List<String> roleCodes = roles.stream()
                     .map(Role::getRoleCode)
                     .collect(Collectors.toList());
-            String rolesKey = USER_ROLES_KEY_PREFIX + user.getId();
+            String rolesKey = RedisKeyConstants.USER_ROLES_KEY_PREFIX + user.getId();
             redisTemplate.opsForValue().set(rolesKey, roleCodes, USER_PROFILE_EXPIRE_HOURS, TimeUnit.HOURS);
             log.info("==> 用户角色已缓存到 Redis, userId: {}, roles: {}, key: {}", user.getId(), roleCodes, rolesKey);
         }
@@ -889,7 +891,7 @@ public class UserServiceImpl implements UserService {
             
             // 清除用户缓存（禁用用户不需要缓存）
             String profileKey = USER_PROFILE_KEY_PREFIX + userId;
-            String rolesKey = USER_ROLES_KEY_PREFIX + userId;
+            String rolesKey = RedisKeyConstants.USER_ROLES_KEY_PREFIX + userId;
             redisTemplate.delete(profileKey);
             redisTemplate.delete(rolesKey);
             log.info("==> 已清除禁用用户的缓存, userId: {}", userId);
@@ -951,12 +953,83 @@ public class UserServiceImpl implements UserService {
             List<String> roleCodes = roles.stream()
                     .map(Role::getRoleCode)
                     .collect(Collectors.toList());
-            String rolesKey = USER_ROLES_KEY_PREFIX + userId;
+            String rolesKey = RedisKeyConstants.USER_ROLES_KEY_PREFIX + userId;
             redisTemplate.opsForValue().set(rolesKey, roleCodes, USER_PROFILE_EXPIRE_HOURS, TimeUnit.HOURS);
             log.info("==> 用户角色缓存已刷新, userId: {}, roles: {}, key: {}", userId, roleCodes, rolesKey);
         }
 
         return Response.success();
+    }
+
+    /**
+     * 管理员分页查询用户列表
+     *
+     * @param request
+     * @return
+     */
+    @Override
+    public Response<PageResult<AdminUserListVO>> getUserListByAdmin(AdminUserQueryRequest request) {
+        log.info("==> 管理员查询用户列表, 昵称: {}, 手机号: {}, 状态: {}, 时间范围: {} - {}",
+                request.getNickname(), request.getMobile(), request.getStatus(),
+                request.getStartTime(), request.getEndTime());
+
+        Integer pageNum = request.getPageNum() != null ? request.getPageNum() : 1;
+        Integer pageSize = request.getPageSize() != null ? request.getPageSize() : 10;
+
+        PageHelper.startPage(pageNum, pageSize);
+
+        List<User> userList = userMapper.selectUserListByAdmin(
+                request.getNickname(),
+                request.getMobile(),
+                request.getStatus(),
+                request.getStartTime() != null ? Date.from(request.getStartTime().atZone(java.time.ZoneId.systemDefault()).toInstant()) : null,
+                request.getEndTime() != null ? Date.from(request.getEndTime().atZone(java.time.ZoneId.systemDefault()).toInstant()) : null
+        );
+
+        Page<User> page = (Page<User>) userList;
+
+        List<AdminUserListVO> voList = userList.stream().map(user -> {
+            AdminUserListVO vo = AdminUserListVO.builder()
+                    .id(user.getId())
+                    .nickname(user.getNickname())
+                    .mobile(maskMobile(user.getMobile()))
+                    .avatar(user.getAvatar())
+                    .status(user.getStatus())
+                    .statusDesc(getUserStatusDesc(user.getStatus()))
+                    .createTime(user.getCreateTime())
+                    .updateTime(user.getUpdateTime())
+                    .build();
+            return vo;
+        }).collect(Collectors.toList());
+
+        PageResult<AdminUserListVO> pageResult = PageResult.<AdminUserListVO>builder()
+                .records(voList)
+                .total(page.getTotal())
+                .pageNum(pageNum)
+                .pageSize(pageSize)
+                .totalPages((int) Math.ceil((double) page.getTotal() / pageSize))
+                .build();
+
+        log.info("==> 查询用户列表完成, 总数: {}, 当前页: {}", page.getTotal(), pageNum);
+
+        return Response.success(pageResult);
+    }
+
+    /**
+     * 获取用户状态描述
+     */
+    private String getUserStatusDesc(Integer status) {
+        if (status == null) {
+            return "未知";
+        }
+        switch (status) {
+            case 0:
+                return "禁用";
+            case 1:
+                return "启用";
+            default:
+                return "未知";
+        }
     }
 }
 

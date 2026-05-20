@@ -8,6 +8,7 @@
         <result column="shop_avatar" jdbcType="VARCHAR" property="shopAvatar" />
         <result column="shop_desc" jdbcType="VARCHAR" property="shopDesc" />
         <result column="user_id" jdbcType="BIGINT" property="userId" />
+        <result column="username" jdbcType="VARCHAR" property="username" />
         <result column="audit_status" jdbcType="TINYINT" property="auditStatus" />
         <result column="audit_remark" jdbcType="VARCHAR" property="auditRemark" />
         <result column="shop_status" jdbcType="TINYINT" property="shopStatus" />
@@ -16,7 +17,7 @@
     </resultMap>
 
     <sql id="Base_Column_List">
-        id, shop_name, shop_avatar, shop_desc, user_id, audit_status, audit_remark, shop_status, create_time, update_time
+        id, shop_name, shop_avatar, shop_desc, user_id, username, audit_status, audit_remark, shop_status, create_time, update_time
     </sql>
 
     <select id="selectByPrimaryKey" parameterType="java.lang.Long" resultMap="BaseResultMap">
@@ -32,10 +33,10 @@
     </delete>
 
     <insert id="insert" parameterType="com.lucky.seckill.shop.model.entity.Shop">
-        insert into t_shop (id, shop_name, shop_avatar, shop_desc, user_id, audit_status, audit_remark, shop_status, create_time, update_time)
+        insert into t_shop (id, shop_name, shop_avatar, shop_desc, user_id, username, audit_status, audit_remark, shop_status, create_time, update_time)
         values (#{id,jdbcType=BIGINT}, #{shopName,jdbcType=VARCHAR}, #{shopAvatar,jdbcType=VARCHAR},
-        #{shopDesc,jdbcType=VARCHAR}, #{userId,jdbcType=BIGINT}, #{auditStatus,jdbcType=TINYINT},
-        #{auditRemark,jdbcType=VARCHAR}, #{shopStatus,jdbcType=TINYINT},
+        #{shopDesc,jdbcType=VARCHAR}, #{userId,jdbcType=BIGINT}, #{username,jdbcType=VARCHAR},
+        #{auditStatus,jdbcType=TINYINT}, #{auditRemark,jdbcType=VARCHAR}, #{shopStatus,jdbcType=TINYINT},
         #{createTime,jdbcType=TIMESTAMP}, #{updateTime,jdbcType=TIMESTAMP})
     </insert>
 
@@ -47,6 +48,7 @@
             <if test="shopAvatar != null">shop_avatar,</if>
             <if test="shopDesc != null">shop_desc,</if>
             <if test="userId != null">user_id,</if>
+            <if test="username != null">username,</if>
             <if test="auditStatus != null">audit_status,</if>
             <if test="auditRemark != null">audit_remark,</if>
             <if test="shopStatus != null">shop_status,</if>
@@ -59,6 +61,7 @@
             <if test="shopAvatar != null">#{shopAvatar,jdbcType=VARCHAR},</if>
             <if test="shopDesc != null">#{shopDesc,jdbcType=VARCHAR},</if>
             <if test="userId != null">#{userId,jdbcType=BIGINT},</if>
+            <if test="username != null">#{username,jdbcType=VARCHAR},</if>
             <if test="auditStatus != null">#{auditStatus,jdbcType=TINYINT},</if>
             <if test="auditRemark != null">#{auditRemark,jdbcType=VARCHAR},</if>
             <if test="shopStatus != null">#{shopStatus,jdbcType=TINYINT},</if>
@@ -74,6 +77,7 @@
             <if test="shopAvatar != null">shop_avatar = #{shopAvatar,jdbcType=VARCHAR},</if>
             <if test="shopDesc != null">shop_desc = #{shopDesc,jdbcType=VARCHAR},</if>
             <if test="userId != null">user_id = #{userId,jdbcType=BIGINT},</if>
+            <if test="username != null">username = #{username,jdbcType=VARCHAR},</if>
             <if test="auditStatus != null">audit_status = #{auditStatus,jdbcType=TINYINT},</if>
             <if test="auditRemark != null">audit_remark = #{auditRemark,jdbcType=VARCHAR},</if>
             <if test="shopStatus != null">shop_status = #{shopStatus,jdbcType=TINYINT},</if>
@@ -89,6 +93,7 @@
         shop_avatar = #{shopAvatar,jdbcType=VARCHAR},
         shop_desc = #{shopDesc,jdbcType=VARCHAR},
         user_id = #{userId,jdbcType=BIGINT},
+        username = #{username,jdbcType=VARCHAR},
         audit_status = #{auditStatus,jdbcType=TINYINT},
         audit_remark = #{auditRemark,jdbcType=VARCHAR},
         shop_status = #{shopStatus,jdbcType=TINYINT},
@@ -105,11 +110,28 @@
         limit 1
     </select>
 
-    <select id="selectPendingAuditList" resultMap="BaseResultMap">
+
+    <select id="selectShopApplyList" resultMap="BaseResultMap">
         select
         <include refid="Base_Column_List" />
         from t_shop
-        where audit_status = 0
+        <where>
+            <if test="username != null and username != ''">
+                AND username LIKE CONCAT('%', #{username}, '%')
+            </if>
+            <if test="shopName != null and shopName != ''">
+                AND shop_name LIKE CONCAT('%', #{shopName}, '%')
+            </if>
+            <if test="auditStatus != null">
+                AND audit_status = #{auditStatus}
+            </if>
+            <if test="startTime != null">
+                AND create_time &gt;= #{startTime}
+            </if>
+            <if test="endTime != null">
+                AND create_time &lt;= #{endTime}
+            </if>
+        </where>
         order by create_time desc
     </select>
 </mapper>

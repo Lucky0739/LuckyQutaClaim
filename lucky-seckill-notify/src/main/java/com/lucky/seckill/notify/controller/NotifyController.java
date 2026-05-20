@@ -1,7 +1,7 @@
 package com.lucky.seckill.notify.controller;
 
-import com.lucky.seckill.common.model.entity.Notify;
 import com.lucky.seckill.common.utils.Response;
+import com.lucky.seckill.notify.model.entity.Notify;
 import com.lucky.seckill.notify.service.NotifyService;
 import jakarta.annotation.Resource;
 import lombok.extern.slf4j.Slf4j;
@@ -27,9 +27,9 @@ public class NotifyController {
      * 保存通知
      */
     @PostMapping("/save")
-    public Response<Void> saveNotify(@RequestBody Notify notify) {
-        notifyService.saveNotify(notify);
-        return Response.success();
+    public Response<Boolean> saveNotify(@RequestBody Notify notify) {
+       Boolean result = notifyService.saveNotify(notify);
+        return Response.success(result);
     }
 
     /**
@@ -41,6 +41,7 @@ public class NotifyController {
         return Response.success();
     }
 
+
     /**
      * 将开店申请通知标记为已读
      */
@@ -50,4 +51,8 @@ public class NotifyController {
         notifyService.markApplyNotifyRead(notifyType, businessId);
         return Response.success();
     }
+    /**
+     * 获取消息列表
+     */
+
 }

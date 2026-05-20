@@ -30,6 +30,13 @@ spring:
       max-lifetime: 900000
       connection-timeout: 30000
       connection-test-query: SELECT 1
+  data:
+    redis:
+      host: 127.0.0.1
+      port: 6379
+      password: yang2004
+      database: 0
+      timeout: 5000
 
 server:
   port: 8083
@@ -40,7 +47,12 @@ mybatis:
   configuration:
     log-impl: org.apache.ibatis.logging.stdout.StdOutImpl
 
-# RocketMQ 配置
+management:
+  endpoints:
+    web:
+      exposure:
+        include: '*'
+
 rocketmq:
   name-server: 127.0.0.1:9876
   producer:
@@ -49,8 +61,9 @@ rocketmq:
     retry-times-when-send-failed: 2
     retry-times-when-send-async-failed: 2
 
-management:
-  endpoints:
-    web:
-      exposure:
-        include: '*'
+sa-token:
+  token-name: Authorization
+  token-prefix: Bearer
+  is-read-header: true
+  is-read-cookie: false
+  ignore-paths: /user/login,/user/register,/user/code/send,/captcha/**

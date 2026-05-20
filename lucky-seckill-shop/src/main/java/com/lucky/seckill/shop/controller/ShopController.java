@@ -1,10 +1,13 @@
 package com.lucky.seckill.shop.controller;
 
 import cn.dev33.satoken.annotation.SaCheckLogin;
+import cn.dev33.satoken.annotation.SaCheckRole;
+import cn.dev33.satoken.stp.StpUtil;
 import com.lucky.seckill.common.aspect.ApiOperationLog;
 import com.lucky.seckill.common.model.file.UploadPictureResult;
 import com.lucky.seckill.common.utils.Response;
 import com.lucky.seckill.shop.model.dto.CreateShopRequest;
+import com.lucky.seckill.shop.model.dto.ShopApplyQueryRequest;
 import com.lucky.seckill.shop.model.dto.ShopAuditRequest;
 import com.lucky.seckill.shop.service.ShopService;
 import jakarta.annotation.Resource;
@@ -50,4 +53,6 @@ public class ShopController {
                 request.getShopId(), request.getAuditStatus());
         return shopService.auditShop(request);
     }
+
+
 }

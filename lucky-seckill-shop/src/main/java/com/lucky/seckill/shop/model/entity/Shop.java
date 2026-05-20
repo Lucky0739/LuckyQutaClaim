@@ -60,4 +60,14 @@ public class Shop implements Serializable {
      */
     private Date updateTime;
 
+    /**
+     * 删除状态 0-正常 1-删除
+     */
+    private Integer isDelete;
+
+    /**
+     * 用户名
+     */
+    private String username;
+
 }

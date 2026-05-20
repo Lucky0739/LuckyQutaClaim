@@ -1,7 +1,8 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<!--suppress ALL -->
 <mapper namespace="com.lucky.seckill.notify.mapper.NotifyMapper">
-  <resultMap id="BaseResultMap" type="com.lucky.seckill.common.model.entity.Notify">
+  <resultMap id="BaseResultMap" type="com.lucky.seckill.notify.model.entity.Notify">
     <id column="id" jdbcType="BIGINT" property="id" />
     <result column="send_user_id" jdbcType="BIGINT" property="sendUserId" />
     <result column="receive_user_id" jdbcType="BIGINT" property="receiveUserId" />
@@ -18,7 +19,7 @@
   </resultMap>
   <sql id="Base_Column_List">
     id, send_user_id, receive_user_id, title, content, notify_type, business_id, sub_type,
-    is_read, read_time, create_time, update_time, is_delete
+    is_read, read_time, create_time, update_time, isDelete
   </sql>
 
   <select id="selectByPrimaryKey" parameterType="java.lang.Long" resultMap="BaseResultMap">
@@ -26,7 +27,7 @@
     <include refid="Base_Column_List" />
     from t_notify
     where id = #{id,jdbcType=BIGINT}
-    and is_delete = 0
+    and isDelete = 0
   </select>
 
   <select id="selectByNotifyTypeAndIsRead" resultMap="BaseResultMap">
@@ -35,7 +36,7 @@
     from t_notify
     where notify_type = #{notifyType,jdbcType=INTEGER}
     and is_read = #{isRead,jdbcType=INTEGER}
-    and is_delete = 0
+    and isDelete = 0
     order by create_time desc
   </select>
 
@@ -46,7 +47,7 @@
     where notify_type = #{notifyType,jdbcType=INTEGER}
     and business_id = #{businessId,jdbcType=BIGINT}
     and is_read = 0
-    and is_delete = 0
+    and isDelete = 0
     limit 1
   </select>
 
@@ -55,26 +56,26 @@
     <include refid="Base_Column_List" />
     from t_notify
     where receive_user_id = #{receiveUserId,jdbcType=BIGINT}
-    and is_delete = 0
+    and isDelete = 0
     order by create_time desc
   </select>
 
   <update id="deleteByPrimaryKey" parameterType="java.lang.Long">
     update t_notify
-    set is_delete = 1
+    set isDelete = 1
     where id = #{id,jdbcType=BIGINT}
   </update>
 
-  <insert id="insert" parameterType="com.lucky.seckill.common.model.entity.Notify">
+  <insert id="insert" parameterType="com.lucky.seckill.notify.model.entity.Notify">
     insert into t_notify (id, send_user_id, receive_user_id, title, content,
-    notify_type, business_id, sub_type, is_read, read_time, create_time, update_time, is_delete)
+    notify_type, business_id, sub_type, is_read, read_time, create_time, update_time, isDelete)
     values (#{id,jdbcType=BIGINT}, #{sendUserId,jdbcType=BIGINT}, #{receiveUserId,jdbcType=BIGINT},
     #{title,jdbcType=VARCHAR}, #{content,jdbcType=VARCHAR}, #{notifyType,jdbcType=INTEGER},
     #{businessId,jdbcType=BIGINT}, #{subType,jdbcType=INTEGER}, #{isRead,jdbcType=INTEGER}, #{readTime,jdbcType=TIMESTAMP},
     #{createTime,jdbcType=TIMESTAMP}, #{updateTime,jdbcType=TIMESTAMP}, #{isDelete,jdbcType=INTEGER})
   </insert>
 
-  <insert id="insertSelective" parameterType="com.lucky.seckill.common.model.entity.Notify">
+  <insert id="insertSelective" parameterType="com.lucky.seckill.notify.model.entity.Notify">
     insert into t_notify
     <trim prefix="(" suffix=")" suffixOverrides=",">
       <if test="id != null">id,</if>
@@ -89,7 +90,7 @@
       <if test="readTime != null">read_time,</if>
       <if test="createTime != null">create_time,</if>
       <if test="updateTime != null">update_time,</if>
-      <if test="isDelete != null">is_delete,</if>
+      <if test="isDelete != null">isDelete,</if>
     </trim>
     <trim prefix="values (" suffix=")" suffixOverrides=",">
       <if test="id != null">#{id,jdbcType=BIGINT},</if>
@@ -108,7 +109,9 @@
     </trim>
   </insert>
 
-  <update id="updateByPrimaryKeySelective" parameterType="com.lucky.seckill.common.model.entity.Notify">
+
+
+  <update id="updateByPrimaryKeySelective" parameterType="com.lucky.seckill.notify.model.entity.Notify">
     update t_notify
     <set>
       <if test="sendUserId != null">send_user_id = #{sendUserId,jdbcType=BIGINT},</if>
@@ -122,12 +125,12 @@
       <if test="readTime != null">read_time = #{readTime,jdbcType=TIMESTAMP},</if>
       <if test="createTime != null">create_time = #{createTime,jdbcType=TIMESTAMP},</if>
       <if test="updateTime != null">update_time = #{updateTime,jdbcType=TIMESTAMP},</if>
-      <if test="isDelete != null">is_delete = #{isDelete,jdbcType=INTEGER},</if>
+      <if test="isDelete != null">isDelete = #{isDelete,jdbcType=INTEGER},</if>
     </set>
     where id = #{id,jdbcType=BIGINT}
   </update>
 
-  <update id="updateByPrimaryKey" parameterType="com.lucky.seckill.common.model.entity.Notify">
+  <update id="updateByPrimaryKey" parameterType="com.lucky.seckill.notify.model.entity.Notify">
     update t_notify
     set send_user_id = #{sendUserId,jdbcType=BIGINT},
     receive_user_id = #{receiveUserId,jdbcType=BIGINT},
@@ -140,7 +143,7 @@
     read_time = #{readTime,jdbcType=TIMESTAMP},
     create_time = #{createTime,jdbcType=TIMESTAMP},
     update_time = #{updateTime,jdbcType=TIMESTAMP},
-    is_delete = #{isDelete,jdbcType=INTEGER}
+    isDelete = #{isDelete,jdbcType=INTEGER}
     where id = #{id,jdbcType=BIGINT}
   </update>
 </mapper>

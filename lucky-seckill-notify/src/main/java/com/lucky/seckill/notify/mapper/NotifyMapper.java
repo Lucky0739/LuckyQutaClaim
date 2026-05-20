@@ -1,6 +1,6 @@
 package com.lucky.seckill.notify.mapper;
 
-import com.lucky.seckill.common.model.entity.Notify;
+import com.lucky.seckill.notify.model.entity.Notify;
 import org.apache.ibatis.annotations.Param;
 
 import java.util.List;

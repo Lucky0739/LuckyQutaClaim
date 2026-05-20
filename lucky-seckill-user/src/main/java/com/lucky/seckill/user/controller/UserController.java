@@ -6,11 +6,14 @@ import cn.dev33.satoken.annotation.SaCheckRole;
 import cn.dev33.satoken.annotation.SaIgnore;
 import cn.dev33.satoken.stp.StpUtil;
 import com.lucky.seckill.common.aspect.ApiOperationLog;
+import com.lucky.seckill.common.model.entity.PageResult;
 import com.lucky.seckill.common.model.file.UploadPictureResult;
 import com.lucky.seckill.common.utils.Response;
 import com.lucky.seckill.user.model.dto.*;
+import com.lucky.seckill.user.model.vo.AdminUserListVO;
 import com.lucky.seckill.user.model.vo.LoginUserRspVO;
 import com.lucky.seckill.user.model.vo.UserProfileVO;
+import cn.dev33.satoken.stp.StpInterface;
 import com.lucky.seckill.user.service.UserService;
 import com.lucky.seckill.user.service.impl.UserServiceImpl;
 import jakarta.annotation.Resource;
@@ -18,6 +21,8 @@ import lombok.extern.slf4j.Slf4j;
 import org.springframework.validation.annotation.Validated;
 import org.springframework.web.bind.annotation.*;
 import org.springframework.web.multipart.MultipartFile;
+
+import java.util.List;
 
 /**
  * @Author: Lucky
@@ -32,6 +37,9 @@ public class UserController {
 
     @Resource
     private UserService userService;
+
+    @Resource
+    private StpInterface stpInterface;
 
     /**
      * 用户注册
@@ -146,5 +154,26 @@ public class UserController {
     public Response<?> assignMerchantRole(@RequestParam("userId") Long userId, @RequestParam("roleId") Long roleId) {
         log.info("==> 收到分配角色请求, userId: {}, roleId: {}", userId, roleId);
         return userService.assignMerchantRole(userId, roleId);
+    }
+
+    /**
+     * 获取用户角色列表（供其他服务调用）
+     */
+    @GetMapping("/roles/{userId}")
+    public Response<List<String>> getUserRoles(@PathVariable("userId") Long userId) {
+        List<String> roles = stpInterface.getRoleList(userId, StpUtil.getLoginType());
+        log.debug("==> 获取用户角色列表, userId: {}, roles: {}", userId, roles);
+        return Response.success(roles);
+    }
+
+    /**
+     * 管理员分页查询用户列表
+     */
+    @SaCheckRole("admin")
+    @GetMapping("/admin/list")
+    @ApiOperationLog(description = "管理员查询用户列表")
+    public Response<PageResult<AdminUserListVO>> getUserListByAdmin(AdminUserQueryRequest request) {
+        log.info("==> 管理员查询用户列表, adminId: {}", StpUtil.getLoginId());
+        return userService.getUserListByAdmin(request);
     }
 }

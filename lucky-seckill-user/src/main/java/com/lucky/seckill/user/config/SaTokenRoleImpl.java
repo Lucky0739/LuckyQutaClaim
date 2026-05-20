@@ -1,6 +1,7 @@
 package com.lucky.seckill.user.config;
 
 import cn.dev33.satoken.stp.StpInterface;
+import com.lucky.seckill.common.constant.RedisKeyConstants;
 import com.lucky.seckill.user.mapper.RoleMapper;
 import com.lucky.seckill.user.model.entity.Role;
 import jakarta.annotation.Resource;
@@ -29,8 +30,6 @@ public class SaTokenRoleImpl implements StpInterface {
     @Resource
     private RedisTemplate<String, Object> redisTemplate;
 
-    // Redis 中用户角色缓存的 Key 前缀（独立Key，不存储在Session中）
-    private static final String USER_ROLES_KEY_PREFIX = "user:roles:";
     // 用户角色缓存过期时间（小时）
     private static final Long USER_ROLES_EXPIRE_HOURS = 24L;
 
@@ -45,7 +44,7 @@ public class SaTokenRoleImpl implements StpInterface {
         Long userId = Long.valueOf(loginId.toString());
 
         // 1. 尝试从 Redis 独立Key中读取
-        String rolesKey = USER_ROLES_KEY_PREFIX + userId;
+        String rolesKey = RedisKeyConstants.USER_ROLES_KEY_PREFIX + userId;
         List<String> roleList = (List<String>) redisTemplate.opsForValue().get(rolesKey);
 
         if (roleList != null && !roleList.isEmpty()) {
