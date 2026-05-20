@@ -60,4 +60,47 @@
         and is_default = 1
         and isDelete = 0
     </update>
+
+    <update id="updateByPrimaryKeySelective" parameterType="com.lucky.seckill.user.model.entity.UserAddress">
+        update t_user_address
+        <set>
+            <if test="receiver != null">receiver = #{receiver,jdbcType=VARCHAR},</if>
+            <if test="mobile != null">mobile = #{mobile,jdbcType=VARCHAR},</if>
+            <if test="province != null">province = #{province,jdbcType=VARCHAR},</if>
+            <if test="city != null">city = #{city,jdbcType=VARCHAR},</if>
+            <if test="area != null">area = #{area,jdbcType=VARCHAR},</if>
+            <if test="detailAddress != null">detail_address = #{detailAddress,jdbcType=VARCHAR},</if>
+            <if test="isDefault != null">is_default = #{isDefault,jdbcType=INTEGER},</if>
+            <if test="updateTime != null">update_time = #{updateTime,jdbcType=TIMESTAMP},</if>
+        </set>
+        where id = #{id,jdbcType=BIGINT}
+        and isDelete = 0
+    </update>
+
+    <select id="selectByIdAndUserId" resultMap="BaseResultMap">
+        select
+        <include refid="Base_Column_List" />
+        from t_user_address
+        where id = #{id,jdbcType=BIGINT}
+        and user_id = #{userId,jdbcType=BIGINT}
+        and isDelete = 0
+        limit 1
+    </select>
+
+    <update id="deleteByIdAndUserId">
+        update t_user_address
+        set isDelete = 1, update_time = NOW()
+        where id = #{id,jdbcType=BIGINT}
+        and user_id = #{userId,jdbcType=BIGINT}
+        and isDelete = 0
+    </update>
+
+    <select id="selectListByUserId" resultMap="BaseResultMap">
+        select
+        <include refid="Base_Column_List" />
+        from t_user_address
+        where user_id = #{userId,jdbcType=BIGINT}
+        and isDelete = 0
+        order by is_default desc, create_time desc
+    </select>
 </mapper>
