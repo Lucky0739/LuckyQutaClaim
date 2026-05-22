@@ -91,5 +91,12 @@ public interface UserService {
      * @return
      */
     Response<PageResult<AdminUserListVO>> getUserListByAdmin(AdminUserQueryRequest request);
+
+    /**
+     * 修改密码
+     * @param request
+     * @return
+     */
+    Response<?> changePassword(ChangePasswordRequest request);
 }
 
