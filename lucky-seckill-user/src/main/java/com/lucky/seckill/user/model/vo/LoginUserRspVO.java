@@ -5,6 +5,8 @@ import lombok.Builder;
 import lombok.Data;
 import lombok.NoArgsConstructor;
 
+import java.util.List;
+
 /**
  * @Author: Lucky
  * @Date: 2026/4/12 21:12
@@ -50,6 +52,11 @@ public class LoginUserRspVO {
          * 头像
          */
         private String avatar;
+
+        /**
+         * 用户角色列表（用于前端权限判断）
+         */
+        private List<String> roles;
     }
 }
 

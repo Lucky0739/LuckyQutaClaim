@@ -52,6 +52,21 @@ spring:
           uri: lb://lucky-seckill-goods
           predicates:
             - Path=/goods/**
+          # 商品分类路径(可选)
+        - id: goods-category
+          uri: lb://lucky-seckill-goods
+          predicates:
+            - Path=/category/**
+          # 购物车模块路径
+        - id: cart-service
+          uri: lb://lucky-seckill-cart
+          predicates:
+            - Path=/cart/**
+          # 通用模块路径（背景图等）
+        - id: common-service
+          uri: lb://lucky-seckill-common
+          predicates:
+            - Path=/banner/**
 
 server:
   port: 8888

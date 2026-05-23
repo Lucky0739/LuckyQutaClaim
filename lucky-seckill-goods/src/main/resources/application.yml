@@ -23,10 +23,6 @@ server:
   forward-headers-strategy: framework
 
 
-rocketmq:
-  name-server: 127.0.0.1:9876
-
-
 management:
   endpoints:
     web:

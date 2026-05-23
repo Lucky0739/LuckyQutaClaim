@@ -15,6 +15,7 @@ public enum VerifyCodeTypeEnum {
 
     REGISTER(1, "register", "注册"),
     LOGIN(2, "login", "登录"),
+    CHANGE_PASSWORD(3, "change_password", "修改密码")
     ;
 
     // 类型值

@@ -36,13 +36,4 @@ public class SaTokenExceptionHandler {
         log.warn("==> 用户没有权限，缺少角色: {}", e.getRole());
         return Response.fail(ResponseCodeEnum.USER_PERMISSION_DENIED);
     }
-
-    /**
-     * 处理权限验证失败异常
-     */
-    @ExceptionHandler(NotPermissionException.class)
-    public Response<?> handleNotPermissionException(NotPermissionException e) {
-        log.warn("==> 用户没有权限，缺少权限: {}", e.getPermission());
-        return Response.fail(ResponseCodeEnum.USER_PERMISSION_DENIED);
-    }
 }

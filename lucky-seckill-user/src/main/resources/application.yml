@@ -26,6 +26,7 @@ management:
       exposure:
         include: '*'
 
+# sa-token权限认证配置
 sa-token:
   token-name: Authorization
   token-prefix: Bearer

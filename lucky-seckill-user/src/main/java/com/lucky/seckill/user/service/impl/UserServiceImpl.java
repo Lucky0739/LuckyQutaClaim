@@ -1,6 +1,7 @@
 package com.lucky.seckill.user.service.impl;
 
 import cloud.tianai.captcha.application.ImageCaptchaApplication;
+import cloud.tianai.captcha.spring.plugins.secondary.SecondaryVerificationApplication;
 import cn.dev33.satoken.stp.StpUtil;
 import cn.hutool.core.util.IdUtil;
 import cn.hutool.core.util.RandomUtil;
@@ -164,7 +165,6 @@ public class UserServiceImpl implements UserService {
 
         // 1. 校验验证码
         checkVerifyCode(verifyCode, mobile, VerifyCodeTypeEnum.REGISTER.getPurpose());
-
 
         // 2. 查询用户是否存在（包括已逻辑删除的用户）
         User existUser = userMapper.selectByMobile(mobile);
@@ -345,8 +345,9 @@ public class UserServiceImpl implements UserService {
         
         // 7. 查询用户角色并缓存到 Redis（使用独立Key，不存储在Session中）
         List<Role> roles = roleMapper.selectRolesByUserId(user.getId());
+        List<String> roleCodes = null;
         if (roles != null && !roles.isEmpty()) {
-            List<String> roleCodes = roles.stream()
+            roleCodes = roles.stream()
                     .map(Role::getRoleCode)
                     .collect(Collectors.toList());
             String rolesKey = RedisKeyConstants.USER_ROLES_KEY_PREFIX + user.getId();
@@ -363,6 +364,7 @@ public class UserServiceImpl implements UserService {
                 .userInfo(LoginUserRspVO.UserInfo.builder()
                         .id(user.getId())
                         .nickname(user.getNickname())
+                        .roles(roleCodes)
                         .avatar(user.getAvatar())
                         .build())
                 .build();
@@ -402,8 +404,6 @@ public class UserServiceImpl implements UserService {
         stringRedisTemplate.delete(failCountKey);
     }
 
-
-
     /**
      * 发送验证码
      *
@@ -416,7 +416,7 @@ public class UserServiceImpl implements UserService {
         Integer type = sendVerifyCodeReqVO.getType();
 
         // 行为验证码二次校验
-     /*   String captchaId = sendVerifyCodeReqVO.getCaptchaId();
+        String captchaId = sendVerifyCodeReqVO.getCaptchaId();
         if (StrUtil.isBlank(captchaId)) {
             throw new BizException(ResponseCodeEnum.CAPTCHA_VERIFICATION_FAILED);
         }
@@ -428,7 +428,7 @@ public class UserServiceImpl implements UserService {
         }
         if (!verified) {
             throw new BizException(ResponseCodeEnum.CAPTCHA_VERIFICATION_FAILED);
-        }*/
+        }
 
         // 判断验证码类型是否合法
         VerifyCodeTypeEnum verifyCodeType = VerifyCodeTypeEnum.valueOf(type);
@@ -1030,6 +1030,64 @@ public class UserServiceImpl implements UserService {
             default:
                 return "未知";
         }
+    }
+
+    /**
+     * 修改密码
+     *
+     * @param request
+     * @return
+     */
+    @Override
+    public Response<?> changePassword(ChangePasswordRequest request) {
+        // 1. 获取当前登录用户ID
+        Long userId = StpUtil.getLoginIdAsLong();
+
+        // 2. 查询用户信息
+        User user = userMapper.selectByPrimaryKey(userId);
+        if (user == null) {
+            throw new BizException(ResponseCodeEnum.PARAM_NOT_VALID, "用户不存在");
+        }
+
+        // 3. 校验旧密码是否正确
+        if (StrUtil.isBlank(request.getOldPassword())) {
+            throw new BizException(ResponseCodeEnum.USER_PASSWORD_ERROR);
+        }
+
+        boolean matches = PASSWORD_ENCODER.matches(request.getOldPassword(), user.getPassword());
+        if (!matches) {
+            throw new BizException(ResponseCodeEnum.USER_PASSWORD_ERROR);
+        }
+
+        // 4. 校验验证码
+        checkVerifyCode(request.getVerifyCode(), user.getMobile(), VerifyCodeTypeEnum.CHANGE_PASSWORD.getPurpose());
+
+        // 5. 校验新密码不能与旧密码相同
+        if (request.getOldPassword().equals(request.getNewPassword())) {
+            throw new BizException(ResponseCodeEnum.PARAM_NOT_VALID, "新密码不能与旧密码相同");
+        }
+
+        // 6. 加密新密码并更新
+        String encodedNewPassword = PASSWORD_ENCODER.encode(request.getNewPassword());
+        User updateUser = User.builder()
+                .id(userId)
+                .password(encodedNewPassword)
+                .updateTime(LocalDateTime.now())
+                .build();
+        userMapper.updateByPrimaryKeySelective(updateUser);
+
+        // 7. 清除用户缓存（密码已修改，需要重新登录）
+        String profileKey = USER_PROFILE_KEY_PREFIX + userId;
+        String rolesKey = RedisKeyConstants.USER_ROLES_KEY_PREFIX + userId;
+        redisTemplate.delete(profileKey);
+        redisTemplate.delete(rolesKey);
+        log.info("==> 已清除用户缓存, userId: {}", userId);
+
+        // 8. 强制用户下线，要求重新登录
+        StpUtil.kickout(userId);
+        log.info("==> 用户密码修改成功，强制下线, userId: {}", userId);
+
+        return Response.success();
     }
 }
 

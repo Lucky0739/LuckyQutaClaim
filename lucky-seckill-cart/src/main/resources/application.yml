@@ -3,6 +3,9 @@ spring:
     name: lucky-seckill-cart
   profiles:
     active: dev
+  config:
+    import:
+      - optional:nacos:lucky-seckill-dev.yml
   cloud:
     nacos:
       discovery:

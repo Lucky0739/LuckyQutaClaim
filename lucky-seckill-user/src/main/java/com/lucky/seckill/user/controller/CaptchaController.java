@@ -44,7 +44,6 @@ public class CaptchaController {
         if (StringUtils.isBlank(type)) {
             type = CaptchaTypeConstant.SLIDER;
         }
-
         // 如果前端传递的是 RANDOM，则随机生成一种验证码类型
         if ("RANDOM".equals(type)) {
             // 生成 0-3 的随机整数（包含0，不包含4）

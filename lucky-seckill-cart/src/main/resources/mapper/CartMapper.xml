@@ -1,0 +1,147 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<!--suppress ALL -->
+<mapper namespace="com.lucky.seckill.cart.mapper.CartMapper">
+    <resultMap id="BaseResultMap" type="com.lucky.seckill.cart.model.entity.Cart">
+        <id column="id" property="id" jdbcType="BIGINT"/>
+        <result column="user_id" property="userId" jdbcType="BIGINT"/>
+        <result column="goods_id" property="goodsId" jdbcType="BIGINT"/>
+        <result column="sku_id" property="skuId" jdbcType="BIGINT"/>
+        <result column="goods_count" property="goodsCount" jdbcType="INTEGER"/>
+        <result column="selected" property="selected" jdbcType="TINYINT"/>
+        <result column="create_time" property="createTime" jdbcType="TIMESTAMP"/>
+        <result column="update_time" property="updateTime" jdbcType="TIMESTAMP"/>
+    </resultMap>
+
+    <resultMap id="CartVOResultMap" type="com.lucky.seckill.cart.model.vo.CartVO">
+        <id column="id" property="id" jdbcType="BIGINT"/>
+        <result column="goods_id" property="goodsId" jdbcType="BIGINT"/>
+        <result column="sku_id" property="skuId" jdbcType="BIGINT"/>
+        <result column="goods_name" property="goodsName" jdbcType="VARCHAR"/>
+        <result column="goods_img" property="goodsImg" jdbcType="VARCHAR"/>
+        <result column="sku_spec_name" property="skuSpecName" jdbcType="VARCHAR"/>
+        <result column="sale_price" property="salePrice" jdbcType="DECIMAL"/>
+        <result column="goods_count" property="goodsCount" jdbcType="INTEGER"/>
+        <result column="selected" property="selected" jdbcType="TINYINT"/>
+        <result column="create_time" property="createTime" jdbcType="TIMESTAMP"/>
+    </resultMap>
+
+    <sql id="Base_Column_List">
+        id, user_id, goods_id, sku_id, goods_count, selected, create_time, update_time
+    </sql>
+
+    <insert id="insertSelective" parameterType="com.lucky.seckill.cart.model.entity.Cart">
+        INSERT INTO t_shopping_cart
+        <trim prefix="(" suffix=")" suffixOverrides=",">
+            <if test="id != null">id,</if>
+            <if test="userId != null">user_id,</if>
+            <if test="goodsId != null">goods_id,</if>
+            <if test="skuId != null">sku_id,</if>
+            <if test="goodsCount != null">goods_count,</if>
+            <if test="selected != null">selected,</if>
+            <if test="createTime != null">create_time,</if>
+            <if test="updateTime != null">update_time,</if>
+        </trim>
+        <trim prefix="VALUES (" suffix=")" suffixOverrides=",">
+            <if test="id != null">#{id,jdbcType=BIGINT},</if>
+            <if test="userId != null">#{userId,jdbcType=BIGINT},</if>
+            <if test="goodsId != null">#{goodsId,jdbcType=BIGINT},</if>
+            <if test="skuId != null">#{skuId,jdbcType=BIGINT},</if>
+            <if test="goodsCount != null">#{goodsCount,jdbcType=INTEGER},</if>
+            <if test="selected != null">#{selected,jdbcType=TINYINT},</if>
+            <if test="createTime != null">#{createTime,jdbcType=TIMESTAMP},</if>
+            <if test="updateTime != null">#{updateTime,jdbcType=TIMESTAMP},</if>
+        </trim>
+    </insert>
+
+    <select id="selectByUserIdAndSkuId" resultMap="BaseResultMap">
+        SELECT
+        <include refid="Base_Column_List"/>
+        FROM t_shopping_cart
+        WHERE user_id = #{userId,jdbcType=BIGINT}
+        AND sku_id = #{skuId,jdbcType=BIGINT}
+    </select>
+
+    <select id="selectByUserId" resultMap="BaseResultMap">
+        SELECT
+        <include refid="Base_Column_List"/>
+        FROM t_shopping_cart
+        WHERE user_id = #{userId,jdbcType=BIGINT}
+        ORDER BY create_time DESC
+    </select>
+
+    <select id="selectCartVOListByUserId" resultMap="CartVOResultMap">
+        SELECT
+        c.id,
+        c.goods_id,
+        c.sku_id,
+        c.goods_count,
+        c.selected,
+        c.create_time,
+        g.goods_name,
+        g.goods_img,
+        sku.sku_spec_name,
+        sku.sale_price
+        FROM t_shopping_cart c
+        LEFT JOIN t_goods g ON c.goods_id = g.id
+        LEFT JOIN t_goods_sku sku ON c.sku_id = sku.id
+        WHERE c.user_id = #{userId,jdbcType=BIGINT}
+        ORDER BY c.create_time DESC
+    </select>
+
+    <update id="updateGoodsCountByUserIdAndSkuId">
+        UPDATE t_shopping_cart
+        SET goods_count = #{goodsCount,jdbcType=INTEGER},
+        update_time = NOW()
+        WHERE user_id = #{userId,jdbcType=BIGINT}
+        AND sku_id = #{skuId,jdbcType=BIGINT}
+    </update>
+
+    <delete id="deleteById">
+        DELETE FROM t_shopping_cart
+        WHERE id = #{id,jdbcType=BIGINT}
+    </delete>
+
+    <delete id="deleteByUserIdAndSkuId">
+        DELETE FROM t_shopping_cart
+        WHERE user_id = #{userId,jdbcType=BIGINT}
+        AND sku_id = #{skuId,jdbcType=BIGINT}
+    </delete>
+
+    <select id="selectById" resultMap="BaseResultMap">
+        SELECT
+        <include refid="Base_Column_List"/>
+        FROM t_shopping_cart
+        WHERE id = #{id,jdbcType=BIGINT}
+    </select>
+
+    <update id="updateGoodsCountById">
+        UPDATE t_shopping_cart
+        SET goods_count = #{goodsCount,jdbcType=INTEGER},
+        update_time = NOW()
+        WHERE id = #{id,jdbcType=BIGINT}
+    </update>
+
+    <update id="updateSelectedById">
+        UPDATE t_shopping_cart
+        SET selected = #{selected,jdbcType=TINYINT},
+        update_time = NOW()
+        WHERE id = #{id,jdbcType=BIGINT}
+    </update>
+
+    <update id="updateAllSelectedByUserId">
+        UPDATE t_shopping_cart
+        SET selected = #{selected,jdbcType=TINYINT},
+        update_time = NOW()
+        WHERE user_id = #{userId,jdbcType=BIGINT}
+    </update>
+
+    <delete id="batchDeleteByIds">
+        DELETE FROM t_shopping_cart
+        WHERE id IN
+        <foreach collection="cartIds" item="cartId" open="(" separator="," close=")">
+            #{cartId,jdbcType=BIGINT}
+        </foreach>
+        AND user_id = #{userId,jdbcType=BIGINT}
+    </delete>
+</mapper>

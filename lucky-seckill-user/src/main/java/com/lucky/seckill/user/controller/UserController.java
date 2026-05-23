@@ -176,4 +176,15 @@ public class UserController {
         log.info("==> 管理员查询用户列表, adminId: {}", StpUtil.getLoginId());
         return userService.getUserListByAdmin(request);
     }
+
+    /**
+     * 修改密码
+     */
+    @SaCheckLogin
+    @PostMapping("/password/change")
+    @ApiOperationLog(description = "修改密码")
+    public Response<?> changePassword(@Validated @RequestBody ChangePasswordRequest request) {
+        log.info("==> 用户修改密码, userId: {}", StpUtil.getLoginId());
+        return userService.changePassword(request);
+    }
 }

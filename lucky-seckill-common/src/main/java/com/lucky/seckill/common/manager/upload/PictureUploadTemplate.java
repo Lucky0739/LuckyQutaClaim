@@ -46,7 +46,7 @@ public abstract class PictureUploadTemplate {
                 DateUtil.formatDate(new Date()),
                 uuid,
                 FileUtil.getSuffix(originFilename));
-        String projectName = "lucky-seckill_project";
+        String projectName = "lucky-seckillmall-project";
         String uploadPath = String.format(projectName + "/%s/%s", uploadPathPrefix, uploadFilename);
         try (
                 // 核心：获取输入流，自动关闭（try-with-resources）
