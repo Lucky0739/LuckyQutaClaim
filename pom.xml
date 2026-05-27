@@ -1,0 +1,256 @@
+<project xmlns="http://maven.apache.org/POM/4.0.0" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+         xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/xsd/maven-4.0.0.xsd">
+  <modelVersion>4.0.0</modelVersion>
+
+  <parent>
+    <groupId>org.springframework.boot</groupId>
+    <artifactId>spring-boot-starter-parent</artifactId>
+    <version>3.3.5</version>
+    <relativePath/> <!-- lookup parent from repository -->
+  </parent>
+
+  <groupId>com.luckySeckill</groupId>
+  <artifactId>lucky-seckill-mall</artifactId>
+  <version>${revision}</version>
+  <!-- 项目名称 -->
+  <name>${project.artifactId}</name>
+  <!-- 项目描述 -->
+  <description>Lucky的秒杀商城</description>
+
+  <!-- 多模块项目父工程打包模式必须指定为 pom -->
+  <packaging>pom</packaging>
+
+  <!-- 子模块管理 -->
+  <modules>
+    <!-- 公共模块   -->
+    <module>lucky-seckill-common</module>
+    <!-- 用户模块 -->
+    <module>lucky-seckill-user</module>
+    <!-- 商品模块 -->
+    <module>lucky-seckill-goods</module>
+    <!-- 订单模块 -->
+    <module>lucky-seckill-order</module>
+    <!-- 购物车模块 -->
+    <module>lucky-seckill-cart</module>
+    <!-- 网关模块 -->
+    <module>lucky-seckill-gateway</module>
+    <!-- 店铺模块 -->
+      <module>lucky-seckill-shop</module>
+    <!-- 支付模块 -->
+      <module>lucky-seckill-pay</module>
+    <!-- 消息模块 -->
+      <module>lucky-seckill-notify</module>
+    <module>lucky-seckill-activity</module>
+  </modules>
+
+
+  <properties>
+    <revision>0.0.1-SNAPSHOT</revision>
+    <java.version>21</java.version>
+    <maven.compiler.source>${java.version}</maven.compiler.source>
+    <maven.compiler.target>${java.version}</maven.compiler.target>
+    <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
+    <mybatis-spring-boot.version>3.0.5</mybatis-spring-boot.version>
+    <mybatis-generator-maven-plugin.version>1.3.5</mybatis-generator-maven-plugin.version>
+    <spring-cloud-alibaba.version>2023.0.3.2</spring-cloud-alibaba.version>
+    <spring-cloud.version>2023.0.3</spring-cloud.version>
+    <spring-boot.version>3.3.5</spring-boot.version>
+    <springdoc.version>2.6.0</springdoc.version>
+    <lombok.version>1.18.34</lombok.version>
+    <disruptor.version>3.4.4</disruptor.version>
+    <!-- SaToken 版本 -->
+    <sa-token.version>1.45.0</sa-token.version>
+  </properties>
+
+  <!-- 统一依赖管理 -->
+  <dependencyManagement>
+    <dependencies>
+      <!-- Spring Cloud -->
+      <dependency>
+        <groupId>org.springframework.cloud</groupId>
+        <artifactId>spring-cloud-dependencies</artifactId>
+        <version>${spring-cloud.version}</version>
+        <type>pom</type>
+        <scope>import</scope>
+      </dependency>
+
+      <!-- Spring Cloud Alibaba -->
+      <dependency>
+        <groupId>com.alibaba.cloud</groupId>
+        <artifactId>spring-cloud-alibaba-dependencies</artifactId>
+        <version>${spring-cloud-alibaba.version}</version>
+        <type>pom</type>
+        <scope>import</scope>
+      </dependency>
+
+      <!-- 公共模块 -->
+      <dependency>
+        <groupId>com.luckySeckill</groupId>
+        <artifactId>lucky-seckill-common</artifactId>
+        <version>${revision}</version>
+      </dependency>
+
+      <!-- 用户模块 -->
+      <dependency>
+        <groupId>com.luckySeckill</groupId>
+        <artifactId>lucky-seckill-user</artifactId>
+        <version>${revision}</version>
+      </dependency>
+
+      <!-- 商品模块 -->
+      <dependency>
+        <groupId>com.luckySeckill</groupId>
+        <artifactId>lucky-seckill-goods</artifactId>
+        <version>${revision}</version>
+      </dependency>
+
+      <!-- 订单模块 -->
+      <dependency>
+        <groupId>com.luckySeckill</groupId>
+        <artifactId>lucky-seckill-order</artifactId>
+        <version>${revision}</version>
+      </dependency>
+
+      <!-- 购物车模块 -->
+      <dependency>
+        <groupId>com.luckySeckill</groupId>
+        <artifactId>lucky-seckill-cart</artifactId>
+        <version>${revision}</version>
+      </dependency>
+
+      <!-- MyBatis Spring Boot Starter -->
+      <dependency>
+        <groupId>org.mybatis.spring.boot</groupId>
+        <artifactId>mybatis-spring-boot-starter</artifactId>
+        <version>${mybatis-spring-boot.version}</version>
+      </dependency>
+
+      <!-- Disruptor 高性能队列（Log4j2 异步日志需要） -->
+      <dependency>
+        <groupId>com.lmax</groupId>
+        <artifactId>disruptor</artifactId>
+        <version>${disruptor.version}</version>
+      </dependency>
+
+      <!-- SaToken 权限认证框架（适配 Spring Boot 3） -->
+    <dependency>
+      <groupId>cn.dev33</groupId>
+      <artifactId>sa-token-spring-boot3-starter</artifactId>
+      <version>${sa-token.version}</version>
+    </dependency>
+
+      <!-- Sa-Token 整合 RedisTemplate -->
+      <dependency>
+        <groupId>cn.dev33</groupId>
+        <artifactId>sa-token-redis-template</artifactId>
+        <version>${sa-token.version}</version>
+      </dependency>
+
+    </dependencies>
+  </dependencyManagement>
+
+  <build>
+    <!-- 统一插件管理 -->
+    <pluginManagement>
+      <plugins>
+        <plugin>
+          <groupId>org.springframework.boot</groupId>
+          <artifactId>spring-boot-maven-plugin</artifactId>
+          <executions>
+            <execution>
+              <id>repackage</id>
+              <goals>
+                <goal>repackage</goal> <!-- 将依赖的 Jar 一起打包 -->
+              </goals>
+            </execution>
+          </executions>
+        </plugin>
+        <plugin>
+          <groupId>org.apache.maven.plugins</groupId>
+          <artifactId>maven-compiler-plugin</artifactId>
+          <version>3.11.0</version>
+          <configuration>
+            <source>${java.version}</source>
+            <target>${java.version}</target>
+            <encoding>${project.build.sourceEncoding}</encoding>
+            <annotationProcessorPaths>
+              <path>
+                <groupId>org.projectlombok</groupId>
+                <artifactId>lombok</artifactId>
+                <version>${lombok.version}</version>
+              </path>
+            </annotationProcessorPaths>
+          </configuration>
+        </plugin>
+
+        <!-- 代码生成器 -->
+        <plugin>
+          <groupId>org.mybatis.generator</groupId>
+          <artifactId>mybatis-generator-maven-plugin</artifactId>
+          <version>${mybatis-generator-maven-plugin.version}</version>
+          <configuration>
+            <!-- 允许移动生成的文件 -->
+            <verbose>true</verbose>
+            <!-- 允许覆盖生成的文件 -->
+            <overwrite>true</overwrite>
+          </configuration>
+          <!-- 此插件需要连接数据库，所以需要依赖 MySQL 驱动 -->
+          <dependencies>
+            <dependency>
+              <groupId>com.mysql</groupId>
+              <artifactId>mysql-connector-j</artifactId>
+              <version>${mysql.version}</version>
+            </dependency>
+          </dependencies>
+        </plugin>
+
+      </plugins>
+    </pluginManagement>
+
+    <!-- 将 ${revision} 等 CI 占位符解析为具体版本写入安装的 POM，避免依赖方解析成 literal ${revision} 去中央仓查找失败 -->
+    <plugins>
+      <plugin>
+        <groupId>org.codehaus.mojo</groupId>
+        <artifactId>flatten-maven-plugin</artifactId>
+        <version>1.6.0</version>
+        <configuration>
+          <updatePomFile>true</updatePomFile>
+          <flattenMode>resolveCiFriendliesOnly</flattenMode>
+        </configuration>
+        <executions>
+          <execution>
+            <id>flatten</id>
+            <phase>process-resources</phase>
+            <goals>
+              <goal>flatten</goal>
+            </goals>
+          </execution>
+          <execution>
+            <id>flatten.clean</id>
+            <phase>clean</phase>
+            <goals>
+              <goal>clean</goal>
+            </goals>
+          </execution>
+        </executions>
+      </plugin>
+    </plugins>
+  </build>
+
+
+  <repositories>
+    <repository>
+      <id>central</id>
+      <name>Maven Central</name>
+      <url>https://repo1.maven.org/maven2</url>
+      <layout>default</layout>
+      <releases>
+        <enabled>true</enabled>
+      </releases>
+      <snapshots>
+        <enabled>false</enabled>
+      </snapshots>
+    </repository>
+  </repositories>
+</project>
+
