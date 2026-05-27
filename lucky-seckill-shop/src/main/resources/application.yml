@@ -39,7 +39,7 @@ spring:
       timeout: 5000
 
 server:
-  port: 8083
+  port: 8085
   forward-headers-strategy: framework
 
 mybatis:

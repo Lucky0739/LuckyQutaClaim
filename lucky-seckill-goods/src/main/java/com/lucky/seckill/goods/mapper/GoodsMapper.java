@@ -18,4 +18,8 @@ public interface GoodsMapper {
     int updateStatus(@Param("id") Long id,
                      @Param("status") Integer status,
                      @Param("updateTime") java.time.LocalDateTime updateTime);
+
+    int updateAuditStatus(@Param("id") Long id,
+                          @Param("auditStatus") Integer auditStatus,
+                          @Param("updateTime") java.time.LocalDateTime updateTime);
 }

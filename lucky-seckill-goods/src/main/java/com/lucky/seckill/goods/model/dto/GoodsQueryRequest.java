@@ -25,6 +25,11 @@ public class GoodsQueryRequest{
     private Integer status;
 
     /**
+     * 审核状态 0-待审核 1-审核通过 2-审核拒绝
+     */
+    private Integer auditStatus;
+
+    /**
      * 分类ID
      */
     private Long categoryId;

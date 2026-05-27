@@ -26,6 +26,15 @@ public class GoodsListVO {
 
     private String statusDesc;
 
+    private Integer auditStatus;
+
+    private String auditStatusDesc;
+
+    /**
+     * 已售数量（该商品对应的所有规格的已售数量之和）
+     */
+    private Integer salesNum;
+
     private LocalDateTime createTime;
 
     private LocalDateTime updateTime;

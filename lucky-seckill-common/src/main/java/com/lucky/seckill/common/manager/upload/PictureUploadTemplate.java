@@ -174,7 +174,6 @@ public abstract class PictureUploadTemplate {
         uploadPictureResult.setPicHeight(picHeight);
         uploadPictureResult.setPicScale(picScale);
         uploadPictureResult.setPicFormat(imageInfo.getFormat());
-        uploadPictureResult.setPicColor(imageInfo.getAve());
         return uploadPictureResult;
     }
 

@@ -989,6 +989,10 @@ public class UserServiceImpl implements UserService {
         Page<User> page = (Page<User>) userList;
 
         List<AdminUserListVO> voList = userList.stream().map(user -> {
+            // 查询用户角色
+            List<Role> roles = roleMapper.selectRolesByUserId(user.getId());
+            List<String> roleNames = roles != null ? roles.stream().map(Role::getRoleName).collect(Collectors.toList()) : null;
+
             AdminUserListVO vo = AdminUserListVO.builder()
                     .id(user.getId())
                     .nickname(user.getNickname())
@@ -998,6 +1002,7 @@ public class UserServiceImpl implements UserService {
                     .statusDesc(getUserStatusDesc(user.getStatus()))
                     .createTime(user.getCreateTime())
                     .updateTime(user.getUpdateTime())
+                    .roleNames(roleNames)
                     .build();
             return vo;
         }).collect(Collectors.toList());

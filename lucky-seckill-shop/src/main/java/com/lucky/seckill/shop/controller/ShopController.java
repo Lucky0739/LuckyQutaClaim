@@ -1,18 +1,18 @@
 package com.lucky.seckill.shop.controller;
 
 import cn.dev33.satoken.annotation.SaCheckLogin;
-import cn.dev33.satoken.annotation.SaCheckRole;
-import cn.dev33.satoken.stp.StpUtil;
 import com.lucky.seckill.common.aspect.ApiOperationLog;
+import com.lucky.seckill.common.model.entity.PageResult;
 import com.lucky.seckill.common.model.file.UploadPictureResult;
 import com.lucky.seckill.common.utils.Response;
 import com.lucky.seckill.shop.model.dto.CreateShopRequest;
-import com.lucky.seckill.shop.model.dto.ShopApplyQueryRequest;
 import com.lucky.seckill.shop.model.dto.ShopAuditRequest;
+import com.lucky.seckill.shop.model.vo.ShopApplyVO;
 import com.lucky.seckill.shop.service.ShopService;
 import jakarta.annotation.Resource;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.validation.annotation.Validated;
+import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
@@ -54,5 +54,15 @@ public class ShopController {
         return shopService.auditShop(request);
     }
 
+    /**
+     * 商家查看自己的店铺列表
+     */
+    @SaCheckLogin
+    @GetMapping("/my/list")
+    @ApiOperationLog(description = "商家查看自己的店铺列表")
+    public Response<PageResult<ShopApplyVO>> getMyShopList() {
+        log.info("==> 商家查看自己的店铺列表请求");
+        return shopService.getMyShopList();
+    }
 
 }

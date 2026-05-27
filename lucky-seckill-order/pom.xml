@@ -14,7 +14,7 @@
 
     <artifactId>lucky-seckill-order</artifactId>
     <name>${artifactId}</name>
-    <description>订单模块，放置秒杀下单、订单列表、订单详情、取消订单、模拟支付等接口</description>
+    <description>订单模块，放置秒杀下单、订单列表、订单详情、取消订单</description>
 
     <dependencies>
         <!-- 引入公共模块 -->
@@ -71,10 +71,28 @@
             <groupId>com.lmax</groupId>
             <artifactId>disruptor</artifactId>
         </dependency>
+
+        <!-- Sa-Token 权限认证框架（适配 Spring Boot 3） -->
+        <dependency>
+            <groupId>cn.dev33</groupId>
+            <artifactId>sa-token-spring-boot3-starter</artifactId>
+        </dependency>
+
+        <!-- StringRedisTemplate 依赖（子模块专用，不报错版） -->
+        <dependency>
+            <groupId>org.springframework.boot</groupId>
+            <artifactId>spring-boot-starter-data-redis</artifactId>
+            <version>3.3.5</version>
+        </dependency>
+
         <dependency>
             <groupId>org.projectlombok</groupId>
             <artifactId>lombok</artifactId>
             <scope>provided</scope>
+        </dependency>
+        <dependency>
+            <groupId>com.luckySeckill</groupId>
+            <artifactId>lucky-seckill-goods</artifactId>
         </dependency>
     </dependencies>
 </project>

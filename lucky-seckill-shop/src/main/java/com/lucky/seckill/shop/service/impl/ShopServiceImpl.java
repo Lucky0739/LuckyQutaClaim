@@ -59,6 +59,8 @@ public class ShopServiceImpl implements ShopService {
 
     private static final Long SHOP_OWNER_ROLE_ID = 2L;
 
+    private static final int MAX_SHOP_COUNT_PER_USER = 3;
+
     /**
      * 申请店铺
      *
@@ -71,9 +73,9 @@ public class ShopServiceImpl implements ShopService {
         Long userId = StpUtil.getLoginIdAsLong();
         log.info("==> 用户申请开店, userId: {}", userId);
 
-        Shop existingShop = shopMapper.selectByUserId(userId);
-        if (Objects.nonNull(existingShop)) {
-            throw new BizException(ResponseCodeEnum.PARAM_NOT_VALID, "您已经拥有店铺，无法重复开店");
+        int shopCount = shopMapper.countByUserId(userId);
+        if (shopCount >= MAX_SHOP_COUNT_PER_USER) {
+            throw new BizException(ResponseCodeEnum.SHOP_COUNT_LIMIT_EXCEEDED);
         }
 
         // 获取用户信息，设置 username
@@ -103,6 +105,7 @@ public class ShopServiceImpl implements ShopService {
                 .username(username)
                 .auditStatus(0)
                 .shopStatus(1)
+                .collectNum(0)
                 .isDelete(0)
                 .createTime(new java.util.Date())
                 .updateTime(new java.util.Date())
@@ -342,6 +345,141 @@ public class ShopServiceImpl implements ShopService {
         log.info("==> 查询商家申请列表完成, 总数: {}, 当前页: {}", page.getTotal(), pageNum);
 
         return Response.success(pageResult);
+    }
+
+    /**
+     * 禁用/启用店铺
+     */
+    @Override
+    public Response<?> updateShopStatus(Long shopId, Integer shopStatus) {
+        log.info("==> 禁用/启用店铺, shopId: {}, shopStatus: {}", shopId, shopStatus);
+
+        Shop shop = shopMapper.selectByPrimaryKey(shopId);
+        if (Objects.isNull(shop)) {
+            throw new BizException(ResponseCodeEnum.PARAM_NOT_VALID, "店铺不存在");
+        }
+
+        if (shop.getAuditStatus() != 1) {
+            throw new BizException(ResponseCodeEnum.PARAM_NOT_VALID, "只有审核通过的店铺才能修改状态");
+        }
+
+        int result = shopMapper.updateShopStatus(shopId, shopStatus);
+        if (result <= 0) {
+            throw new BizException(ResponseCodeEnum.SYSTEM_ERROR, "店铺状态更新失败");
+        }
+
+        log.info("==> 店铺状态更新成功, shopId: {}, shopStatus: {}", shopId, shopStatus);
+        return Response.success();
+    }
+
+    /**
+     * 获取店铺列表
+     */
+    @Override
+    public Response<PageResult<ShopApplyVO>> getMyShopList() {
+        Long userId = StpUtil.getLoginIdAsLong();
+        log.info("==> 商家查看自己的店铺列表, userId: {}", userId);
+
+        // 查询商家自己的店铺列表
+        List<Shop> shopList = shopMapper.selectListByUserId(userId);
+
+        PageResult<ShopApplyVO> pageResult;
+        if (shopList == null || shopList.isEmpty()) {
+            // 没有店铺返回空列表
+            pageResult = PageResult.<ShopApplyVO>builder()
+                    .records(List.of())
+                    .total(0L)
+                    .pageNum(1)
+                    .pageSize(10)
+                    .totalPages(0)
+                    .build();
+        } else {
+            // 转换为 VO 列表
+            List<ShopApplyVO> voList = shopList.stream()
+                    .map(this::convertToShopApplyVO)
+                    .collect(Collectors.toList());
+            pageResult = PageResult.<ShopApplyVO>builder()
+                    .records(voList)
+                    .total((long) voList.size())
+                    .pageNum(1)
+                    .pageSize(10)
+                    .totalPages(1)
+                    .build();
+        }
+
+        log.info("==> 商家查看自己的店铺列表完成, userId: {}, 店铺数量: {}", userId, pageResult.getTotal());
+        return Response.success(pageResult);
+    }
+
+    /**
+     * 管理员分页查询店铺列表（支持多条件筛选）
+     */
+    @Override
+    public Response<PageResult<ShopApplyVO>> getShopList(ShopApplyQueryRequest queryRequest) {
+        log.info("==> 管理员查询店铺列表, 用户名: {}, 店铺名: {}, 审核状态: {}, 店铺状态: {}, 时间范围: {} - {}",
+                queryRequest.getUsername(), queryRequest.getShopName(),
+                queryRequest.getAuditStatus(), queryRequest.getShopStatus(),
+                queryRequest.getStartTime(), queryRequest.getEndTime());
+
+        // 设置默认分页参数
+        Integer pageNum = queryRequest.getPageNum() != null ? queryRequest.getPageNum() : 1;
+        Integer pageSize = queryRequest.getPageSize() != null ? queryRequest.getPageSize() : 10;
+
+        // 开启分页
+        PageHelper.startPage(pageNum, pageSize);
+
+        // 查询数据
+        List<Shop> shopList = shopMapper.selectShopList(
+                queryRequest.getUsername(),
+                queryRequest.getShopName(),
+                queryRequest.getAuditStatus(),
+                queryRequest.getShopStatus(),
+                queryRequest.getStartTime() != null ? Date.from(queryRequest.getStartTime().atZone(ZoneId.systemDefault()).toInstant()) : null,
+                queryRequest.getEndTime() != null ? Date.from(queryRequest.getEndTime().atZone(ZoneId.systemDefault()).toInstant()) : null
+        );
+
+        // 获取分页信息
+        Page<Shop> page = (Page<Shop>) shopList;
+
+        // 转换为 VO
+        List<ShopApplyVO> voList = shopList.stream()
+                .map(this::convertToShopApplyVO)
+                .collect(Collectors.toList());
+
+        // 构建分页结果
+        PageResult<ShopApplyVO> pageResult = PageResult.<ShopApplyVO>builder()
+                .records(voList)
+                .total(page.getTotal())
+                .pageNum(pageNum)
+                .pageSize(pageSize)
+                .totalPages((int) Math.ceil((double) page.getTotal() / pageSize))
+                .build();
+
+        log.info("==> 查询店铺列表完成, 总数: {}, 当前页: {}", page.getTotal(), pageNum);
+
+        return Response.success(pageResult);
+    }
+
+    /**
+     * 将 Shop 转换为 ShopApplyVO
+     */
+    private ShopApplyVO convertToShopApplyVO(Shop shop) {
+        return ShopApplyVO.builder()
+                .id(shop.getId())
+                .shopName(shop.getShopName())
+                .shopAvatar(shop.getShopAvatar())
+                .shopDesc(shop.getShopDesc())
+                .userId(shop.getUserId())
+                .username(shop.getUsername())
+                .auditStatus(shop.getAuditStatus())
+                .auditStatusDesc(getAuditStatusDesc(shop.getAuditStatus()))
+                .auditRemark(shop.getAuditRemark())
+                .shopStatus(shop.getShopStatus())
+                .createTime(shop.getCreateTime() != null ?
+                        LocalDateTime.ofInstant(shop.getCreateTime().toInstant(), ZoneId.systemDefault()) : null)
+                .updateTime(shop.getUpdateTime() != null ?
+                        LocalDateTime.ofInstant(shop.getUpdateTime().toInstant(), ZoneId.systemDefault()) : null)
+                .build();
     }
 
     /**

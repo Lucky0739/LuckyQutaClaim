@@ -67,6 +67,16 @@ spring:
           uri: lb://lucky-seckill-common
           predicates:
             - Path=/banner/**
+          # 订单模块路径
+        - id: order-service
+          uri: lb://lucky-seckill-order
+          predicates:
+            - Path=/order/**
+          # 支付模块路径
+        - id: pay-service
+          uri: lb://lucky-seckill-pay
+          predicates:
+            - Path=/pay/**
 
 server:
   port: 8888

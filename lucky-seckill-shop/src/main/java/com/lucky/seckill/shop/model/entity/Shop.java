@@ -51,6 +51,11 @@ public class Shop implements Serializable {
      * 店铺状态 1-正常 0-关闭/禁用
      */
     private Integer shopStatus;
+
+    /**
+     * 店铺收藏数
+     */
+    private Integer collectNum;
     /**
      * 创建时间
      */

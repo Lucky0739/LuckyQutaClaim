@@ -16,6 +16,7 @@ import com.lucky.seckill.goods.model.vo.GoodsListVO;
 import com.lucky.seckill.goods.model.vo.SkuImgVO;
 import com.lucky.seckill.goods.service.GoodsService;
 import jakarta.annotation.Resource;
+import jakarta.websocket.server.PathParam;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.validation.annotation.Validated;
 import org.springframework.web.bind.annotation.*;
@@ -100,16 +101,16 @@ public class GoodsController {
         return goodsService.getGoodsPage(goodsQueryRequest);
     }
     /**
-     * 上架商品
+     * 申请上架商品
      * @param goodsId
      * @return
      */
-    @SaCheckRole(value = {"admin", "merchant"}, mode = SaMode.OR)
-    @PostMapping("/onShelf/{goodsId}")
-    @ApiOperationLog(description = "上架商品")
-    public Response<Void> onShelf(@PathVariable("goodsId") Long goodsId) {
-        log.info("==> 上架商品请求, goodsId: {}", goodsId);
-        return goodsService.onShelf(goodsId);
+    @SaCheckRole("merchant")
+    @PostMapping("/applyOnShelf")
+    @ApiOperationLog(description = "申请上架商品")
+    public Response<Void> applyOnShelf(@RequestParam Long goodsId) {
+        log.info("==> 申请上架商品请求, goodsId: {}", goodsId);
+        return goodsService.applyOnShelf(goodsId);
     }
 
     /**
@@ -135,6 +136,33 @@ public class GoodsController {
     public Response<GoodsSku> getSkuById(@PathVariable("skuId") Long skuId) {
         log.info("==> 查询SKU信息请求, skuId: {}", skuId);
         return goodsService.getSkuById(skuId);
+    }
+
+    /**
+     * 预占库存（创建订单时调用，使用行锁防止超卖）
+     * @param skuId SKU ID
+     * @param buyGoodsNum 预占数量
+     * @return true=预占成功，false=库存不足
+     */
+    @PostMapping("/sku/lockStock")
+    @ApiOperationLog(description = "预占库存")
+    public Response<Boolean> lockStock(@RequestParam Long skuId, @RequestParam Integer buyGoodsNum) {
+        log.info("==> 预占库存请求, skuId: {}, stockNum: {}", skuId, buyGoodsNum);
+        return goodsService.lockStock(skuId, buyGoodsNum);
+    }
+
+
+    /**
+     * 释放预占的库存（订单取消或超时）
+     * @param skuId SKU ID
+     * @param stockNum 释放数量
+     * @return true=释放成功
+     */
+    @PostMapping("/sku/releaseStock")
+    @ApiOperationLog(description = "释放库存")
+    public Response<Boolean> releaseStock(@RequestParam Long skuId, @RequestParam Integer stockNum) {
+        log.info("==> 释放库存请求, skuId: {}, stockNum: {}", skuId, stockNum);
+        return goodsService.releaseStock(skuId, stockNum);
     }
 
 }

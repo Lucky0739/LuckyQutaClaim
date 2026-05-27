@@ -37,6 +37,18 @@ public enum ResponseCodeEnum implements BaseExceptionInterface {
     USER_NOT_LOGIN("20014", "用户未登录，请先登录"),
     USER_PERMISSION_DENIED("20015", "该用户没有权限"),
 
+    // ----------- 店铺模块异常状态码 -----------
+    SHOP_COUNT_LIMIT_EXCEEDED("30001", "店铺数量已达上限，最多可创建3家店铺"),
+
+    // ----------- 库存模块异常状态码 -----------
+    STOCK_NOT_ENOUGH("40001", "库存不足"),
+    STOCK_DEDUCT_FAIL("40002", "库存扣减失败"),
+
+    // ----------- 订单模块异常状态码 -----------
+    ORDER_STATUS_ERROR("50001", "订单状态异常"),
+    ORDER_EXPIRED("50002", "订单已过期"),
+    ORDER_NOT_EXIST("50003", "订单不存在"),
+
     ;
 
     // 异常码

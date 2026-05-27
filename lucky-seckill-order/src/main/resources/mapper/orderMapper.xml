@@ -11,6 +11,8 @@
         <result column="total_amount" property="totalAmount" jdbcType="DECIMAL"/>
         <result column="goods_name" property="goodsName" jdbcType="VARCHAR"/>
         <result column="goods_img" property="goodsImg" jdbcType="VARCHAR"/>
+        <result column="sku_id" property="skuId" jdbcType="BIGINT"/>
+        <result column="lock_stock_num" property="lockStockNum" jdbcType="INTEGER"/>
         <result column="status" property="status" jdbcType="TINYINT"/>
         <result column="pay_time" property="payTime" jdbcType="TIMESTAMP"/>
         <result column="delivery_time" property="deliveryTime" jdbcType="TIMESTAMP"/>
@@ -23,7 +25,7 @@
 
     <sql id="Base_Column_List">
         id, user_id, goods_id, order_no, goods_price, goods_num, total_amount,
-        goods_name, goods_img, status, pay_time, delivery_time, receive_time,
+        goods_name, goods_img, sku_id, lock_stock_num, status, pay_time, delivery_time, receive_time,
         expire_time, isDelete, create_time, update_time
     </sql>
 
@@ -39,6 +41,8 @@
             <if test="totalAmount != null">total_amount,</if>
             <if test="goodsName != null">goods_name,</if>
             <if test="goodsImg != null">goods_img,</if>
+            <if test="skuId != null">sku_id,</if>
+            <if test="lockStockNum != null">lock_stock_num,</if>
             <if test="status != null">status,</if>
             <if test="payTime != null">pay_time,</if>
             <if test="deliveryTime != null">delivery_time,</if>
@@ -59,6 +63,8 @@
             <if test="totalAmount != null">#{totalAmount,jdbcType=DECIMAL},</if>
             <if test="goodsName != null">#{goodsName,jdbcType=VARCHAR},</if>
             <if test="goodsImg != null">#{goodsImg,jdbcType=VARCHAR},</if>
+            <if test="skuId != null">#{skuId,jdbcType=BIGINT},</if>
+            <if test="lockStockNum != null">#{lockStockNum,jdbcType=INTEGER},</if>
             <if test="status != null">#{status,jdbcType=TINYINT},</if>
             <if test="payTime != null">#{payTime,jdbcType=TIMESTAMP},</if>
             <if test="deliveryTime != null">#{deliveryTime,jdbcType=TIMESTAMP},</if>
@@ -95,6 +101,8 @@
             <if test="totalAmount != null">total_amount = #{totalAmount,jdbcType=DECIMAL},</if>
             <if test="goodsName != null">goods_name = #{goodsName,jdbcType=VARCHAR},</if>
             <if test="goodsImg != null">goods_img = #{goodsImg,jdbcType=VARCHAR},</if>
+            <if test="skuId != null">sku_id = #{skuId,jdbcType=BIGINT},</if>
+            <if test="lockStockNum != null">lock_stock_num = #{lockStockNum,jdbcType=INTEGER},</if>
             <if test="status != null">status = #{status,jdbcType=TINYINT},</if>
             <if test="payTime != null">pay_time = #{payTime,jdbcType=TIMESTAMP},</if>
             <if test="deliveryTime != null">delivery_time = #{deliveryTime,jdbcType=TIMESTAMP},</if>
@@ -104,5 +112,12 @@
             <if test="updateTime != null">update_time = #{updateTime,jdbcType=TIMESTAMP},</if>
         </set>
         WHERE id = #{id,jdbcType=BIGINT}
+    </update>
+
+    <update id="updateStatusByOrderNo">
+        UPDATE t_order
+        SET status = #{status},
+            update_time = NOW()
+        WHERE order_no = #{orderNo}
     </update>
 </mapper>

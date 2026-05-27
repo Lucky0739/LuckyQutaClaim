@@ -1,5 +1,6 @@
 package com.lucky.seckill.goods.service.impl;
 
+import cn.dev33.satoken.stp.StpUtil;
 import cn.hutool.core.util.IdUtil;
 import com.alibaba.fastjson.JSON;
 import com.github.pagehelper.Page;
@@ -9,12 +10,14 @@ import com.lucky.seckill.common.exception.BizException;
 import com.lucky.seckill.common.manager.upload.FilePictureUpload;
 import com.lucky.seckill.common.model.entity.PageResult;
 import com.lucky.seckill.common.model.file.UploadPictureResult;
+import com.lucky.seckill.common.model.entity.Notify;
 import com.lucky.seckill.common.utils.Response;
 import com.lucky.seckill.goods.mapper.GoodsDetailMapper;
 import com.lucky.seckill.goods.mapper.GoodsImgMapper;
 import com.lucky.seckill.goods.mapper.GoodsMapper;
 import com.lucky.seckill.goods.mapper.GoodsSkuMapper;
 import com.lucky.seckill.goods.model.dto.AddGoodsRequest;
+import com.lucky.seckill.goods.model.dto.GoodsAuditRequest;
 import com.lucky.seckill.goods.model.dto.GoodsQueryRequest;
 import com.lucky.seckill.goods.model.dto.GoodsSkuRequest;
 import com.lucky.seckill.goods.model.entity.Goods;
@@ -26,6 +29,7 @@ import com.lucky.seckill.goods.model.vo.GoodsListVO;
 import com.lucky.seckill.goods.model.vo.SkuImgVO;
 import com.lucky.seckill.goods.model.vo.SkuInfoVO;
 import com.lucky.seckill.goods.service.GoodsService;
+import com.lucky.seckill.notify.feign.NotifyFeignClient;
 import jakarta.annotation.Resource;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.commons.codec.digest.DigestUtils;
@@ -65,10 +69,13 @@ public class GoodsServiceImpl implements GoodsService {
     @Resource
     private StringRedisTemplate stringRedisTemplate;
 
+    @Resource
+    private NotifyFeignClient notifyFeignClient;
+
     @Override
     @Transactional(rollbackFor = Exception.class)
     public Response<Long> addGoods(AddGoodsRequest request) {
-
+        Long userId = StpUtil.getLoginIdAsLong();
 
         long goodsId = IdUtil.getSnowflakeNextId();
 
@@ -87,10 +94,14 @@ public class GoodsServiceImpl implements GoodsService {
                 .goodsImg(goodsImg)
                 .goodsPrice(request.getGoodsPrice())
                 .categoryId(request.getCategoryId())
-                .status(1)
+                .userId(userId)
+                .shopId(request.getShopId())
+                .status(0)
+                .collectNum(0)
                 .isDelete(0)
                 .createTime(LocalDateTime.now())
                 .updateTime(LocalDateTime.now())
+                .auditStatus(0)
                 .build();
         goodsMapper.insertSelective(goods);
 
@@ -122,7 +133,7 @@ public class GoodsServiceImpl implements GoodsService {
             }
 
             if (goods.getGoodsImg() == null || goods.getGoodsImg().isEmpty()) {
-                Goods updateGoods = Goods.builder()
+                Goods.builder()
                         .id(goodsId)
                         .goodsImg(goodsImgList.get(0))
                         .updateTime(LocalDateTime.now())
@@ -211,6 +222,11 @@ public class GoodsServiceImpl implements GoodsService {
         return Response.success(vo);
     }
 
+    /**
+     * 获取规格图片
+     * @param goodsId
+     * @return
+     */
     @Override
     public Response<List<SkuImgVO>> getSkuImages(Long goodsId) {
         if (goodsId == null) {
@@ -240,6 +256,11 @@ public class GoodsServiceImpl implements GoodsService {
         return Response.success(skuImgList);
     }
 
+    /**
+     * 商品分页查询
+     * @param goodsQueryRequest
+     * @return
+     */
     @Override
     public Response<PageResult<GoodsListVO>> getGoodsPage(GoodsQueryRequest goodsQueryRequest) {
         // 1. 分页参数
@@ -283,6 +304,13 @@ public class GoodsServiceImpl implements GoodsService {
 
     // VO转换抽成方法（优雅、可复用）
     private GoodsListVO convertGoodsToVO(Goods goods) {
+        // 查询该商品所有规格的已售数量之和
+        List<GoodsSku> skuList = goodsSkuMapper.selectByGoodsId(goods.getId());
+        int totalSalesNum = skuList != null ? skuList.stream()
+                .filter(sku -> sku.getIsDelete() == 0)
+                .mapToInt(GoodsSku::getSalesNum)
+                .sum() : 0;
+
         return GoodsListVO.builder()
                 .id(goods.getId())
                 .goodsName(goods.getGoodsName())
@@ -290,6 +318,7 @@ public class GoodsServiceImpl implements GoodsService {
                 .goodsPrice(goods.getGoodsPrice())
                 .status(goods.getStatus())
                 .statusDesc(getStatusDesc(goods.getStatus()))
+                .salesNum(totalSalesNum)
                 .createTime(goods.getCreateTime())
                 .updateTime(goods.getUpdateTime())
                 .build();
@@ -305,31 +334,194 @@ public class GoodsServiceImpl implements GoodsService {
         };
     }
 
+    // 审核状态描述
+    private String getAuditStatusDesc(Integer auditStatus) {
+        if (auditStatus == null) return "未知";
+        return switch (auditStatus) {
+            case 0 -> "待审核";
+            case 1 -> "审核通过";
+            case 2 -> "审核拒绝";
+            default -> "未知";
+        };
+    }
+
+    /**
+     * 上架申请
+     * @param goodsId 商品ID
+     * @return
+     */
     @Override
     @Transactional(rollbackFor = Exception.class)
-    public Response<Void> onShelf(Long goodsId) {
+    public Response<Void> applyOnShelf(Long goodsId) {
+        // 获取当前登录用户ID
+        Long userId = StpUtil.getLoginIdAsLong();
+
         if (goodsId == null) {
             throw new BizException(ResponseCodeEnum.PARAM_NOT_VALID, "商品ID不能为空");
         }
-
+        // 根据商品ID查询商品信息
         Goods goods = goodsMapper.selectByPrimaryKey(goodsId);
         if (goods == null || goods.getIsDelete() == 1) {
             throw new BizException(ResponseCodeEnum.PARAM_NOT_VALID, "商品不存在");
         }
-
-        if (goods.getStatus() == 1) {
-            log.warn("==> 商品已处于上架状态, goodsId: {}", goodsId);
-            return Response.success();
+        // 校验身份
+        Long goodUserId=goods.getUserId();
+        if(!userId.equals(goodUserId)){
+            throw new BizException(ResponseCodeEnum.USER_PERMISSION_DENIED,"该商品发布用户跟当前登录用户不同");
         }
 
-        int rows = goodsMapper.updateStatus(goodsId, 1, LocalDateTime.now());
+        // 设置审核状态为待审核
+        int rows = goodsMapper.updateAuditStatus(goodsId, 1, LocalDateTime.now());
         if (rows == 0) {
-            throw new BizException(ResponseCodeEnum.SYSTEM_ERROR, "商品上架失败");
+            throw new BizException(ResponseCodeEnum.SYSTEM_ERROR, "商品上架申请提交失败");
+        }
+        // 发送通知给管理员
+        Notify notify = Notify.builder()
+                .id(IdUtil.getSnowflakeNextId())
+                .sendUserId(userId)
+                .receiveUserId(5L) // 管理员ID
+                .title("商品上架申请")
+                .content(String.format("商品【%s】提交了上架申请，请到商品审核界面查看详情并处理", goods.getGoodsName()))
+                .notifyType(2) // 商品上架申请类型
+                .businessId(goodsId)
+                .subType(1) // 1=商品
+                .isRead(0)
+                .isDelete(0)
+                .createTime(LocalDateTime.now())
+                .updateTime(LocalDateTime.now())
+                .build();
+
+        try {
+            Response<Boolean> notifyResponse = notifyFeignClient.saveNotify(notify);
+            if (notifyResponse == null || !notifyResponse.isSuccess()) {
+                log.error("==> 商品上架申请通知发送失败, goodsId: {}", goodsId);
+                throw new BizException(ResponseCodeEnum.SYSTEM_ERROR, "商品上架申请通知发送失败");
+            }
+        } catch (Exception e) {
+            log.error("==> 调用消息服务发送商品上架申请通知失败, goodsId: {}, error: {}", goodsId, e.getMessage(), e);
+            throw new BizException(ResponseCodeEnum.SYSTEM_ERROR, "商品上架申请通知发送失败");
         }
 
         clearGoodsPageCache();
 
-        log.info("==> 商品上架成功, goodsId: {}", goodsId);
+        log.info("==> 商品上架申请提交成功, goodsId: {}", goodsId);
+        return Response.success();
+    }
+
+    /**
+     * 审核上架
+     * @param request 审核请求
+     * @return
+     */
+    @Override
+    @Transactional(rollbackFor = Exception.class)
+    public Response<Void> auditGoods(GoodsAuditRequest request) {
+        log.info("==> 管理员审核商品上架申请, goodsId: {}, auditStatus: {}, auditRemark: {}",
+                request.getGoodsId(), request.getAuditStatus(), request.getAuditRemark());
+
+        Goods goods = goodsMapper.selectByPrimaryKey(request.getGoodsId());
+        if (goods == null || goods.getIsDelete() == 1) {
+            throw new BizException(ResponseCodeEnum.PARAM_NOT_VALID, "商品不存在");
+        }
+
+        Integer auditStatus = goods.getAuditStatus();
+        if (auditStatus != null && (auditStatus == 2 || auditStatus == 3)) {
+            throw new BizException(ResponseCodeEnum.PARAM_NOT_VALID, "该商品已审核，请勿重复审核");
+        }
+
+        // 获取当前管理员ID
+        Long adminId = StpUtil.getLoginIdAsLong();
+
+        // 更新审核状态
+        int rows = goodsMapper.updateAuditStatus(request.getGoodsId(), request.getAuditStatus(), LocalDateTime.now());
+        if (rows == 0) {
+            throw new BizException(ResponseCodeEnum.SYSTEM_ERROR, "商品审核状态更新失败");
+        }
+
+        log.info("==> 商品审核状态更新成功, goodsId: {}, auditStatus: {}",
+                request.getGoodsId(), request.getAuditStatus());
+
+        if (request.getAuditStatus().equals(GoodsAuditRequest.AUDIT_PASS)) {
+            // 审核通过，执行实际上架操作
+            int shelfRows = goodsMapper.updateStatus(request.getGoodsId(), 1, LocalDateTime.now());
+            if (shelfRows == 0) {
+                throw new BizException(ResponseCodeEnum.SYSTEM_ERROR, "商品上架失败");
+            }
+
+            log.info("==> 商品上架成功, goodsId: {}", request.getGoodsId());
+
+            // 发送审核通过通知给商家
+            String title = "商品上架申请已通过";
+            String content = String.format("恭喜！您的商品【%s】上架申请已通过审核！", goods.getGoodsName());
+
+            Notify auditNotify = Notify.builder()
+                    .id(IdUtil.getSnowflakeNextId())
+                    .sendUserId(adminId)
+                    .receiveUserId(goods.getUserId())
+                    .title(title)
+                    .content(content)
+                    .notifyType(3) // 审核通知
+                    .businessId(request.getGoodsId())
+                    .subType(2) // 2=商品
+                    .isRead(0)
+                    .isDelete(0)
+                    .createTime(LocalDateTime.now())
+                    .updateTime(LocalDateTime.now())
+                    .build();
+
+            try {
+                Response<Boolean> auditNotifyResponse = notifyFeignClient.saveNotify(auditNotify);
+                if (auditNotifyResponse == null || !auditNotifyResponse.isSuccess()) {
+                    log.error("==> 审核通过通知发送失败, goodsId: {}", request.getGoodsId());
+                    throw new BizException(ResponseCodeEnum.SYSTEM_ERROR, "审核通过通知发送失败");
+                }
+            } catch (Exception e) {
+                log.error("==> 调用消息服务发送审核通过通知失败, goodsId: {}, error: {}",
+                        request.getGoodsId(), e.getMessage(), e);
+                throw new BizException(ResponseCodeEnum.SYSTEM_ERROR, "审核通过通知发送失败");
+            }
+            log.info("==> 审核通过通知已发送, notifyId: {}", auditNotify.getId());
+
+        } else {
+            // 审核拒绝
+            String title = "商品上架申请被拒绝";
+            String content = String.format("抱歉，您的商品【%s】上架申请未通过：%s",
+                    goods.getGoodsName(), request.getAuditRemark());
+
+            Notify rejectNotify = Notify.builder()
+                    .id(IdUtil.getSnowflakeNextId())
+                    .sendUserId(adminId)
+                    .receiveUserId(goods.getUserId())
+                    .title(title)
+                    .content(content)
+                    .notifyType(2) // 审核通知
+                    .businessId(request.getGoodsId())
+                    .subType(2) // 2=商品
+                    .isRead(0)
+                    .isDelete(0)
+                    .createTime(LocalDateTime.now())
+                    .updateTime(LocalDateTime.now())
+                    .build();
+
+            try {
+                Response<Boolean> rejectNotifyResponse = notifyFeignClient.saveNotify(rejectNotify);
+                if (rejectNotifyResponse == null || !rejectNotifyResponse.isSuccess()) {
+                    log.error("==> 审核拒绝通知发送失败, goodsId: {}", request.getGoodsId());
+                    throw new BizException(ResponseCodeEnum.SYSTEM_ERROR, "审核拒绝通知发送失败");
+                }
+            } catch (Exception e) {
+                log.error("==> 调用消息服务发送审核拒绝通知失败, goodsId: {}, error: {}",
+                        request.getGoodsId(), e.getMessage(), e);
+                throw new BizException(ResponseCodeEnum.SYSTEM_ERROR, "审核拒绝通知发送失败");
+            }
+            log.info("==> 审核拒绝通知已发送, notifyId: {}", rejectNotify.getId());
+        }
+
+        clearGoodsPageCache();
+
+        log.info("==> 商品审核完成, goodsId: {}, auditStatus: {}",
+                request.getGoodsId(), request.getAuditStatus());
+
         return Response.success();
     }
 
@@ -382,5 +574,61 @@ public class GoodsServiceImpl implements GoodsService {
 
         log.info("==> 查询SKU信息成功, skuId: {}", skuId);
         return Response.success(sku);
+    }
+
+    @Override
+    @Transactional(rollbackFor = Exception.class)
+    public Response<Boolean> lockStock(Long skuId, Integer buyGoodsNum) {
+        if (skuId == null) {
+            throw new BizException(ResponseCodeEnum.PARAM_NOT_VALID, "SKU ID不能为空");
+        }
+        if (buyGoodsNum == null || buyGoodsNum <= 0) {
+            throw new BizException(ResponseCodeEnum.PARAM_NOT_VALID, "预占数量必须大于0");
+        }
+
+        // 查询SKU确认存在
+        GoodsSku sku = goodsSkuMapper.selectById(skuId);
+        if (sku == null) {
+            throw new BizException(ResponseCodeEnum.PARAM_NOT_VALID, "SKU不存在");
+        }
+
+        // 预占库存（使用行锁保证原子性）
+        int rows = goodsSkuMapper.lockStock(skuId, buyGoodsNum);
+        if (rows == 0) {
+            log.warn("==> 预占库存失败，库存不足，skuId: {}, 请求数量: {}, 当前库存: {}",
+                    skuId, buyGoodsNum, sku.getStockNum());
+            return Response.success(false);
+        }
+
+        log.info("==> 预占库存成功，skuId: {}, 预占数量: {}", skuId, buyGoodsNum);
+        return Response.success(true);
+    }
+
+
+    @Override
+    @Transactional(rollbackFor = Exception.class)
+    public Response<Boolean> releaseStock(Long skuId, Integer stockNum) {
+        if (skuId == null) {
+            throw new BizException(ResponseCodeEnum.PARAM_NOT_VALID, "SKU ID不能为空");
+        }
+        if (stockNum == null || stockNum <= 0) {
+            throw new BizException(ResponseCodeEnum.PARAM_NOT_VALID, "释放数量必须大于0");
+        }
+
+        // 查询SKU确认存在
+        GoodsSku sku = goodsSkuMapper.selectById(skuId);
+        if (sku == null) {
+            throw new BizException(ResponseCodeEnum.PARAM_NOT_VALID, "SKU不存在");
+        }
+
+        // 释放预占的库存
+        int rows = goodsSkuMapper.releaseStock(skuId, stockNum);
+        if (rows == 0) {
+            log.error("==> 释放库存失败，skuId: {}", skuId);
+            return Response.success(false);
+        }
+
+        log.info("==> 释放库存成功，skuId: {}, 释放数量: {}", skuId, stockNum);
+        return Response.success(true);
     }
 }

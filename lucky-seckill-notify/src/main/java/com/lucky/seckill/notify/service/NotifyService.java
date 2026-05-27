@@ -1,7 +1,8 @@
 package com.lucky.seckill.notify.service;
 
 
-import com.lucky.seckill.notify.model.entity.Notify;
+import com.lucky.seckill.common.model.entity.Notify;
+import com.lucky.seckill.common.model.entity.PageResult;
 
 public interface NotifyService {
 
@@ -18,7 +19,14 @@ public interface NotifyService {
     void saveMerchantApplyNotify(Notify notify);
 
     /**
-     * 将指定业务的开店申请类通知标记为已读
+     * 将指定消息标记为已读
+     *
+     * @param notifyId 消息ID
      */
-    void markApplyNotifyRead(Integer notifyType, Long businessId);
+    void markNotifyRead(Long notifyId);
+
+    /**
+     * 分页查询指定类型的通知列表
+     */
+    PageResult<Notify> selectByNotifyTypePage(Integer notifyType, Integer pageNum, Integer pageSize);
 }

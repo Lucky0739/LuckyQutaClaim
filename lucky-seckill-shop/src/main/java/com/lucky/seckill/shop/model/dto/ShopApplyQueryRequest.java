@@ -33,6 +33,11 @@ public class ShopApplyQueryRequest {
     private Integer auditStatus;
 
     /**
+     * 店铺状态 1-正常 0-关闭/禁用
+     */
+    private Integer shopStatus;
+
+    /**
      * 开始时间
      */
     @DateTimeFormat(pattern = "yyyy-MM-dd HH:mm:ss")

@@ -4,6 +4,7 @@ import com.lucky.seckill.common.model.entity.PageResult;
 import com.lucky.seckill.common.model.file.UploadPictureResult;
 import com.lucky.seckill.common.utils.Response;
 import com.lucky.seckill.goods.model.dto.AddGoodsRequest;
+import com.lucky.seckill.goods.model.dto.GoodsAuditRequest;
 import com.lucky.seckill.goods.model.dto.GoodsQueryRequest;
 import com.lucky.seckill.goods.model.dto.GoodsSkuRequest;
 import com.lucky.seckill.goods.model.entity.GoodsSku;
@@ -51,11 +52,18 @@ public interface GoodsService {
      */
     Response<PageResult<GoodsListVO>> getGoodsPage(GoodsQueryRequest goodsQueryRequest);
     /**
-     * 上架商品
+     * 申请上架商品
      * @param goodsId 商品ID
      * @return
      */
-    Response<Void> onShelf(Long goodsId);
+    Response<Void> applyOnShelf(Long goodsId);
+
+    /**
+     * 管理员审核商品上架申请
+     * @param request 审核请求
+     * @return
+     */
+    Response<Void> auditGoods(GoodsAuditRequest request);
 
     /**
      * 下架商品
@@ -70,5 +78,22 @@ public interface GoodsService {
      * @return
      */
     Response<GoodsSku> getSkuById(Long skuId);
+
+    /**
+     * 预占库存（创建订单时调用，使用行锁防止超卖）
+     * @param skuId SKU ID
+     * @param stockNum 预占数量
+     * @return true=预占成功，false=库存不足
+     */
+    Response<Boolean> lockStock(Long skuId, Integer stockNum);
+
+
+    /**
+     * 释放预占的库存（订单取消或超时）
+     * @param skuId SKU ID
+     * @param stockNum 释放数量
+     * @return true=释放成功
+     */
+    Response<Boolean> releaseStock(Long skuId, Integer stockNum);
 
 }

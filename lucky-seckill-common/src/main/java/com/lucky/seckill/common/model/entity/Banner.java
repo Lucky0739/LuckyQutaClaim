@@ -13,6 +13,10 @@ import java.time.LocalDateTime;
 @NoArgsConstructor
 public class Banner {
     private Long id;
+
+    /**
+     * 背景图 URL
+     */
     private String bannerUrl;
     private Integer sort;
     private Integer status;

@@ -11,4 +11,6 @@ public interface OrderMapper {
     Order selectByPrimaryKey(@Param("id") Long id);
 
     int updateByPrimaryKeySelective(Order record);
+
+    int updateStatusByOrderNo(@Param("orderNo") String orderNo, @Param("status") Integer status);
 }

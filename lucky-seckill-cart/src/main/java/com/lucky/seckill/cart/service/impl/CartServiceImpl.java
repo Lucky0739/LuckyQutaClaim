@@ -2,9 +2,6 @@ package com.lucky.seckill.cart.service.impl;
 
 import cn.dev33.satoken.stp.StpUtil;
 import cn.hutool.core.util.IdUtil;
-import com.alibaba.fastjson.JSON;
-import com.alibaba.fastjson.TypeReference;
-import com.lucky.seckill.cart.feign.GoodsFeignClient;
 import com.lucky.seckill.cart.mapper.CartMapper;
 import com.lucky.seckill.cart.model.dto.AddCartRequest;
 import com.lucky.seckill.cart.model.entity.Cart;
@@ -15,17 +12,12 @@ import com.lucky.seckill.common.exception.BizException;
 import com.lucky.seckill.common.utils.Response;
 import jakarta.annotation.Resource;
 import lombok.extern.slf4j.Slf4j;
-import org.springframework.beans.BeanUtils;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
-import java.math.BigDecimal;
 import java.time.LocalDateTime;
 import java.util.Collections;
 import java.util.List;
-import java.util.Map;
-import java.util.concurrent.ConcurrentHashMap;
-import java.util.stream.Collectors;
 
 @Service
 @Slf4j

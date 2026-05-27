@@ -29,5 +29,13 @@ management:
       exposure:
         include: '*'
 
+rocketmq:
+  name-server: 127.0.0.1:9876
+  producer:
+    group: shop-producer-group
+    send-message-timeout: 3000
+    retry-times-when-send-failed: 2
+    retry-times-when-send-async-failed: 2
+
 sa-token:
   ignore-paths: /user/login,/user/register,/user/send-verify-code
