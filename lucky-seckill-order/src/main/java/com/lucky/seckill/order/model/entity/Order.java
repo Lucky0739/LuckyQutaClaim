@@ -47,7 +47,7 @@ public class Order {
     /**
      * 购买数量
      */
-    private Integer buygoodsNum;
+    private Integer buyGoodsNum;
 
     /**
      * 订单总金额

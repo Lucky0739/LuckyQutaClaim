@@ -1,0 +1,51 @@
+spring:
+  application:
+    name: lucky-seckill-pay
+  profiles:
+    active: dev
+  config:
+    import:
+      - optional:nacos:lucky-seckill-dev.yml
+  cloud:
+    nacos:
+      discovery:
+        server-addr: 127.0.0.1:8848
+        namespace: public
+      config:
+        server-addr: 127.0.0.1:8848
+        namespace: public
+        file-extension: yml
+        import-check:
+          enabled: false
+
+server:
+  port: 8082
+  forward-headers-strategy: framework
+
+management:
+  endpoints:
+    web:
+      exposure:
+        include: '*'
+
+sa-token:
+  ignore-paths: /user/login,/user/register,/user/send-verify-code
+
+# ===================== 支付宝沙箱支付配置 =====================
+alipay:
+  # 沙箱网关地址
+  gateway-url: https://openapi-sandbox.dl.alipaydev.com/gateway.do
+  # 你的沙箱APPID
+  app-id: 2722101571723
+  # 商户私钥
+  merchant-private-key:
+    8721101571713
+  # 支付宝公钥
+  alipay-public-key:
+    GlK1B4Ts7akS9e4OP8gjQEpSnSdRXBBGA+Ofoqb79hfmVgWjiU3rHNprnkqJaTtMvXgGJgE4pgYWjQlxdbyDDdrapf5Bemi/iOlIzY9ZvqquxF0hOmWcaElzQvwNyJhtVvxt6DYzrgJ0zANwXWNYcbOKDm7svcPlGmOcUpIi0cj6eYd3jdtYVSZ47a8ueVfztxhfd2pmZKHOytBulxfpan0dVmZRDONeMC4nZDmz5H8/R2D31A+PX0glP8lWKAWEvoNIgT8HEJyTt9eCz/f9AHd2fEwIDAQAB
+  sign-type: RSA2
+  charset: UTF-8
+  # 支付成功同步跳转（前端页面，不用ngrok）
+  return-url: http://localhost:8080/pay/success
+  # 支付成功异步回调（必须写你的ngrok公网网关地址）
+  notify-url: https://donator-smith-gumdrop.ngrok-free.dev/notify

@@ -1,0 +1,32 @@
+spring:
+  application:
+    name: lucky-seckill-activity
+  profiles:
+    active: dev
+  config:
+    import:
+      - optional:nacos:lucky-seckill-dev.yml
+  cloud:
+    nacos:
+      discovery:
+        server-addr: 127.0.0.1:8848
+        namespace: public
+      config:
+        server-addr: 127.0.0.1:8848
+        namespace: public
+        file-extension: yml
+        import-check:
+          enabled: false
+
+server:
+  port: 8085
+  forward-headers-strategy: framework
+
+management:
+  endpoints:
+    web:
+      exposure:
+        include: '*'
+
+sa-token:
+  ignore-paths: /user/login,/user/register,/user/send-verify-code

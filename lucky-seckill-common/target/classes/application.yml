@@ -1,0 +1,35 @@
+spring:
+  application:
+    name: lucky-seckill-common
+  profiles:
+    active: dev
+  config:
+    import:
+      - optional:nacos:lucky-seckill-dev.yml
+  cloud:
+    nacos:
+      discovery:
+        server-addr: 127.0.0.1:8848
+        namespace: public
+        ip: 127.0.0.1
+      config:
+        server-addr: 127.0.0.1:8848
+        namespace: public
+        file-extension: yml
+        import-check:
+          enabled: false
+
+
+
+# sa-token 配置
+sa-token:
+  token-name: Authorization
+  token-prefix: Bearer
+  timeout: 2592000
+  active-timeout: -1
+  is-concurrent: true
+  is-share: true
+  token-style: uuid
+  is-log: true
+  is-read-header: true
+  is-read-cookie: false

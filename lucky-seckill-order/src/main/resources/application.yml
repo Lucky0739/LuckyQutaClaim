@@ -17,6 +17,21 @@ spring:
         file-extension: yml
         import-check:
           enabled: false
+  datasource:
+    hikari:
+      connection-timeout: 30000
+      read-timeout: 30000
+
+feign:
+  client:
+    config:
+      default:
+        connectTimeout: 10000
+        readTimeout: 30000
+  httpclient:
+    enabled: true
+  circuitbreaker:
+    enabled: false
 
 server:
   port: 8083

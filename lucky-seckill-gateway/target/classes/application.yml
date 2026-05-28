@@ -1,0 +1,103 @@
+spring:
+  application:
+    name: lucky-seckill-gateway
+  profiles:
+    active: dev
+  cloud:
+    nacos:
+      discovery:
+        server-addr: 127.0.0.1:8848
+        namespace: public
+      config:
+        server-addr: 127.0.0.1:8848
+        namespace: public
+        file-extension: yml
+        import-check:
+          enabled: false
+    gateway:
+      discovery:
+        locator:
+          enabled: true
+          lower-case-service-id: true
+      routes:
+        # 兼容旧路径：/user/user/** → 重写为 /user/**
+        - id: user-legacy
+          uri: lb://lucky-seckill-user
+          predicates:
+            - Path=/user/user/**
+          filters:
+            - RewritePath=/user/user/(?<remaining>.*), /user/$\{remaining}
+        # 推荐路径：/user/login、/user/code/send
+        - id: user-service
+          uri: lb://lucky-seckill-user
+          predicates:
+            - Path=/user/**
+        # 验证码路径
+        - id: captcha
+          uri: lb://lucky-seckill-user
+          predicates:
+            - Path=/captcha/**
+          # 商店模块路径
+        - id: shop-service
+          uri: lb://lucky-seckill-shop
+          predicates:
+            - Path=/shop/**
+          # 消息模块路径
+        - id: notify-service
+          uri: lb://lucky-seckill-notify
+          predicates:
+            - Path=/notify/**
+          # 商品模块路径
+        - id: goods-service
+          uri: lb://lucky-seckill-goods
+          predicates:
+            - Path=/goods/**
+          # 商品分类路径(可选)
+        - id: goods-category
+          uri: lb://lucky-seckill-goods
+          predicates:
+            - Path=/category/**
+          # 购物车模块路径
+        - id: cart-service
+          uri: lb://lucky-seckill-cart
+          predicates:
+            - Path=/cart/**
+          # 通用模块路径（背景图等）
+        - id: common-service
+          uri: lb://lucky-seckill-common
+          predicates:
+            - Path=/banner/**
+          # 订单模块路径
+        - id: order-service
+          uri: lb://lucky-seckill-order
+          predicates:
+            - Path=/order/**
+          # 支付模块路径
+        - id: pay-service
+          uri: lb://lucky-seckill-pay
+          predicates:
+            - Path=/pay/**
+
+server:
+  port: 8888
+
+############## Sa-Token 配置 ##############
+sa-token:
+  # token 名称（同时也是 cookie 名称）
+  token-name: Authorization
+  # token 前缀（前端提交 Token 时需要带上此前缀）
+  token-prefix: Bearer
+  # token 有效期（单位：秒） 默认30天，-1 代表永久有效
+  timeout: 2592000
+  # token 最低活跃频率（单位：秒），如果 token 超过此时间没有访问系统就会被冻结，默认-1 代表不限制，永不冻结
+  active-timeout: -1
+  # 是否允许同一账号多地同时登录 （为 true 时允许一起登录, 为 false 时新登录挤掉旧登录）
+  is-concurrent: true
+  # 在多人登录同一账号时，是否共用一个 token （为 true 时所有登录共用一个 token, 为 false 时每次登录新建一个 token）
+  is-share: true
+  # token 风格（默认可取值：uuid、simple-uuid、random-32、random-64、random-128、tik）
+  token-style: uuid
+  # 是否输出操作日志
+  is-log: true
+
+

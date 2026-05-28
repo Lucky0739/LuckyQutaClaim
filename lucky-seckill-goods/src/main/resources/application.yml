@@ -38,4 +38,12 @@ rocketmq:
     retry-times-when-send-async-failed: 2
 
 sa-token:
-  ignore-paths: /user/login,/user/register,/user/send-verify-code
+  ignore-paths:
+    - /user/login
+    - /user/register
+    - /user/send-verify-code
+    - /goods/get/**
+    - /goods/detail/**
+    - /goods/sku/**
+    - /goods/page
+    - /goods/sku/images/**
