@@ -560,6 +560,26 @@ public class GoodsServiceImpl implements GoodsService {
             log.info("==> 清除商品分页缓存，共{}个key", keys.size());
         }
     }
+    @Override
+    public Response<Goods> getGoodsById(Long goodsId) {
+        log.info("==> getGoodsById 开始查询，goodsId: {}", goodsId);
+        if (goodsId == null) {
+            log.warn("==> 商品ID为空");
+            throw new BizException(ResponseCodeEnum.PARAM_NOT_VALID, "商品ID不能为空");
+        }
+        Goods goods = goodsMapper.selectByPrimaryKey(goodsId);
+        log.info("==> 数据库查询结果: goods = {}", goods);
+        if (goods != null) {
+            log.info("==> 商品详情: id={}, goodsName={}, isDelete={}, status={}", 
+                    goods.getId(), goods.getGoodsName(), goods.getIsDelete(), goods.getStatus());
+        }
+        if (goods == null) {
+            log.warn("==> 商品不存在，数据库查询返回null，goodsId: {}", goodsId);
+            throw new BizException(ResponseCodeEnum.PARAM_NOT_VALID, "商品不存在");
+        }
+        log.info("==> 查询商品信息成功, goodsId: {}, goodsName: {}", goodsId, goods.getGoodsName());
+        return Response.success(goods);
+    }
 
     @Override
     public Response<GoodsSku> getSkuById(Long skuId) {
@@ -631,4 +651,5 @@ public class GoodsServiceImpl implements GoodsService {
         log.info("==> 释放库存成功，skuId: {}, 释放数量: {}", skuId, stockNum);
         return Response.success(true);
     }
+
 }

@@ -7,6 +7,7 @@ import com.lucky.seckill.goods.model.dto.AddGoodsRequest;
 import com.lucky.seckill.goods.model.dto.GoodsAuditRequest;
 import com.lucky.seckill.goods.model.dto.GoodsQueryRequest;
 import com.lucky.seckill.goods.model.dto.GoodsSkuRequest;
+import com.lucky.seckill.goods.model.entity.Goods;
 import com.lucky.seckill.goods.model.entity.GoodsSku;
 import com.lucky.seckill.goods.model.vo.GoodsDetailVO;
 import com.lucky.seckill.goods.model.vo.GoodsListVO;
@@ -73,6 +74,13 @@ public interface GoodsService {
     Response<Void> offShelf(Long goodsId);
 
     /**
+     * 根据商品ID查询商品信息
+     * @param goodsId 商品ID
+     * @return 商品信息
+     */
+    Response<Goods> getGoodsById(Long goodsId);
+
+    /**
      * 根据SKU ID查询SKU信息
      * @param skuId SKU ID
      * @return
@@ -82,10 +90,10 @@ public interface GoodsService {
     /**
      * 预占库存（创建订单时调用，使用行锁防止超卖）
      * @param skuId SKU ID
-     * @param stockNum 预占数量
+     * @param buyGoodsNum 预占数量
      * @return true=预占成功，false=库存不足
      */
-    Response<Boolean> lockStock(Long skuId, Integer stockNum);
+    Response<Boolean> lockStock(Long skuId, Integer buyGoodsNum);
 
 
     /**

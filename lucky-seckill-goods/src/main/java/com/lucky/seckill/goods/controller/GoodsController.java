@@ -10,6 +10,7 @@ import com.lucky.seckill.common.model.file.UploadPictureResult;
 import com.lucky.seckill.common.utils.Response;
 import com.lucky.seckill.goods.model.dto.AddGoodsRequest;
 import com.lucky.seckill.goods.model.dto.GoodsQueryRequest;
+import com.lucky.seckill.goods.model.entity.Goods;
 import com.lucky.seckill.goods.model.entity.GoodsSku;
 import com.lucky.seckill.goods.model.vo.GoodsDetailVO;
 import com.lucky.seckill.goods.model.vo.GoodsListVO;
@@ -62,6 +63,18 @@ public class GoodsController {
         }
         log.info("==> 上传商品图片请求");
         return goodsService.uploadGoodsImg(file);
+    }
+
+    /**
+     * 根据商品ID查询商品信息
+     * @param id 商品ID
+     * @return 商品信息
+     */
+    @GetMapping("/get/{id}")
+    @ApiOperationLog(description = "查询商品信息")
+    public Response<Goods> getGoodsById(@PathVariable("id") Long id) {
+        log.info("==> 查询商品信息请求, id: {}", id);
+        return goodsService.getGoodsById(id);
     }
 
     /**
@@ -164,5 +177,7 @@ public class GoodsController {
         log.info("==> 释放库存请求, skuId: {}, stockNum: {}", skuId, stockNum);
         return goodsService.releaseStock(skuId, stockNum);
     }
+
+
 
 }
