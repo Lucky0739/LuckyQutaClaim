@@ -1,8 +1,8 @@
 package com.lucky.seckill.notify.service;
 
 
-import com.lucky.seckill.common.model.entity.Notify;
 import com.lucky.seckill.common.model.entity.PageResult;
+import com.lucky.seckill.notify.model.entity.Notify;
 
 public interface NotifyService {
 

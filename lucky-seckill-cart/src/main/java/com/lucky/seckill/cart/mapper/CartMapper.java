@@ -16,7 +16,6 @@ public interface CartMapper {
 
     List<CartVO> selectCartVOListByUserId(@Param("userId") Long userId);
 
-
     int updateGoodsCountByUserIdAndSkuId(@Param("userId") Long userId,
                                          @Param("skuId") Long skuId, @Param("goodsCount") Integer goodsCount);
 

@@ -5,10 +5,7 @@ import com.lucky.seckill.pay.model.vo.PayResultVO;
 import com.lucky.seckill.pay.service.PayOrderService;
 import jakarta.annotation.Resource;
 import lombok.extern.slf4j.Slf4j;
-import org.springframework.web.bind.annotation.PostMapping;
-import org.springframework.web.bind.annotation.RequestMapping;
-import org.springframework.web.bind.annotation.RequestParam;
-import org.springframework.web.bind.annotation.RestController;
+import org.springframework.web.bind.annotation.*;
 
 @RestController
 @RequestMapping("/pay")
@@ -18,6 +15,16 @@ public class PayOrderController {
     @Resource
     private PayOrderService payOrderService;
 
+    /**
+     * 创建沙箱支付链接（跳转到支付宝沙箱支付页面）
+     * @param orderNo 订单号
+     * @return 支付页面HTML内容
+     */
+    @PostMapping("/sandbox")
+    public Response<PayResultVO> createSandboxPay(@RequestParam("orderNo") String orderNo) {
+        log.info("==> 收到创建沙箱支付请求, orderNo: {}", orderNo);
+        return payOrderService.createSandboxPay(orderNo);
+    }
 
     /**
      * 查询支付状态

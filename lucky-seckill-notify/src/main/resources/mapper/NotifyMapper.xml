@@ -2,7 +2,7 @@
 <!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
 <!--suppress ALL -->
 <mapper namespace="com.lucky.seckill.notify.mapper.NotifyMapper">
-  <resultMap id="BaseResultMap" type="com.lucky.seckill.common.model.entity.Notify">
+  <resultMap id="BaseResultMap" type="com.lucky.seckill.notify.model.entity.Notify">
     <id column="id" jdbcType="BIGINT" property="id" />
     <result column="send_user_id" jdbcType="BIGINT" property="sendUserId" />
     <result column="receive_user_id" jdbcType="BIGINT" property="receiveUserId" />
@@ -56,7 +56,7 @@
     where id = #{id,jdbcType=BIGINT}
   </update>
 
-  <insert id="insert" parameterType="com.lucky.seckill.common.model.entity.Notify">
+  <insert id="insert" parameterType="com.lucky.seckill.notify.model.entity.Notify">
     insert into t_notify (id, send_user_id, receive_user_id, title, content,
     notify_type, business_id, sub_type, is_read, read_time, create_time, update_time, isDelete)
     values (#{id,jdbcType=BIGINT}, #{sendUserId,jdbcType=BIGINT}, #{receiveUserId,jdbcType=BIGINT},
@@ -65,7 +65,7 @@
     #{createTime,jdbcType=TIMESTAMP}, #{updateTime,jdbcType=TIMESTAMP}, #{isDelete,jdbcType=INTEGER})
   </insert>
 
-  <insert id="insertSelective" parameterType="com.lucky.seckill.common.model.entity.Notify">
+  <insert id="insertSelective" parameterType="com.lucky.seckill.notify.model.entity.Notify">
     insert into t_notify
     <trim prefix="(" suffix=")" suffixOverrides=",">
       <if test="id != null">id,</if>
@@ -101,7 +101,7 @@
 
 
 
-  <update id="updateByPrimaryKeySelective" parameterType="com.lucky.seckill.common.model.entity.Notify">
+  <update id="updateByPrimaryKeySelective" parameterType="com.lucky.seckill.notify.model.entity.Notify">
     update t_notify
     <set>
       <if test="sendUserId != null">send_user_id = #{sendUserId,jdbcType=BIGINT},</if>
@@ -120,7 +120,7 @@
     where id = #{id,jdbcType=BIGINT}
   </update>
 
-  <update id="updateByPrimaryKey" parameterType="com.lucky.seckill.common.model.entity.Notify">
+  <update id="updateByPrimaryKey" parameterType="com.lucky.seckill.notify.model.entity.Notify">
     update t_notify
     set send_user_id = #{sendUserId,jdbcType=BIGINT},
     receive_user_id = #{receiveUserId,jdbcType=BIGINT},

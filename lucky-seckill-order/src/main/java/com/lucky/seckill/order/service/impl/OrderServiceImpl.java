@@ -2,17 +2,22 @@ package com.lucky.seckill.order.service.impl;
 
 import cn.dev33.satoken.stp.StpUtil;
 import cn.hutool.core.util.IdUtil;
+import com.github.pagehelper.PageHelper;
+import com.github.pagehelper.PageInfo;
 import com.lucky.seckill.common.enums.ResponseCodeEnum;
 import com.lucky.seckill.common.exception.BizException;
+import com.lucky.seckill.common.model.entity.PageResult;
 import com.lucky.seckill.common.utils.Response;
 import com.lucky.seckill.goods.feign.GoodsFeignClient;
 import com.lucky.seckill.goods.model.entity.Goods;
 import com.lucky.seckill.goods.model.entity.GoodsSku;
+import com.lucky.seckill.order.enums.OrderStatusEnum;
 import com.lucky.seckill.order.mapper.OrderMapper;
 import com.lucky.seckill.order.model.dto.AddOrderRequest;
+import com.lucky.seckill.order.model.dto.OrderQueryRequest;
 import com.lucky.seckill.order.model.entity.Order;
+import com.lucky.seckill.order.model.vo.OrderVO;
 import com.lucky.seckill.order.service.OrderService;
-import com.fasterxml.jackson.core.type.TypeReference;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import jakarta.annotation.Resource;
 import lombok.extern.slf4j.Slf4j;
@@ -21,7 +26,8 @@ import org.springframework.transaction.annotation.Transactional;
 
 import java.math.BigDecimal;
 import java.time.LocalDateTime;
-import java.util.Map;
+import java.util.List;
+import java.util.stream.Collectors;
 
 @Service
 @Slf4j
@@ -29,21 +35,13 @@ public class OrderServiceImpl implements OrderService {
 
     @Resource
     private OrderMapper orderMapper;
-
     @Resource
     private GoodsFeignClient goodsFeignClient;
-
     @Resource
     private ObjectMapper objectMapper;
-
     /**
-     * 订单状态枚举
+     * 创建订单（下单）
      */
-    public static final int ORDER_STATUS_PENDING_PAYMENT = 0;   // 待支付
-    public static final int ORDER_STATUS_PAID = 1;              // 已支付
-    public static final int ORDER_STATUS_CANCELLED = 2;         // 已取消
-    public static final int ORDER_STATUS_EXPIRED = 3;           // 已过期
-
     @Override
     @Transactional(rollbackFor = Exception.class)
     public Response<Long> addOrder(AddOrderRequest addOrderRequest) {
@@ -57,12 +55,8 @@ public class OrderServiceImpl implements OrderService {
             throw new BizException(ResponseCodeEnum.PARAM_NOT_VALID, "商品数量必须大于0");
         }
 
-        // 获取登录用户id
         Long userId = StpUtil.getLoginIdAsLong();
-
-        // 获取商品规格id
         Long skuId = addOrderRequest.getSkuId();
-        // 购买商品数量
         Integer goodsNum = addOrderRequest.getBuyGoodsNum();
 
         // 查询商品信息
@@ -101,23 +95,19 @@ public class OrderServiceImpl implements OrderService {
             throw new BizException(ResponseCodeEnum.PARAM_NOT_VALID, "商品规格不存在");
         }
 
-        // 1. 预占库存（使用行锁防止超卖）
+        // 预占库存
         Response<Boolean> lockResult = goodsFeignClient.lockStock(skuId, goodsNum);
         if (lockResult == null || !lockResult.isSuccess() || lockResult.getData() == null || !lockResult.getData()) {
-            log.warn("==> 预占库存失败，库存不足，skuId: {}, goodsNum: {}", skuId, goodsNum);
+            log.warn("==> 预占库存失败，库存不足");
             throw new BizException(ResponseCodeEnum.STOCK_NOT_ENOUGH, "库存不足，下单失败");
         }
 
-        // 2. 订单id经过雪花算法处理
+        // 创建订单
         long orderId = IdUtil.getSnowflakeNextId();
-        // 订单号
         String orderNo = generateOrderNo(userId);
-        // 商品总价（使用SKU的售价）
         BigDecimal totalAmount = goodsSku.getSalePrice().multiply(BigDecimal.valueOf(goodsNum));
-        // 订单过期时间
         LocalDateTime expireTime = LocalDateTime.now().plusMinutes(30);
 
-        // 3. 创建订单（状态为待支付）
         Order order = Order.builder()
                 .id(orderId)
                 .userId(userId)
@@ -125,11 +115,11 @@ public class OrderServiceImpl implements OrderService {
                 .skuId(skuId)
                 .orderNo(orderNo)
                 .goodsPrice(goodsSku.getSalePrice())
-                .buygoodsNum(goodsNum)
+                .buyGoodsNum(goodsNum)
                 .totalAmount(totalAmount)
                 .goodsName(goods.getGoodsName())
                 .goodsImg(goods.getGoodsImg())
-                .status(ORDER_STATUS_PENDING_PAYMENT)
+                .status(OrderStatusEnum.PENDING_PAYMENT.getCode())
                 .expireTime(expireTime)
                 .isDelete(0)
                 .createTime(LocalDateTime.now())
@@ -138,72 +128,12 @@ public class OrderServiceImpl implements OrderService {
 
         orderMapper.insertSelective(order);
 
-        log.info("==> 创建订单成功（已预占库存），orderId: {}, orderNo: {}, skuId: {}, goodsNum: {}",
-                orderId, orderNo, skuId, goodsNum);
+        log.info("==> 创建订单成功，orderId: {}, orderNo: {}", orderId, orderNo);
         return Response.success(orderId);
     }
 
     /**
-     * 支付成功回调
-     * @param orderNo 订单号
-     * @return true=处理成功
-     */
-    @Override
-    @Transactional(rollbackFor = Exception.class)
-    public Response<Boolean> paySuccess(String orderNo) {
-        if (orderNo == null || orderNo.isEmpty()) {
-            throw new BizException(ResponseCodeEnum.PARAM_NOT_VALID, "订单号不能为空");
-        }
-
-        // 1. 查询订单
-        Order order = orderMapper.selectByOrderNo(orderNo);
-        if (order == null) {
-            throw new BizException(ResponseCodeEnum.PARAM_NOT_VALID, "订单不存在");
-        }
-
-        // 2. 校验订单状态
-        if (order.getStatus() != ORDER_STATUS_PENDING_PAYMENT) {
-            log.warn("==> 订单状态不是待支付，无法处理支付回调，orderNo: {}, status: {}", orderNo, order.getStatus());
-            throw new BizException(ResponseCodeEnum.ORDER_STATUS_ERROR, "订单状态异常");
-        }
-
-        // 3. 检查订单是否已过期
-        if (order.getExpireTime() != null && LocalDateTime.now().isAfter(order.getExpireTime())) {
-            log.warn("==> 订单已过期，orderNo: {}, expireTime: {}", orderNo, order.getExpireTime());
-            // 释放预占的库存
-            goodsFeignClient.releaseStock(order.getSkuId(), order.getBuygoodsNum());
-            // 更新订单状态为已过期
-            orderMapper.updateStatusByOrderNo(orderNo, ORDER_STATUS_EXPIRED);
-            throw new BizException(ResponseCodeEnum.ORDER_EXPIRED, "订单已过期");
-        }
-
-        // 4. 真正扣减库存（此时预占的库存被正式扣减，salesNum增加）
-        Response<Boolean> deductResult = goodsFeignClient.deductStock(order.getSkuId(), order.getBuygoodsNum());
-        if (deductResult == null || !deductResult.isSuccess() || deductResult.getData() == null || !deductResult.getData()) {
-            log.error("==> 扣减库存失败，orderNo: {}, skuId: {}, goodsNum: {}",
-                    orderNo, order.getSkuId(), order.getBuygoodsNum());
-            throw new BizException(ResponseCodeEnum.STOCK_NOT_ENOUGH, "扣减库存失败");
-        }
-
-        // 5. 更新订单状态为已支付
-        Order updateOrder = Order.builder()
-                .id(order.getId())
-                .orderNo(orderNo)
-                .status(ORDER_STATUS_PAID)
-                .payTime(LocalDateTime.now())
-                .updateTime(LocalDateTime.now())
-                .build();
-        orderMapper.updateByPrimaryKeySelective(updateOrder);
-
-        log.info("==> 支付成功，订单已完成，orderNo: {}, skuId: {}, goodsNum: {}",
-                orderNo, order.getSkuId(), order.getBuygoodsNum());
-        return Response.success(true);
-    }
-
-    /**
-     * 取消订单（释放预占的库存）
-     * @param orderNo 订单号
-     * @return true=处理成功
+     * 取消订单
      */
     @Override
     @Transactional(rollbackFor = Exception.class)
@@ -212,34 +142,31 @@ public class OrderServiceImpl implements OrderService {
             throw new BizException(ResponseCodeEnum.PARAM_NOT_VALID, "订单号不能为空");
         }
 
-        // 1. 查询订单
         Order order = orderMapper.selectByOrderNo(orderNo);
         if (order == null) {
             throw new BizException(ResponseCodeEnum.PARAM_NOT_VALID, "订单不存在");
         }
 
-        // 2. 校验订单状态（只能取消待支付的订单）
-        if (order.getStatus() != ORDER_STATUS_PENDING_PAYMENT) {
-            log.warn("==> 订单状态不是待支付，无法取消，orderNo: {}, status: {}", orderNo, order.getStatus());
+        if (order.getStatus() != OrderStatusEnum.PENDING_PAYMENT.getCode()) {
+            log.warn("==> 订单状态不是待支付，无法取消，orderNo: {}", orderNo);
             throw new BizException(ResponseCodeEnum.ORDER_STATUS_ERROR, "订单状态异常，无法取消");
         }
 
-        // 3. 释放预占的库存
-        if (order.getSkuId() != null && order.getBuygoodsNum() != null && order.getBuygoodsNum() > 0) {
-            Response<Boolean> releaseResult = goodsFeignClient.releaseStock(order.getSkuId(), order.getBuygoodsNum());
-            if (releaseResult == null || !releaseResult.isSuccess()) {
-                log.error("==> 释放库存失败，orderNo: {}, skuId: {}, goodsNum: {}",
-                        orderNo, order.getSkuId(), order.getBuygoodsNum());
-            }
+        if (order.getSkuId() != null && order.getBuyGoodsNum() != null && order.getBuyGoodsNum() > 0) {
+            goodsFeignClient.releaseStock(order.getSkuId(), order.getBuyGoodsNum());
         }
 
-        // 4. 更新订单状态为已取消
-        orderMapper.updateStatusByOrderNo(orderNo, ORDER_STATUS_CANCELLED);
+        orderMapper.updateStatusByOrderNo(orderNo, OrderStatusEnum.CANCELLED.getCode());
 
         log.info("==> 订单已取消，orderNo: {}", orderNo);
         return Response.success(true);
     }
 
+    /**
+     * 查询订单信息
+     * @param orderNo 订单号
+     * @return
+     */
     @Override
     public Response<Order> getOrderByOrderNo(String orderNo) {
         if (orderNo == null || orderNo.isEmpty()) {
@@ -252,6 +179,12 @@ public class OrderServiceImpl implements OrderService {
         }
 
         return Response.success(order);
+    }
+
+    @Override
+    public Response<OrderVO> getOrderVOByOrderNo(String orderNo) {
+        Order order = getOrderByOrderNo(orderNo).getData();
+        return Response.success(OrderVO.fromEntity(order));
     }
 
     @Override
@@ -277,6 +210,95 @@ public class OrderServiceImpl implements OrderService {
 
         log.warn("==> 更新订单状态失败，orderNo: {}, status: {}", orderNo, status);
         return Response.success(false);
+    }
+
+    @Override
+    public Response<PageResult<OrderVO>> getOrderList(OrderQueryRequest request) {
+        if (request == null) {
+            request = new OrderQueryRequest();
+        }
+        if (request.getPageNum() == null || request.getPageNum() < 1) {
+            request.setPageNum(1);
+        }
+        if (request.getPageSize() == null || request.getPageSize() < 1) {
+            request.setPageSize(10);
+        }
+
+        Long userId = StpUtil.getLoginIdAsLong();
+
+        PageHelper.startPage(request.getPageNum(), request.getPageSize());
+        List<Order> orderList = orderMapper.selectOrdersByUserId(userId, request.getStatus(), request.getGoodsName());
+        PageInfo<Order> pageInfo = new PageInfo<>(orderList);
+
+        List<OrderVO> voList = orderList.stream()
+                .map(OrderVO::fromEntity)
+                .collect(Collectors.toList());
+
+        PageResult<OrderVO> result = PageResult.<OrderVO>builder()
+                .records(voList)
+                .pageNum(pageInfo.getPageNum())
+                .pageSize(pageInfo.getPageSize())
+                .total(pageInfo.getTotal())
+                .totalPages(pageInfo.getPages())
+                .build();
+
+        return Response.success(result);
+    }
+
+    @Override
+    public Response<Order> getOrderById(Long orderId) {
+        if (orderId == null) {
+            throw new BizException(ResponseCodeEnum.PARAM_NOT_VALID, "订单ID不能为空");
+        }
+
+        Order order = orderMapper.selectByPrimaryKey(orderId);
+        if (order == null) {
+            throw new BizException(ResponseCodeEnum.PARAM_NOT_VALID, "订单不存在");
+        }
+
+        return Response.success(order);
+    }
+
+    @Override
+    public Response<List<Order>> getOrdersByIds(List<Long> orderIds) {
+        if (orderIds == null || orderIds.isEmpty()) {
+            throw new BizException(ResponseCodeEnum.PARAM_NOT_VALID, "订单ID列表不能为空");
+        }
+
+        List<Order> orders = orderMapper.selectByIds(orderIds);
+        return Response.success(orders);
+    }
+
+    @Override
+    @Transactional(rollbackFor = Exception.class)
+    public Response<Boolean> closeExpiredOrder(String orderNo) {
+        if (orderNo == null || orderNo.isEmpty()) {
+            throw new BizException(ResponseCodeEnum.PARAM_NOT_VALID, "订单号不能为空");
+        }
+
+        Order order = orderMapper.selectByOrderNo(orderNo);
+        if (order == null) {
+            throw new BizException(ResponseCodeEnum.PARAM_NOT_VALID, "订单不存在");
+        }
+
+        if (order.getStatus() != OrderStatusEnum.PENDING_PAYMENT.getCode()) {
+            log.warn("==> 订单状态不是待支付，无需关闭，orderNo: {}", orderNo);
+            return Response.success(true);
+        }
+
+        if (order.getExpireTime() == null || LocalDateTime.now().isBefore(order.getExpireTime())) {
+            log.warn("==> 订单尚未过期，orderNo: {}", orderNo);
+            return Response.success(true);
+        }
+
+        if (order.getSkuId() != null && order.getBuyGoodsNum() != null && order.getBuyGoodsNum() > 0) {
+            goodsFeignClient.releaseStock(order.getSkuId(), order.getBuyGoodsNum());
+        }
+
+        orderMapper.updateStatusByOrderNo(orderNo, OrderStatusEnum.EXPIRED.getCode());
+
+        log.info("==> 过期订单已关闭，orderNo: {}", orderNo);
+        return Response.success(true);
     }
 
     private String generateOrderNo(Long userId) {

@@ -58,8 +58,14 @@
         <dependency>
             <groupId>org.springframework.cloud</groupId>
             <artifactId>spring-cloud-starter-openfeign</artifactId>
+            <!-- 排除默认的 Logback 日志框架 -->
+            <exclusions>
+                <exclusion>
+                    <groupId>org.springframework.boot</groupId>
+                    <artifactId>spring-boot-starter-logging</artifactId>
+                </exclusion>
+            </exclusions>
         </dependency>
-
         <!-- Log4j2 日志框架 -->
         <dependency>
             <groupId>org.springframework.boot</groupId>
@@ -90,10 +96,18 @@
             <artifactId>lombok</artifactId>
             <scope>provided</scope>
         </dependency>
+
         <dependency>
             <groupId>com.luckySeckill</groupId>
             <artifactId>lucky-seckill-goods</artifactId>
+            <version>${revision}</version>
+        </dependency>
+
+        <!-- 消息模块依赖 -->
+        <dependency>
+            <groupId>com.luckySeckill</groupId>
+            <artifactId>lucky-seckill-notify</artifactId>
+            <version>${revision}</version>
         </dependency>
     </dependencies>
 </project>
-

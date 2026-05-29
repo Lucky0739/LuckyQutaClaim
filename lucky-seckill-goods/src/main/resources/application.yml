@@ -22,7 +22,6 @@ server:
   port: 8082
   forward-headers-strategy: framework
 
-
 management:
   endpoints:
     web:
@@ -38,4 +37,4 @@ rocketmq:
     retry-times-when-send-async-failed: 2
 
 sa-token:
-  ignore-paths: /user/login,/user/register,/user/send-verify-code
+  ignore-paths: /user/login,/user/register,/user/send-verify-code,/goods/sku/lockStock,/goods/sku/deductStock,/goods/sku/releaseStock

@@ -104,4 +104,12 @@ public interface GoodsService {
      */
     Response<Boolean> releaseStock(Long skuId, Integer stockNum);
 
+    /**
+     * 扣减库存（支付成功后调用，只增加已售数量）
+     * @param skuId SKU ID
+     * @param stockNum 扣减数量
+     * @return true=扣减成功
+     */
+    Response<Boolean> deductStock(Long skuId, Integer stockNum);
+
 }

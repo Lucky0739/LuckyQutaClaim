@@ -178,6 +178,18 @@ public class GoodsController {
         return goodsService.releaseStock(skuId, stockNum);
     }
 
+    /**
+     * 扣减库存（支付成功后调用，只增加已售数量）
+     * @param skuId SKU ID
+     * @param stockNum 扣减数量
+     * @return true=扣减成功
+     */
+    @PostMapping("/sku/deductStock")
+    @ApiOperationLog(description = "扣减库存")
+    public Response<Boolean> deductStock(@RequestParam Long skuId, @RequestParam Integer stockNum) {
+        log.info("==> 扣减库存请求, skuId: {}, stockNum: {}", skuId, stockNum);
+        return goodsService.deductStock(skuId, stockNum);
+    }
 
 
 }

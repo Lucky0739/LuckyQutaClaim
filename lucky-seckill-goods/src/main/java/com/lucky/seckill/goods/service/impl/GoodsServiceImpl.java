@@ -10,7 +10,6 @@ import com.lucky.seckill.common.exception.BizException;
 import com.lucky.seckill.common.manager.upload.FilePictureUpload;
 import com.lucky.seckill.common.model.entity.PageResult;
 import com.lucky.seckill.common.model.file.UploadPictureResult;
-import com.lucky.seckill.common.model.entity.Notify;
 import com.lucky.seckill.common.utils.Response;
 import com.lucky.seckill.goods.mapper.GoodsDetailMapper;
 import com.lucky.seckill.goods.mapper.GoodsImgMapper;
@@ -30,6 +29,7 @@ import com.lucky.seckill.goods.model.vo.SkuImgVO;
 import com.lucky.seckill.goods.model.vo.SkuInfoVO;
 import com.lucky.seckill.goods.service.GoodsService;
 import com.lucky.seckill.notify.feign.NotifyFeignClient;
+import com.lucky.seckill.notify.model.entity.Notify;
 import jakarta.annotation.Resource;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.commons.codec.digest.DigestUtils;
@@ -649,6 +649,31 @@ public class GoodsServiceImpl implements GoodsService {
         }
 
         log.info("==> 释放库存成功，skuId: {}, 释放数量: {}", skuId, stockNum);
+        return Response.success(true);
+    }
+
+    @Override
+    @Transactional(rollbackFor = Exception.class)
+    public Response<Boolean> deductStock(Long skuId, Integer stockNum) {
+        if (skuId == null) {
+            throw new BizException(ResponseCodeEnum.PARAM_NOT_VALID, "SKU ID不能为空");
+        }
+        if (stockNum == null || stockNum <= 0) {
+            throw new BizException(ResponseCodeEnum.PARAM_NOT_VALID, "扣减数量必须大于0");
+        }
+
+        GoodsSku sku = goodsSkuMapper.selectById(skuId);
+        if (sku == null) {
+            throw new BizException(ResponseCodeEnum.PARAM_NOT_VALID, "SKU不存在");
+        }
+
+        int rows = goodsSkuMapper.deductStock(skuId, stockNum);
+        if (rows == 0) {
+            log.error("==> 扣减库存失败，skuId: {}", skuId);
+            return Response.success(false);
+        }
+
+        log.info("==> 扣减库存成功，skuId: {}, 扣减数量: {}", skuId, stockNum);
         return Response.success(true);
     }
 

@@ -2,10 +2,10 @@ package com.lucky.seckill.shop.mq;
 
 import cn.hutool.core.util.IdUtil;
 import com.lucky.seckill.common.model.entity.MerchantApplyMessage;
-import com.lucky.seckill.common.model.entity.Notify;
 import com.lucky.seckill.notify.feign.NotifyFeignClient;
 import com.lucky.seckill.common.mq.MqConstants;
 import com.lucky.seckill.common.utils.Response;
+import com.lucky.seckill.notify.model.entity.Notify;
 import jakarta.annotation.Resource;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.rocketmq.spring.annotation.RocketMQMessageListener;

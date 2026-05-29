@@ -56,7 +56,7 @@
     <spring-cloud.version>2023.0.3</spring-cloud.version>
     <spring-boot.version>3.3.5</spring-boot.version>
     <springdoc.version>2.6.0</springdoc.version>
-    <lombok.version>1.18.34</lombok.version>
+    <lombok.version>1.18.32</lombok.version>
     <disruptor.version>3.4.4</disruptor.version>
     <!-- SaToken 版本 -->
     <sa-token.version>1.45.0</sa-token.version>

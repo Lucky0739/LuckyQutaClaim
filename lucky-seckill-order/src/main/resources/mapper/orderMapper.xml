@@ -7,12 +7,11 @@
         <result column="goods_id" property="goodsId" jdbcType="BIGINT"/>
         <result column="order_no" property="orderNo" jdbcType="VARCHAR"/>
         <result column="goods_price" property="goodsPrice" jdbcType="DECIMAL"/>
-        <result column="goods_num" property="goodsNum" jdbcType="INTEGER"/>
+        <result column="buyGoods_num" property="buyGoodsNum" jdbcType="INTEGER"/>
         <result column="total_amount" property="totalAmount" jdbcType="DECIMAL"/>
         <result column="goods_name" property="goodsName" jdbcType="VARCHAR"/>
         <result column="goods_img" property="goodsImg" jdbcType="VARCHAR"/>
         <result column="sku_id" property="skuId" jdbcType="BIGINT"/>
-        <result column="lock_stock_num" property="lockStockNum" jdbcType="INTEGER"/>
         <result column="status" property="status" jdbcType="TINYINT"/>
         <result column="pay_time" property="payTime" jdbcType="TIMESTAMP"/>
         <result column="delivery_time" property="deliveryTime" jdbcType="TIMESTAMP"/>
@@ -24,8 +23,8 @@
     </resultMap>
 
     <sql id="Base_Column_List">
-        id, user_id, goods_id, order_no, goods_price, goods_num, total_amount,
-        goods_name, goods_img, sku_id, lock_stock_num, status, pay_time, delivery_time, receive_time,
+        id, user_id, goods_id, order_no, goods_price, buyGoods_num, total_amount,
+        goods_name, goods_img, sku_id, status, pay_time, delivery_time, receive_time,
         expire_time, isDelete, create_time, update_time
     </sql>
 
@@ -37,12 +36,11 @@
             <if test="goodsId != null">goods_id,</if>
             <if test="orderNo != null">order_no,</if>
             <if test="goodsPrice != null">goods_price,</if>
-            <if test="goodsNum != null">goods_num,</if>
+            <if test="buyGoodsNum != null">buyGoods_num,</if>
             <if test="totalAmount != null">total_amount,</if>
             <if test="goodsName != null">goods_name,</if>
             <if test="goodsImg != null">goods_img,</if>
             <if test="skuId != null">sku_id,</if>
-            <if test="lockStockNum != null">lock_stock_num,</if>
             <if test="status != null">status,</if>
             <if test="payTime != null">pay_time,</if>
             <if test="deliveryTime != null">delivery_time,</if>
@@ -59,12 +57,11 @@
             <if test="goodsId != null">#{goodsId,jdbcType=BIGINT},</if>
             <if test="orderNo != null">#{orderNo,jdbcType=VARCHAR},</if>
             <if test="goodsPrice != null">#{goodsPrice,jdbcType=DECIMAL},</if>
-            <if test="goodsNum != null">#{goodsNum,jdbcType=INTEGER},</if>
+            <if test="buyGoodsNum != null">#{buyGoodsNum,jdbcType=INTEGER},</if>
             <if test="totalAmount != null">#{totalAmount,jdbcType=DECIMAL},</if>
             <if test="goodsName != null">#{goodsName,jdbcType=VARCHAR},</if>
             <if test="goodsImg != null">#{goodsImg,jdbcType=VARCHAR},</if>
             <if test="skuId != null">#{skuId,jdbcType=BIGINT},</if>
-            <if test="lockStockNum != null">#{lockStockNum,jdbcType=INTEGER},</if>
             <if test="status != null">#{status,jdbcType=TINYINT},</if>
             <if test="payTime != null">#{payTime,jdbcType=TIMESTAMP},</if>
             <if test="deliveryTime != null">#{deliveryTime,jdbcType=TIMESTAMP},</if>
@@ -81,6 +78,7 @@
         <include refid="Base_Column_List"/>
         FROM t_order
         WHERE order_no = #{orderNo,jdbcType=VARCHAR}
+          AND isDelete = 0
     </select>
 
     <select id="selectByPrimaryKey" resultMap="BaseResultMap">
@@ -88,6 +86,33 @@
         <include refid="Base_Column_List"/>
         FROM t_order
         WHERE id = #{id,jdbcType=BIGINT}
+          AND isDelete = 0
+    </select>
+
+    <select id="selectOrdersByUserId" resultMap="BaseResultMap">
+        SELECT
+        <include refid="Base_Column_List"/>
+        FROM t_order
+        WHERE user_id = #{userId,jdbcType=BIGINT}
+          AND isDelete = 0
+        <if test="status != null">
+            AND status = #{status,jdbcType=TINYINT}
+        </if>
+        <if test="goodsName != null and goodsName != ''">
+            AND goods_name LIKE CONCAT('%', #{goodsName,jdbcType=VARCHAR}, '%')
+        </if>
+        ORDER BY create_time DESC
+    </select>
+
+    <select id="selectByIds" resultMap="BaseResultMap">
+        SELECT
+        <include refid="Base_Column_List"/>
+        FROM t_order
+        WHERE id IN
+        <foreach collection="ids" item="id" open="(" separator="," close=")">
+            #{id,jdbcType=BIGINT}
+        </foreach>
+          AND isDelete = 0
     </select>
 
     <update id="updateByPrimaryKeySelective" parameterType="com.lucky.seckill.order.model.entity.Order">
@@ -97,12 +122,11 @@
             <if test="goodsId != null">goods_id = #{goodsId,jdbcType=BIGINT},</if>
             <if test="orderNo != null">order_no = #{orderNo,jdbcType=VARCHAR},</if>
             <if test="goodsPrice != null">goods_price = #{goodsPrice,jdbcType=DECIMAL},</if>
-            <if test="goodsNum != null">goods_num = #{goodsNum,jdbcType=INTEGER},</if>
+            <if test="buyGoodsNum != null">buyGoods_num = #{buyGoodsNum,jdbcType=INTEGER},</if>
             <if test="totalAmount != null">total_amount = #{totalAmount,jdbcType=DECIMAL},</if>
             <if test="goodsName != null">goods_name = #{goodsName,jdbcType=VARCHAR},</if>
             <if test="goodsImg != null">goods_img = #{goodsImg,jdbcType=VARCHAR},</if>
             <if test="skuId != null">sku_id = #{skuId,jdbcType=BIGINT},</if>
-            <if test="lockStockNum != null">lock_stock_num = #{lockStockNum,jdbcType=INTEGER},</if>
             <if test="status != null">status = #{status,jdbcType=TINYINT},</if>
             <if test="payTime != null">pay_time = #{payTime,jdbcType=TIMESTAMP},</if>
             <if test="deliveryTime != null">delivery_time = #{deliveryTime,jdbcType=TIMESTAMP},</if>
@@ -119,5 +143,6 @@
         SET status = #{status},
             update_time = NOW()
         WHERE order_no = #{orderNo}
+          AND isDelete = 0
     </update>
 </mapper>

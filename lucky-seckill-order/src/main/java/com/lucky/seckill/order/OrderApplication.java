@@ -13,7 +13,6 @@ import org.springframework.context.annotation.ComponentScan;
 @ComponentScan({"com.lucky.seckill.order", "com.lucky.seckill.common"})
 @MapperScan("com.lucky.seckill.order.mapper")
 public class OrderApplication {
-
     public static void main(String[] args) {
         SpringApplication.run(OrderApplication.class, args);
     }

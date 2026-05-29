@@ -83,7 +83,7 @@
     <!-- 真正扣减库存：只增加已售数量，stock_num已在lockStock时扣减 -->
     <update id="deductStock">
         UPDATE t_goods_sku
-        SET sales_num = sales_num + #{buyGoodsNum},
+        SET sales_num = sales_num + #{stockNum},
             update_time = NOW()
         WHERE id = #{skuId}
           AND isDelete = 0

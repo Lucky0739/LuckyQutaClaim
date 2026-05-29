@@ -1,10 +1,9 @@
 package com.lucky.seckill.notify.controller;
 
-import cn.dev33.satoken.annotation.SaCheckRole;
-import com.lucky.seckill.common.model.entity.Notify;
 import com.lucky.seckill.common.model.entity.PageResult;
 import com.lucky.seckill.common.utils.Response;
 import com.lucky.seckill.notify.model.dto.NotifyQueryRequest;
+import com.lucky.seckill.notify.model.entity.Notify;
 import com.lucky.seckill.notify.service.NotifyService;
 import jakarta.annotation.Resource;
 import lombok.extern.slf4j.Slf4j;
@@ -46,6 +45,17 @@ public class NotifyController {
     @PutMapping("/read")
     public Response<Void> markNotifyRead(@RequestParam("notifyId") Long notifyId) {
         log.info("==> 标记消息为已读, notifyId: {}", notifyId);
+        notifyService.markNotifyRead(notifyId);
+        return Response.success();
+    }
+
+    /**
+     * 将商户申请消息标记为已读
+     */
+    @PutMapping("/apply/read")
+    public Response<Void> markApplyNotifyRead(@RequestParam("notifyId") Long notifyId,
+                                              @RequestParam("notifyType") Integer notifyType) {
+        log.info("==> 标记商户申请消息为已读, notifyId: {}, notifyType: {}", notifyId, notifyType);
         notifyService.markNotifyRead(notifyId);
         return Response.success();
     }

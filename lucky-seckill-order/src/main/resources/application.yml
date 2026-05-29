@@ -34,4 +34,7 @@ management:
         include: '*'
 
 sa-token:
-  ignore-paths: /user/login,/user/register,/user/send-verify-code
+  ignore-paths: /user/login,/user/register,/user/send-verify-code,/order/**
+  jackson:
+    date-format: yyyy-M-d HH:mm:ss
+    time-zone: GMT+8
