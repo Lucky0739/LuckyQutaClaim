@@ -66,4 +66,4 @@ sa-token:
   token-prefix: Bearer
   is-read-header: true
   is-read-cookie: false
-  ignore-paths: /user/login,/user/register,/user/code/send,/captcha/**,/notify/**
+  ignore-paths: /user/login,/user/register,/user/code/send,/captcha/**,/notify/save,/notify/merchant-apply

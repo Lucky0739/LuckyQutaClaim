@@ -36,4 +36,4 @@ server:
   port: 8080
 
 sa-token:
-  ignore-paths: /user/login,/user/register,/user/send-verify-code
+  ignore-paths: /user/login,/user/register,/user/send-verify-code,/actuator/**

@@ -5,6 +5,7 @@ import com.lucky.seckill.common.aspect.ApiOperationLog;
 import com.lucky.seckill.common.utils.Response;
 import com.lucky.seckill.user.model.dto.UserAddressAddRequest;
 import com.lucky.seckill.user.model.dto.UserAddressUpdateRequest;
+import com.lucky.seckill.user.model.entity.UserAddress;
 import com.lucky.seckill.user.model.vo.UserAddressVO;
 import com.lucky.seckill.user.service.UserAddressService;
 import jakarta.annotation.Resource;
@@ -59,5 +60,15 @@ public class UserAddressController {
     @ApiOperationLog(description = "查询用户地址列表")
     public Response<List<UserAddressVO>> listAddress() {
         return userAddressService.listAddress();
+    }
+
+    /**
+     * 根据地址ID查询收货地址（下单等场景使用）
+     */
+    @SaCheckLogin
+    @GetMapping("/get/{userAddressId}")
+    @ApiOperationLog(description = "根据地址ID查询收货地址")
+    public Response<UserAddress> getAddressById(@PathVariable Long userAddressId) {
+        return userAddressService.getAddressById(userAddressId);
     }
 }

@@ -11,6 +11,8 @@ import com.lucky.seckill.common.utils.Response;
 import com.lucky.seckill.goods.feign.GoodsFeignClient;
 import com.lucky.seckill.goods.model.entity.Goods;
 import com.lucky.seckill.goods.model.entity.GoodsSku;
+import com.lucky.seckill.user.feign.UserAddressFeignClient;
+import com.lucky.seckill.user.model.entity.UserAddress;
 import com.lucky.seckill.order.enums.OrderStatusEnum;
 import com.lucky.seckill.order.mapper.OrderMapper;
 import com.lucky.seckill.order.model.dto.AddOrderRequest;
@@ -38,6 +40,8 @@ public class OrderServiceImpl implements OrderService {
     @Resource
     private GoodsFeignClient goodsFeignClient;
     @Resource
+    private UserAddressFeignClient userAddressFeignClient;
+    @Resource
     private ObjectMapper objectMapper;
     /**
      * 创建订单（下单）
@@ -53,6 +57,9 @@ public class OrderServiceImpl implements OrderService {
         }
         if (addOrderRequest.getBuyGoodsNum() == null || addOrderRequest.getBuyGoodsNum() <= 0) {
             throw new BizException(ResponseCodeEnum.PARAM_NOT_VALID, "商品数量必须大于0");
+        }
+        if (addOrderRequest.getUserAddressId() == null) {
+            throw new BizException(ResponseCodeEnum.PARAM_NOT_VALID, "收货地址ID不能为空");
         }
 
         Long userId = StpUtil.getLoginIdAsLong();
@@ -95,6 +102,21 @@ public class OrderServiceImpl implements OrderService {
             throw new BizException(ResponseCodeEnum.PARAM_NOT_VALID, "商品规格不存在");
         }
 
+        // 查询收货地址
+        UserAddress userAddress = null;
+        try {
+            Response<UserAddress> addressResponse = userAddressFeignClient.getAddressById(addOrderRequest.getUserAddressId());
+            if (addressResponse != null && addressResponse.isSuccess() && addressResponse.getData() != null) {
+                userAddress = addressResponse.getData();
+            }
+        } catch (Exception e) {
+            log.error("==> 查询收货地址失败，userAddressId: {}", addOrderRequest.getUserAddressId(), e);
+            throw new BizException(ResponseCodeEnum.SYSTEM_ERROR, "查询收货地址失败");
+        }
+        if (userAddress == null) {
+            throw new BizException(ResponseCodeEnum.PARAM_NOT_VALID, "收货地址不存在或无权使用");
+        }
+
         // 预占库存
         Response<Boolean> lockResult = goodsFeignClient.lockStock(skuId, goodsNum);
         if (lockResult == null || !lockResult.isSuccess() || lockResult.getData() == null || !lockResult.getData()) {
@@ -113,6 +135,7 @@ public class OrderServiceImpl implements OrderService {
                 .userId(userId)
                 .goodsId(addOrderRequest.getGoodsId())
                 .skuId(skuId)
+                .userAddressId(addOrderRequest.getUserAddressId())
                 .orderNo(orderNo)
                 .goodsPrice(goodsSku.getSalePrice())
                 .buyGoodsNum(goodsNum)
@@ -120,6 +143,12 @@ public class OrderServiceImpl implements OrderService {
                 .goodsName(goods.getGoodsName())
                 .goodsImg(goods.getGoodsImg())
                 .status(OrderStatusEnum.PENDING_PAYMENT.getCode())
+                .mobile(userAddress.getMobile())
+                .receiver(userAddress.getReceiver())
+                .province(userAddress.getProvince())
+                .city(userAddress.getCity())
+                .area(userAddress.getArea())
+                .detailAddress(userAddress.getDetailAddress())
                 .expireTime(expireTime)
                 .isDelete(0)
                 .createTime(LocalDateTime.now())
@@ -150,10 +179,6 @@ public class OrderServiceImpl implements OrderService {
         if (order.getStatus() != OrderStatusEnum.PENDING_PAYMENT.getCode()) {
             log.warn("==> 订单状态不是待支付，无法取消，orderNo: {}", orderNo);
             throw new BizException(ResponseCodeEnum.ORDER_STATUS_ERROR, "订单状态异常，无法取消");
-        }
-
-        if (order.getSkuId() != null && order.getBuyGoodsNum() != null && order.getBuyGoodsNum() > 0) {
-            goodsFeignClient.releaseStock(order.getSkuId(), order.getBuyGoodsNum());
         }
 
         orderMapper.updateStatusByOrderNo(orderNo, OrderStatusEnum.CANCELLED.getCode());
@@ -200,6 +225,20 @@ public class OrderServiceImpl implements OrderService {
         Order order = orderMapper.selectByOrderNo(orderNo);
         if (order == null) {
             throw new BizException(ResponseCodeEnum.PARAM_NOT_VALID, "订单不存在");
+        }
+
+        if (OrderStatusEnum.PAID.getCode().equals(status)) {
+            if (order.getStatus() != OrderStatusEnum.PENDING_PAYMENT.getCode()) {
+                throw new BizException(ResponseCodeEnum.ORDER_STATUS_ERROR, "订单状态异常，无法完成支付");
+            }
+            if (order.getSkuId() != null && order.getBuyGoodsNum() != null && order.getBuyGoodsNum() > 0) {
+                Response<Boolean> deductResult = goodsFeignClient.deductStock(order.getSkuId(), order.getBuyGoodsNum());
+                if (deductResult == null || !deductResult.isSuccess()
+                        || deductResult.getData() == null || !deductResult.getData()) {
+                    log.error("==> 支付扣减库存失败，orderNo: {}, skuId: {}", orderNo, order.getSkuId());
+                    throw new BizException(ResponseCodeEnum.STOCK_NOT_ENOUGH, "扣减库存失败");
+                }
+            }
         }
 
         int result = orderMapper.updateStatusByOrderNo(orderNo, status);
@@ -289,10 +328,6 @@ public class OrderServiceImpl implements OrderService {
         if (order.getExpireTime() == null || LocalDateTime.now().isBefore(order.getExpireTime())) {
             log.warn("==> 订单尚未过期，orderNo: {}", orderNo);
             return Response.success(true);
-        }
-
-        if (order.getSkuId() != null && order.getBuyGoodsNum() != null && order.getBuyGoodsNum() > 0) {
-            goodsFeignClient.releaseStock(order.getSkuId(), order.getBuyGoodsNum());
         }
 
         orderMapper.updateStatusByOrderNo(orderNo, OrderStatusEnum.EXPIRED.getCode());

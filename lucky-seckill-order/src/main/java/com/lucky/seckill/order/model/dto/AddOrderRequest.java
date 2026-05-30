@@ -10,6 +10,12 @@ public class AddOrderRequest {
     private Long goodsId;
 
     private Long skuId;
+
+    /**
+     * 用户收货地址ID
+     */
+    private Long userAddressId;
+
     /**
      * 购买的商品数量
      */

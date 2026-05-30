@@ -2,6 +2,9 @@ package com.lucky.seckill.pay.service;
 
 import com.lucky.seckill.common.utils.Response;
 import com.lucky.seckill.pay.model.vo.PayResultVO;
+import jakarta.servlet.http.HttpServletRequest;
+
+import java.net.http.HttpRequest;
 
 public interface PayOrderService {
 
@@ -9,5 +12,7 @@ public interface PayOrderService {
 
     Response<Boolean> payOrder(String orderNo);
 
-    Response<Boolean> payCallback(String orderNo);
+    Response<Boolean> payCallback(HttpServletRequest request);
+
+    Response<Boolean> handlePaySuccess(String orderNo);
 }

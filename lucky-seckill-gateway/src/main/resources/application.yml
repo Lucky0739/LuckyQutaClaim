@@ -77,6 +77,11 @@ spring:
           uri: lb://lucky-seckill-pay
           predicates:
             - Path=/pay/**
+          # AI 客服模块路径
+        - id: ai-service
+          uri: lb://lucky-seckill-ai
+          predicates:
+            - Path=/ai/**
 
 server:
   port: 8888

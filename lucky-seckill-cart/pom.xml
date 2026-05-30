@@ -99,6 +99,10 @@
             <version>1.18.42</version>
             <scope>provided</scope>
         </dependency>
+        <dependency>
+            <groupId>com.luckySeckill</groupId>
+            <artifactId>lucky-seckill-goods</artifactId>
+        </dependency>
     </dependencies>
 
     <build>

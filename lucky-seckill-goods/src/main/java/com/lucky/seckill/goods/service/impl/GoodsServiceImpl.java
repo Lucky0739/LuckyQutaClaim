@@ -612,7 +612,7 @@ public class GoodsServiceImpl implements GoodsService {
             throw new BizException(ResponseCodeEnum.PARAM_NOT_VALID, "SKU不存在");
         }
 
-        // 预占库存（使用行锁保证原子性）
+        // 预占库存（校验库存是否充足，支付成功后再真正扣减）
         int rows = goodsSkuMapper.lockStock(skuId, buyGoodsNum);
         if (rows == 0) {
             log.warn("==> 预占库存失败，库存不足，skuId: {}, 请求数量: {}, 当前库存: {}",
@@ -673,7 +673,7 @@ public class GoodsServiceImpl implements GoodsService {
             return Response.success(false);
         }
 
-        log.info("==> 扣减库存成功，skuId: {}, 扣减数量: {}", skuId, stockNum);
+        log.info("==> 扣减库存成功，skuId: {}, 扣减数量: {}, 已售数量+{}", skuId, stockNum, stockNum);
         return Response.success(true);
     }
 

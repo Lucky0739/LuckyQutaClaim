@@ -19,7 +19,7 @@ spring:
           enabled: false
 
 server:
-  port: 8084
+  port: 8091
   forward-headers-strategy: framework
 
 mybatis:

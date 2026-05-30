@@ -24,8 +24,9 @@ public class OrderController {
      */
     @PostMapping("/add")
     public Response<Long> addOrder(@RequestBody AddOrderRequest addOrderRequest) {
-        log.info("==> 收到创建订单请求, goodsId: {}, skuId: {}, goodsNum: {}",
-                addOrderRequest.getGoodsId(), addOrderRequest.getSkuId(), addOrderRequest.getBuyGoodsNum());
+        log.info("==> 收到创建订单请求, goodsId: {}, skuId: {}, userAddressId: {}, goodsNum: {}",
+                addOrderRequest.getGoodsId(), addOrderRequest.getSkuId(),
+                addOrderRequest.getUserAddressId(), addOrderRequest.getBuyGoodsNum());
         return orderService.addOrder(addOrderRequest);
     }
 

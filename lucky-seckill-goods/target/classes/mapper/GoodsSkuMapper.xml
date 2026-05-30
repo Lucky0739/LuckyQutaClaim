@@ -70,26 +70,27 @@
         AND isDelete = 0
     </select>
 
-    <!-- 预占库存：使用 FOR UPDATE 加行锁，同时扣减 stock_num -->
+    <!-- 预占库存：校验库存是否充足（行锁保证并发安全，支付成功后再真正扣减） -->
     <update id="lockStock">
         UPDATE t_goods_sku
-        SET stock_num = stock_num - #{buyGoodsNum},
-            update_time = NOW()
+        SET update_time = NOW()
         WHERE id = #{skuId}
           AND isDelete = 0
           AND stock_num >= #{buyGoodsNum}
     </update>
 
-    <!-- 真正扣减库存：只增加已售数量，stock_num已在lockStock时扣减 -->
+    <!-- 支付成功后扣减库存：同时增加已售数量并减少库存数量 -->
     <update id="deductStock">
         UPDATE t_goods_sku
         SET sales_num = sales_num + #{stockNum},
+            stock_num = stock_num - #{stockNum},
             update_time = NOW()
         WHERE id = #{skuId}
           AND isDelete = 0
+          AND stock_num >= #{stockNum}
     </update>
 
-    <!-- 释放预占的库存：订单取消或超时，返还库存 -->
+    <!-- 释放预占的库存（保留接口，当前下单不再预扣库存） -->
     <update id="releaseStock">
         UPDATE t_goods_sku
         SET stock_num = stock_num + #{buyGoodsNum},

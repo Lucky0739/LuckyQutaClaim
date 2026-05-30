@@ -10,16 +10,14 @@ spring:
     nacos:
       discovery:
         server-addr: 127.0.0.1:8848
-        namespace: public
       config:
         server-addr: 127.0.0.1:8848
-        namespace: public
         file-extension: yml
         import-check:
           enabled: false
 
 server:
-  port: 8083
+  port: 8084
   forward-headers-strategy: framework
 
 mybatis:
@@ -34,7 +32,7 @@ management:
         include: '*'
 
 sa-token:
-  ignore-paths: /user/login,/user/register,/user/send-verify-code,/order/**
+  ignore-paths: /user/login,/user/register,/user/send-verify-code,/order/**,/actuator/**
   jackson:
     date-format: yyyy-M-d HH:mm:ss
     time-zone: GMT+8

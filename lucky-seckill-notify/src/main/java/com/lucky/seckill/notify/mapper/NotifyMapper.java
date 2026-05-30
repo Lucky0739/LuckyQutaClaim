@@ -32,4 +32,15 @@ public interface NotifyMapper {
      * 查询指定类型通知的总记录数
      */
     Long countByNotifyType(@Param("notifyType") Integer notifyType);
+
+    /**
+     * 分页查询指定用户、指定类型的通知列表
+     */
+    List<Notify> selectByReceiveUserIdAndNotifyTypePage(@Param("receiveUserId") Long receiveUserId,
+                                                        @Param("notifyType") Integer notifyType,
+                                                        @Param("offset") Integer offset,
+                                                        @Param("limit") Integer limit);
+
+    Long countByReceiveUserIdAndNotifyType(@Param("receiveUserId") Long receiveUserId,
+                                           @Param("notifyType") Integer notifyType);
 }

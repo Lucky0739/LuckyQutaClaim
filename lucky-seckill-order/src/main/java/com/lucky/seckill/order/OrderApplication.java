@@ -9,7 +9,7 @@ import org.springframework.context.annotation.ComponentScan;
 
 @SpringBootApplication
 @EnableDiscoveryClient
-@EnableFeignClients(basePackages = {"com.lucky.seckill.goods.feign", "com.lucky.seckill.order.feign"})
+@EnableFeignClients(basePackages = {"com.lucky.seckill.goods.feign", "com.lucky.seckill.user.feign", "com.lucky.seckill.order.feign"})
 @ComponentScan({"com.lucky.seckill.order", "com.lucky.seckill.common"})
 @MapperScan("com.lucky.seckill.order.mapper")
 public class OrderApplication {

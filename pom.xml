@@ -1,3 +1,4 @@
+<?xml version="1.0" encoding="UTF-8"?>
 <project xmlns="http://maven.apache.org/POM/4.0.0" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
          xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/xsd/maven-4.0.0.xsd">
   <modelVersion>4.0.0</modelVersion>
@@ -6,43 +7,30 @@
     <groupId>org.springframework.boot</groupId>
     <artifactId>spring-boot-starter-parent</artifactId>
     <version>3.3.5</version>
-    <relativePath/> <!-- lookup parent from repository -->
+    <relativePath/>
   </parent>
 
   <groupId>com.luckySeckill</groupId>
   <artifactId>lucky-seckill-mall</artifactId>
   <version>${revision}</version>
-  <!-- 项目名称 -->
-  <name>${project.artifactId}</name>
-  <!-- 项目描述 -->
-  <description>Lucky的秒杀商城</description>
-
-  <!-- 多模块项目父工程打包模式必须指定为 pom -->
   <packaging>pom</packaging>
 
-  <!-- 子模块管理 -->
-  <modules>
-    <!-- 公共模块   -->
-    <module>lucky-seckill-common</module>
-    <!-- 用户模块 -->
-    <module>lucky-seckill-user</module>
-    <!-- 商品模块 -->
-    <module>lucky-seckill-goods</module>
-    <!-- 订单模块 -->
-    <module>lucky-seckill-order</module>
-    <!-- 购物车模块 -->
-    <module>lucky-seckill-cart</module>
-    <!-- 网关模块 -->
-    <module>lucky-seckill-gateway</module>
-    <!-- 店铺模块 -->
-      <module>lucky-seckill-shop</module>
-    <!-- 支付模块 -->
-      <module>lucky-seckill-pay</module>
-    <!-- 消息模块 -->
-      <module>lucky-seckill-notify</module>
-    <module>lucky-seckill-activity</module>
-  </modules>
+  <name>${project.artifactId}</name>
+  <description>Lucky的秒杀商城</description>
 
+  <modules>
+    <module>lucky-seckill-common</module>
+    <module>lucky-seckill-user</module>
+    <module>lucky-seckill-goods</module>
+    <module>lucky-seckill-order</module>
+    <module>lucky-seckill-cart</module>
+    <module>lucky-seckill-gateway</module>
+    <module>lucky-seckill-shop</module>
+    <module>lucky-seckill-pay</module>
+    <module>lucky-seckill-notify</module>
+    <module>lucky-seckill-activity</module>
+    <module>lucky-seckill-ai</module>
+  </modules>
 
   <properties>
     <revision>0.0.1-SNAPSHOT</revision>
@@ -58,14 +46,12 @@
     <springdoc.version>2.6.0</springdoc.version>
     <lombok.version>1.18.32</lombok.version>
     <disruptor.version>3.4.4</disruptor.version>
-    <!-- SaToken 版本 -->
     <sa-token.version>1.45.0</sa-token.version>
+    <spring-ai.version>1.0.0</spring-ai.version>
   </properties>
 
-  <!-- 统一依赖管理 -->
   <dependencyManagement>
     <dependencies>
-      <!-- Spring Cloud -->
       <dependency>
         <groupId>org.springframework.cloud</groupId>
         <artifactId>spring-cloud-dependencies</artifactId>
@@ -74,7 +60,6 @@
         <scope>import</scope>
       </dependency>
 
-      <!-- Spring Cloud Alibaba -->
       <dependency>
         <groupId>com.alibaba.cloud</groupId>
         <artifactId>spring-cloud-alibaba-dependencies</artifactId>
@@ -83,74 +68,72 @@
         <scope>import</scope>
       </dependency>
 
-      <!-- 公共模块 -->
       <dependency>
         <groupId>com.luckySeckill</groupId>
         <artifactId>lucky-seckill-common</artifactId>
         <version>${revision}</version>
       </dependency>
 
-      <!-- 用户模块 -->
       <dependency>
         <groupId>com.luckySeckill</groupId>
         <artifactId>lucky-seckill-user</artifactId>
         <version>${revision}</version>
       </dependency>
 
-      <!-- 商品模块 -->
       <dependency>
         <groupId>com.luckySeckill</groupId>
         <artifactId>lucky-seckill-goods</artifactId>
         <version>${revision}</version>
       </dependency>
 
-      <!-- 订单模块 -->
       <dependency>
         <groupId>com.luckySeckill</groupId>
         <artifactId>lucky-seckill-order</artifactId>
         <version>${revision}</version>
       </dependency>
 
-      <!-- 购物车模块 -->
       <dependency>
         <groupId>com.luckySeckill</groupId>
         <artifactId>lucky-seckill-cart</artifactId>
         <version>${revision}</version>
       </dependency>
 
-      <!-- MyBatis Spring Boot Starter -->
       <dependency>
         <groupId>org.mybatis.spring.boot</groupId>
         <artifactId>mybatis-spring-boot-starter</artifactId>
         <version>${mybatis-spring-boot.version}</version>
       </dependency>
 
-      <!-- Disruptor 高性能队列（Log4j2 异步日志需要） -->
       <dependency>
         <groupId>com.lmax</groupId>
         <artifactId>disruptor</artifactId>
         <version>${disruptor.version}</version>
       </dependency>
 
-      <!-- SaToken 权限认证框架（适配 Spring Boot 3） -->
-    <dependency>
-      <groupId>cn.dev33</groupId>
-      <artifactId>sa-token-spring-boot3-starter</artifactId>
-      <version>${sa-token.version}</version>
-    </dependency>
+      <dependency>
+        <groupId>cn.dev33</groupId>
+        <artifactId>sa-token-spring-boot3-starter</artifactId>
+        <version>${sa-token.version}</version>
+      </dependency>
 
-      <!-- Sa-Token 整合 RedisTemplate -->
       <dependency>
         <groupId>cn.dev33</groupId>
         <artifactId>sa-token-redis-template</artifactId>
         <version>${sa-token.version}</version>
       </dependency>
 
+      <dependency>
+        <groupId>org.springframework.ai</groupId>
+        <artifactId>spring-ai-bom</artifactId>
+        <version>${spring-ai.version}</version>
+        <type>pom</type>
+        <scope>import</scope>
+      </dependency>
+
     </dependencies>
   </dependencyManagement>
 
   <build>
-    <!-- 统一插件管理 -->
     <pluginManagement>
       <plugins>
         <plugin>
@@ -160,7 +143,7 @@
             <execution>
               <id>repackage</id>
               <goals>
-                <goal>repackage</goal> <!-- 将依赖的 Jar 一起打包 -->
+                <goal>repackage</goal>
               </goals>
             </execution>
           </executions>
@@ -183,18 +166,14 @@
           </configuration>
         </plugin>
 
-        <!-- 代码生成器 -->
         <plugin>
           <groupId>org.mybatis.generator</groupId>
           <artifactId>mybatis-generator-maven-plugin</artifactId>
           <version>${mybatis-generator-maven-plugin.version}</version>
           <configuration>
-            <!-- 允许移动生成的文件 -->
             <verbose>true</verbose>
-            <!-- 允许覆盖生成的文件 -->
             <overwrite>true</overwrite>
           </configuration>
-          <!-- 此插件需要连接数据库，所以需要依赖 MySQL 驱动 -->
           <dependencies>
             <dependency>
               <groupId>com.mysql</groupId>
@@ -207,7 +186,6 @@
       </plugins>
     </pluginManagement>
 
-    <!-- 将 ${revision} 等 CI 占位符解析为具体版本写入安装的 POM，避免依赖方解析成 literal ${revision} 去中央仓查找失败 -->
     <plugins>
       <plugin>
         <groupId>org.codehaus.mojo</groupId>
@@ -237,7 +215,6 @@
     </plugins>
   </build>
 
-
   <repositories>
     <repository>
       <id>central</id>
@@ -251,6 +228,21 @@
         <enabled>false</enabled>
       </snapshots>
     </repository>
+    <repository>
+      <id>spring-milestones</id>
+      <name>Spring Milestones</name>
+      <url>https://repo.spring.io/milestone</url>
+      <snapshots>
+        <enabled>false</enabled>
+      </snapshots>
+    </repository>
+    <repository>
+      <id>spring-snapshots</id>
+      <name>Spring Snapshots</name>
+      <url>https://repo.spring.io/snapshot</url>
+      <releases>
+        <enabled>false</enabled>
+      </releases>
+    </repository>
   </repositories>
 </project>
-

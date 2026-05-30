@@ -130,6 +130,19 @@ public class UserAddressServiceImpl implements UserAddressService {
         return Response.success(voList);
     }
 
+    @Override
+    public Response<UserAddress> getAddressById(Long userAddressId) {
+        if (userAddressId == null) {
+            throw new BizException(ResponseCodeEnum.PARAM_NOT_VALID, "地址ID不能为空");
+        }
+        Long userId = StpUtil.getLoginIdAsLong();
+        UserAddress address = userAddressMapper.selectByIdAndUserId(userAddressId, userId);
+        if (address == null) {
+            throw new BizException(ResponseCodeEnum.PARAM_NOT_VALID, "地址不存在或无权操作");
+        }
+        return Response.success(address);
+    }
+
     /**
      * 实体转VO
      */

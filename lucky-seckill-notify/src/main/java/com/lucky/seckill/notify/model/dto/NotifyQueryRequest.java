@@ -9,7 +9,7 @@ import lombok.Data;
 public class NotifyQueryRequest {
 
     /**
-     * 通知类型
+     * 消息类型（必填，用于 Tab 切换：1=开店申请 2=点赞 3=收藏 4=审核通知 5=支付成功等）
      */
     private Integer notifyType;
 

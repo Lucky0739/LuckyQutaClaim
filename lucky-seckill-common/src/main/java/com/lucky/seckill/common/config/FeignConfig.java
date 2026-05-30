@@ -1,37 +1,32 @@
 package com.lucky.seckill.common.config;
 
-import com.fasterxml.jackson.databind.ObjectMapper;
 import feign.codec.Decoder;
 import feign.codec.Encoder;
-import feign.jackson.JacksonDecoder;
-import feign.jackson.JacksonEncoder;
-import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.beans.factory.ObjectFactory;
+import org.springframework.boot.autoconfigure.http.HttpMessageConverters;
+import org.springframework.cloud.openfeign.support.ResponseEntityDecoder;
+import org.springframework.cloud.openfeign.support.SpringDecoder;
+import org.springframework.cloud.openfeign.support.SpringEncoder;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
+import org.springframework.context.annotation.Primary;
 
 /**
  * Feign 配置类
- * 配置自定义的编码器和解码器，支持泛型反序列化
+ * 使用 SpringEncoder 确保 @RequestBody 请求以 application/json 发送
  */
 @Configuration
 public class FeignConfig {
 
-    /**
-     * Feign 编码器配置
-     * 使用项目中已有的 ObjectMapper
-     */
     @Bean
-    public Encoder feignEncoder(@Autowired(required = false) ObjectMapper objectMapper) {
-        return new JacksonEncoder(objectMapper);
+    @Primary
+    public Encoder feignEncoder(ObjectFactory<HttpMessageConverters> messageConverters) {
+        return new SpringEncoder(messageConverters);
     }
 
-    /**
-     * Feign 解码器配置
-     * 支持泛型类型反序列化
-     * 使用项目中已有的 ObjectMapper
-     */
     @Bean
-    public Decoder feignDecoder(@Autowired(required = false) ObjectMapper objectMapper) {
-        return new JacksonDecoder(objectMapper);
+    @Primary
+    public Decoder feignDecoder(ObjectFactory<HttpMessageConverters> messageConverters) {
+        return new ResponseEntityDecoder(new SpringDecoder(messageConverters));
     }
 }

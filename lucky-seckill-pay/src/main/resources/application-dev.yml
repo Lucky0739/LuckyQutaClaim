@@ -50,8 +50,30 @@ spring:
           # 连接池最大阻塞等待时间（毫秒），-1 表示无限制
           max-wait: 3000
 
+  cloud:
+    openfeign:
+      client:
+        config:
+          orderFeignClient:
+            url: http://127.0.0.1:8084
+          goodsFeignClient:
+            url: http://127.0.0.1:8082
+          notifyCenterFeignClient:
+            url: http://127.0.0.1:8089
+
 # MyBatis 开发环境专属配置
 mybatis:
   configuration:
     # 开发阶段打印 SQL 语句，方便调试
     log-impl: org.apache.ibatis.logging.stdout.StdOutImpl
+
+# Feign 客户端配置
+feign:
+  client:
+    config:
+      default:
+        connectTimeout: 3000
+        readTimeout: 5000
+  httpclient:
+    hc5:
+      enabled: true

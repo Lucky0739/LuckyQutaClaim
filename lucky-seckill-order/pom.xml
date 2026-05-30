@@ -103,6 +103,12 @@
             <version>${revision}</version>
         </dependency>
 
+        <dependency>
+            <groupId>com.luckySeckill</groupId>
+            <artifactId>lucky-seckill-user</artifactId>
+            <version>${revision}</version>
+        </dependency>
+
         <!-- 消息模块依赖 -->
         <dependency>
             <groupId>com.luckySeckill</groupId>

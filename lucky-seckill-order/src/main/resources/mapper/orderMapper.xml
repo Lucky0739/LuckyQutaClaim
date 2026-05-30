@@ -12,7 +12,14 @@
         <result column="goods_name" property="goodsName" jdbcType="VARCHAR"/>
         <result column="goods_img" property="goodsImg" jdbcType="VARCHAR"/>
         <result column="sku_id" property="skuId" jdbcType="BIGINT"/>
+        <result column="user_address_id" property="userAddressId" jdbcType="BIGINT"/>
         <result column="status" property="status" jdbcType="TINYINT"/>
+        <result column="mobile" property="mobile" jdbcType="VARCHAR"/>
+        <result column="receiver" property="receiver" jdbcType="VARCHAR"/>
+        <result column="province" property="province" jdbcType="VARCHAR"/>
+        <result column="city" property="city" jdbcType="VARCHAR"/>
+        <result column="area" property="area" jdbcType="VARCHAR"/>
+        <result column="detail_address" property="detailAddress" jdbcType="VARCHAR"/>
         <result column="pay_time" property="payTime" jdbcType="TIMESTAMP"/>
         <result column="delivery_time" property="deliveryTime" jdbcType="TIMESTAMP"/>
         <result column="receive_time" property="receiveTime" jdbcType="TIMESTAMP"/>
@@ -24,7 +31,8 @@
 
     <sql id="Base_Column_List">
         id, user_id, goods_id, order_no, goods_price, buyGoods_num, total_amount,
-        goods_name, goods_img, sku_id, status, pay_time, delivery_time, receive_time,
+        goods_name, goods_img, sku_id, user_address_id, status, mobile, receiver,
+        province, city, area, detail_address, pay_time, delivery_time, receive_time,
         expire_time, isDelete, create_time, update_time
     </sql>
 
@@ -41,7 +49,14 @@
             <if test="goodsName != null">goods_name,</if>
             <if test="goodsImg != null">goods_img,</if>
             <if test="skuId != null">sku_id,</if>
+            <if test="userAddressId != null">user_address_id,</if>
             <if test="status != null">status,</if>
+            <if test="mobile != null">mobile,</if>
+            <if test="receiver != null">receiver,</if>
+            <if test="province != null">province,</if>
+            <if test="city != null">city,</if>
+            <if test="area != null">area,</if>
+            <if test="detailAddress != null">detail_address,</if>
             <if test="payTime != null">pay_time,</if>
             <if test="deliveryTime != null">delivery_time,</if>
             <if test="receiveTime != null">receive_time,</if>
@@ -62,7 +77,14 @@
             <if test="goodsName != null">#{goodsName,jdbcType=VARCHAR},</if>
             <if test="goodsImg != null">#{goodsImg,jdbcType=VARCHAR},</if>
             <if test="skuId != null">#{skuId,jdbcType=BIGINT},</if>
+            <if test="userAddressId != null">#{userAddressId,jdbcType=BIGINT},</if>
             <if test="status != null">#{status,jdbcType=TINYINT},</if>
+            <if test="mobile != null">#{mobile,jdbcType=VARCHAR},</if>
+            <if test="receiver != null">#{receiver,jdbcType=VARCHAR},</if>
+            <if test="province != null">#{province,jdbcType=VARCHAR},</if>
+            <if test="city != null">#{city,jdbcType=VARCHAR},</if>
+            <if test="area != null">#{area,jdbcType=VARCHAR},</if>
+            <if test="detailAddress != null">#{detailAddress,jdbcType=VARCHAR},</if>
             <if test="payTime != null">#{payTime,jdbcType=TIMESTAMP},</if>
             <if test="deliveryTime != null">#{deliveryTime,jdbcType=TIMESTAMP},</if>
             <if test="receiveTime != null">#{receiveTime,jdbcType=TIMESTAMP},</if>
@@ -127,7 +149,14 @@
             <if test="goodsName != null">goods_name = #{goodsName,jdbcType=VARCHAR},</if>
             <if test="goodsImg != null">goods_img = #{goodsImg,jdbcType=VARCHAR},</if>
             <if test="skuId != null">sku_id = #{skuId,jdbcType=BIGINT},</if>
+            <if test="userAddressId != null">user_address_id = #{userAddressId,jdbcType=BIGINT},</if>
             <if test="status != null">status = #{status,jdbcType=TINYINT},</if>
+            <if test="mobile != null">mobile = #{mobile,jdbcType=VARCHAR},</if>
+            <if test="receiver != null">receiver = #{receiver,jdbcType=VARCHAR},</if>
+            <if test="province != null">province = #{province,jdbcType=VARCHAR},</if>
+            <if test="city != null">city = #{city,jdbcType=VARCHAR},</if>
+            <if test="area != null">area = #{area,jdbcType=VARCHAR},</if>
+            <if test="detailAddress != null">detail_address = #{detailAddress,jdbcType=VARCHAR},</if>
             <if test="payTime != null">pay_time = #{payTime,jdbcType=TIMESTAMP},</if>
             <if test="deliveryTime != null">delivery_time = #{deliveryTime,jdbcType=TIMESTAMP},</if>
             <if test="receiveTime != null">receive_time = #{receiveTime,jdbcType=TIMESTAMP},</if>

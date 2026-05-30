@@ -10,6 +10,7 @@ import com.lucky.seckill.cart.service.CartService;
 import com.lucky.seckill.common.enums.ResponseCodeEnum;
 import com.lucky.seckill.common.exception.BizException;
 import com.lucky.seckill.common.utils.Response;
+import com.lucky.seckill.goods.feign.GoodsFeignClient;
 import jakarta.annotation.Resource;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;

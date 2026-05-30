@@ -2,6 +2,7 @@ package com.lucky.seckill.notify.service;
 
 
 import com.lucky.seckill.common.model.entity.PageResult;
+import com.lucky.seckill.notify.model.dto.NotifyQueryRequest;
 import com.lucky.seckill.notify.model.entity.Notify;
 
 public interface NotifyService {
@@ -26,7 +27,12 @@ public interface NotifyService {
     void markNotifyRead(Long notifyId);
 
     /**
-     * 分页查询指定类型的通知列表
+     * 管理员分页查询指定类型的通知列表
      */
-    PageResult<Notify> selectByNotifyTypePage(Integer notifyType, Integer pageNum, Integer pageSize);
+    PageResult<Notify> selectAdminNotifyPage(NotifyQueryRequest request);
+
+    /**
+     * 普通用户分页查询自己的指定类型通知列表
+     */
+    PageResult<Notify> selectUserNotifyPage(NotifyQueryRequest request);
 }

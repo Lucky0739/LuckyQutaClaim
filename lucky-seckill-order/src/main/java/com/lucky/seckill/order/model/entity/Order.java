@@ -36,6 +36,11 @@ public class Order {
     private Long skuId;
 
     /**
+     * 用户地址ID(关联用)
+     */
+    private Long userAddressId;
+
+    /**
      * 普通订单号
      */
     private String orderNo;
@@ -69,6 +74,36 @@ public class Order {
      * 订单状态(0:待支付 1:待发货 2:已发货 3:已收货 4:已退款 5:已取消 6:已关闭)
      */
     private Integer status;
+
+    /**
+     * 收货人手机号
+     */
+    private String mobile;
+
+    /**
+     * 收货人姓名
+     */
+    private String receiver;
+
+    /**
+     * 省份
+     */
+    private String province;
+
+    /**
+     * 城市
+     */
+    private String city;
+
+    /**
+     * 区县
+     */
+    private String area;
+
+    /**
+     * 详细地址
+     */
+    private String detailAddress;
 
     /**
      * 支付时间

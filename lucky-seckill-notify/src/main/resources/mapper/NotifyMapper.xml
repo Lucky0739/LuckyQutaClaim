@@ -153,4 +153,23 @@
     where notify_type = #{notifyType,jdbcType=INTEGER}
     and isDelete = 0
   </select>
+
+  <select id="selectByReceiveUserIdAndNotifyTypePage" resultMap="BaseResultMap">
+    select
+    <include refid="Base_Column_List" />
+    from t_notify
+    where receive_user_id = #{receiveUserId,jdbcType=BIGINT}
+    and notify_type = #{notifyType,jdbcType=INTEGER}
+    and isDelete = 0
+    order by create_time desc
+    limit #{offset,jdbcType=INTEGER}, #{limit,jdbcType=INTEGER}
+  </select>
+
+  <select id="countByReceiveUserIdAndNotifyType" resultType="java.lang.Long">
+    select count(id)
+    from t_notify
+    where receive_user_id = #{receiveUserId,jdbcType=BIGINT}
+    and notify_type = #{notifyType,jdbcType=INTEGER}
+    and isDelete = 0
+  </select>
 </mapper>

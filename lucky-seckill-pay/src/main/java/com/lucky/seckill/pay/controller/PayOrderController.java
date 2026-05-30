@@ -4,6 +4,7 @@ import com.lucky.seckill.common.utils.Response;
 import com.lucky.seckill.pay.model.vo.PayResultVO;
 import com.lucky.seckill.pay.service.PayOrderService;
 import jakarta.annotation.Resource;
+import jakarta.servlet.http.HttpServletRequest;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.web.bind.annotation.*;
 
@@ -39,16 +40,13 @@ public class PayOrderController {
 
     /**
      * 支付宝异步回调
-     * @param outTradeNo 商户订单号
-     * @param tradeNo 支付宝交易号
      * @return success
      */
     @PostMapping("/notify")
-    public String payNotify(@RequestParam("out_trade_no") String outTradeNo,
-                           @RequestParam(value = "trade_no", required = false) String tradeNo) {
-        log.info("==> 收到支付宝异步回调, outTradeNo: {}, tradeNo: {}", outTradeNo, tradeNo);
+    public String payCallback(HttpServletRequest request) {
+        log.info("==> 收到支付宝异步回调"+request);
         try {
-            payOrderService.payCallback(outTradeNo);
+            payOrderService.payCallback(request);
             return "success";
         } catch (Exception e) {
             log.error("==> 支付宝异步回调处理失败", e);
@@ -62,8 +60,8 @@ public class PayOrderController {
      * @return true=处理成功
      */
     @PostMapping("/callback")
-    public Response<Boolean> payCallback(@RequestParam("orderNo") String orderNo) {
+    public Response<Boolean> handlePaySuccess(@RequestParam("orderNo") String orderNo) {
         log.info("==> 收到支付成功回调, orderNo: {}", orderNo);
-        return payOrderService.payCallback(orderNo);
+        return payOrderService.handlePaySuccess(orderNo);
     }
 }
