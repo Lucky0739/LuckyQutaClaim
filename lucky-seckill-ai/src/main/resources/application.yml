@@ -1,0 +1,29 @@
+spring:
+  application:
+    name: lucky-seckill-ai
+  profiles:
+    active: dev
+  ai:
+    dashscope:
+      api-key: ${DASHSCOPE_API_KEY:sk-434aff7df6974f13b31c6ec208339963}
+      base-url: https://dashscope.aliyuncs.com
+      chat:
+        options:
+          model: qwen3.7-max
+  cloud:
+    nacos:
+      discovery:
+        server-addr: 127.0.0.1:8848
+        namespace: public
+      config:
+        server-addr: 127.0.0.1:8848
+        namespace: public
+        file-extension: yml
+        import-check:
+          enabled: false
+server:
+  port: 8090
+logging:
+  level:
+    root: INFO
+    com.lucky.seckill.ai: DEBUG
