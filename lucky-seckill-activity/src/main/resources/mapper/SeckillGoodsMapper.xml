@@ -1,0 +1,71 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.lucky.seckill.activity.mapper.SeckillGoodsMapper">
+
+    <resultMap id="BaseResultMap" type="com.lucky.seckill.activity.model.entity.SeckillGoods">
+        <id column="id" property="id" jdbcType="BIGINT"/>
+        <result column="activity_id" property="activityId" jdbcType="BIGINT"/>
+        <result column="goods_id" property="goodsId" jdbcType="BIGINT"/>
+        <result column="sku_id" property="skuId" jdbcType="BIGINT"/>
+        <result column="seckill_title" property="seckillTitle" jdbcType="VARCHAR"/>
+        <result column="seckill_img" property="seckillImg" jdbcType="VARCHAR"/>
+        <result column="seckill_price" property="seckillPrice" jdbcType="DECIMAL"/>
+        <result column="seckill_total" property="seckillTotal" jdbcType="INTEGER"/>
+        <result column="seckill_stock" property="seckillStock" jdbcType="INTEGER"/>
+        <result column="seckill_limit" property="seckillLimit" jdbcType="INTEGER"/>
+        <result column="sort" property="sort" jdbcType="INTEGER"/>
+        <result column="version" property="version" jdbcType="INTEGER"/>
+        <result column="is_deleted" property="isDeleted" jdbcType="TINYINT"/>
+        <result column="create_time" property="createTime" jdbcType="TIMESTAMP"/>
+        <result column="update_time" property="updateTime" jdbcType="TIMESTAMP"/>
+    </resultMap>
+
+    <sql id="Base_Column_List">
+        id, activity_id, goods_id, sku_id, seckill_title, seckill_img, seckill_price,
+        seckill_total, seckill_stock, seckill_limit, sort, version, is_deleted, create_time, update_time
+    </sql>
+
+    <select id="selectByPrimaryKey" resultMap="BaseResultMap">
+        SELECT <include refid="Base_Column_List"/>
+        FROM t_seckill_goods
+        WHERE id = #{id}
+          AND is_deleted = 0
+    </select>
+
+    <select id="selectByActivityAndGoodsAndSku" resultMap="BaseResultMap">
+        SELECT <include refid="Base_Column_List"/>
+        FROM t_seckill_goods
+        WHERE activity_id = #{activityId}
+          AND goods_id = #{goodsId}
+          AND sku_id = #{skuId}
+          AND is_deleted = 0
+        LIMIT 1
+    </select>
+
+    <select id="selectByActivityId" resultMap="BaseResultMap">
+        SELECT <include refid="Base_Column_List"/>
+        FROM t_seckill_goods
+        WHERE activity_id = #{activityId}
+          AND is_deleted = 0
+        ORDER BY sort ASC, id ASC
+    </select>
+
+    <update id="deductStock">
+        UPDATE t_seckill_goods
+        SET seckill_stock = seckill_stock - #{deductNum},
+            version = version + 1,
+            update_time = #{updateTime}
+        WHERE id = #{id}
+          AND version = #{version}
+          AND seckill_stock >= #{deductNum}
+          AND is_deleted = 0
+    </update>
+
+    <update id="rollbackStock">
+        UPDATE t_seckill_goods
+        SET seckill_stock = seckill_stock + #{rollbackNum},
+            update_time = #{updateTime}
+        WHERE id = #{id}
+          AND is_deleted = 0
+    </update>
+</mapper>

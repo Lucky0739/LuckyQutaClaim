@@ -1,0 +1,53 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.lucky.seckill.activity.mapper.SeckillActivityMapper">
+
+    <resultMap id="BaseResultMap" type="com.lucky.seckill.activity.model.entity.SeckillActivity">
+        <id column="id" property="id" jdbcType="BIGINT"/>
+        <result column="activity_name" property="activityName" jdbcType="VARCHAR"/>
+        <result column="begin_time" property="beginTime" jdbcType="TIMESTAMP"/>
+        <result column="end_time" property="endTime" jdbcType="TIMESTAMP"/>
+        <result column="status" property="status" jdbcType="TINYINT"/>
+        <result column="description" property="description" jdbcType="VARCHAR"/>
+        <result column="create_time" property="createTime" jdbcType="TIMESTAMP"/>
+        <result column="update_time" property="updateTime" jdbcType="TIMESTAMP"/>
+    </resultMap>
+
+    <sql id="Base_Column_List">
+        id, activity_name, begin_time, end_time, status, description, create_time, update_time
+    </sql>
+
+    <select id="selectByPrimaryKey" resultMap="BaseResultMap">
+        SELECT <include refid="Base_Column_List"/>
+        FROM t_seckill_activity
+        WHERE id = #{id}
+    </select>
+
+    <select id="selectAll" resultMap="BaseResultMap">
+        SELECT <include refid="Base_Column_List"/>
+        FROM t_seckill_activity
+        ORDER BY begin_time DESC
+    </select>
+
+    <select id="selectNeedWarmUp" resultMap="BaseResultMap">
+        SELECT <include refid="Base_Column_List"/>
+        FROM t_seckill_activity
+        WHERE status = 0
+          AND begin_time &lt;= #{now}
+          AND end_time &gt; #{now}
+    </select>
+
+    <select id="selectNeedEnd" resultMap="BaseResultMap">
+        SELECT <include refid="Base_Column_List"/>
+        FROM t_seckill_activity
+        WHERE status = 1
+          AND end_time &lt;= #{now}
+    </select>
+
+    <update id="updateStatus">
+        UPDATE t_seckill_activity
+        SET status = #{status},
+            update_time = #{updateTime}
+        WHERE id = #{id}
+    </update>
+</mapper>

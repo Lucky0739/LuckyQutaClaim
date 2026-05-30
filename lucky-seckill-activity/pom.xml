@@ -2,7 +2,6 @@
 <project xmlns="http://maven.apache.org/POM/4.0.0" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
          xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/xsd/maven-4.0.0.xsd">
     <modelVersion>4.0.0</modelVersion>
-    <!-- 指定父项目 -->
     <parent>
         <groupId>com.luckySeckill</groupId>
         <artifactId>lucky-seckill-mall</artifactId>
@@ -11,37 +10,31 @@
     <groupId>com.luckySeckill</groupId>
     <version>0.0.1-SNAPSHOT</version>
 
-    <!-- 指定打包方式 -->
     <packaging>jar</packaging>
 
     <artifactId>lucky-seckill-activity</artifactId>
     <name>${artifactId}</name>
-    <description>订单模块，放置秒杀下单、订单列表、订单详情、取消订单、模拟支付等接口</description>
+    <description>秒杀活动模块，放置秒杀活动、秒杀下单、库存预热等接口</description>
 
     <dependencies>
-        <!-- 引入公共模块 -->
         <dependency>
             <groupId>com.luckySeckill</groupId>
             <artifactId>lucky-seckill-common</artifactId>
         </dependency>
 
-        <!-- Nacos 注册发现 -->
         <dependency>
             <groupId>com.alibaba.cloud</groupId>
             <artifactId>spring-cloud-starter-alibaba-nacos-discovery</artifactId>
         </dependency>
 
-        <!-- Nacos 配置中心 -->
         <dependency>
             <groupId>com.alibaba.cloud</groupId>
             <artifactId>spring-cloud-starter-alibaba-nacos-config</artifactId>
         </dependency>
 
-        <!-- Spring Boot Web -->
         <dependency>
             <groupId>org.springframework.boot</groupId>
             <artifactId>spring-boot-starter-web</artifactId>
-            <!-- 排除默认的 Logback 日志框架 -->
             <exclusions>
                 <exclusion>
                     <groupId>org.springframework.boot</groupId>
@@ -50,29 +43,63 @@
             </exclusions>
         </dependency>
 
-        <!-- Spring Boot Actuator -->
         <dependency>
             <groupId>org.springframework.boot</groupId>
             <artifactId>spring-boot-starter-actuator</artifactId>
         </dependency>
 
-        <!-- Spring Cloud OpenFeign -->
         <dependency>
             <groupId>org.springframework.cloud</groupId>
             <artifactId>spring-cloud-starter-openfeign</artifactId>
         </dependency>
 
-        <!-- Log4j2 日志框架 -->
         <dependency>
             <groupId>org.springframework.boot</groupId>
             <artifactId>spring-boot-starter-log4j2</artifactId>
         </dependency>
 
-        <!-- Disruptor 高性能队列 -->
         <dependency>
             <groupId>com.lmax</groupId>
             <artifactId>disruptor</artifactId>
         </dependency>
-    </dependencies>
-</project>
 
+        <dependency>
+            <groupId>org.mybatis.spring.boot</groupId>
+            <artifactId>mybatis-spring-boot-starter</artifactId>
+        </dependency>
+
+        <dependency>
+            <groupId>com.mysql</groupId>
+            <artifactId>mysql-connector-j</artifactId>
+            <scope>runtime</scope>
+        </dependency>
+
+        <dependency>
+            <groupId>org.projectlombok</groupId>
+            <artifactId>lombok</artifactId>
+            <scope>provided</scope>
+        </dependency>
+
+        <dependency>
+            <groupId>cn.dev33</groupId>
+            <artifactId>sa-token-spring-boot3-starter</artifactId>
+        </dependency>
+
+        <dependency>
+            <groupId>org.springframework.boot</groupId>
+            <artifactId>spring-boot-starter-data-redis</artifactId>
+        </dependency>
+    </dependencies>
+
+    <build>
+        <plugins>
+            <plugin>
+                <groupId>org.springframework.boot</groupId>
+                <artifactId>spring-boot-maven-plugin</artifactId>
+                <configuration>
+                    <mainClass>com.lucky.seckill.activity.ActivityApplication</mainClass>
+                </configuration>
+            </plugin>
+        </plugins>
+    </build>
+</project>
