@@ -26,6 +26,8 @@ import com.lucky.seckill.user.model.entity.UserRole;
 import com.lucky.seckill.user.model.vo.AdminUserListVO;
 import com.lucky.seckill.user.model.vo.LoginUserRspVO;
 import com.lucky.seckill.user.model.vo.UserProfileVO;
+import com.lucky.seckill.user.service.SmsAuthService;
+import com.lucky.seckill.user.service.UserProfileRedisService;
 import com.lucky.seckill.user.service.UserService;
 import jakarta.annotation.Resource;
 import lombok.extern.slf4j.Slf4j;
@@ -35,6 +37,7 @@ import org.springframework.data.redis.core.StringRedisTemplate;
 import org.springframework.data.redis.core.script.DefaultRedisScript;
 import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.multipart.MultipartFile;
 
 import com.github.pagehelper.Page;
@@ -82,6 +85,12 @@ public class UserServiceImpl implements UserService {
     @Resource
     private RoleMapper roleMapper;
 
+    @Resource
+    private UserProfileRedisService userProfileRedisService;
+
+    @Resource
+    private SmsAuthService smsAuthService;
+
     @Resource(name = "bizExecutor")
     private Executor bizExecutor;
 
@@ -103,9 +112,7 @@ public class UserServiceImpl implements UserService {
     private static final Integer LOGIN_FAIL_MAX_COUNT = 5;
     // 账号临时锁定时间（分钟）
     private static final Long LOGIN_LOCK_MINUTES = 30L;
-    // Redis 中用户资料缓存的 Key 前缀（独立Key，不存储在Session中）
-    private static final String USER_PROFILE_KEY_PREFIX = "user:profile:";
-    // 用户资料缓存过期时间（小时）
+    // 用户角色等缓存过期时间（小时）
     private static final Long USER_PROFILE_EXPIRE_HOURS = 24L;
     /**
      * 验证码校验 Lua 脚本
@@ -241,47 +248,49 @@ public class UserServiceImpl implements UserService {
         userMapper.updateByPrimaryKeySelective(user);
     }
 
+    private static final Long DEFAULT_USER_ROLE_ID = 1L;
+
     /**
-     * 处理用户角色关联
+     * 处理用户角色关联（注册时确保拥有普通用户角色，不影响已有其他角色）
      */
     private void handleUserRoleRelation(Long userId) {
-        // 检查是否已存在未删除的角色关联记录
-        UserRole existingRole = userRoleMapper.selectByUserId(userId);
+        ensureDefaultUserRoleIfAbsent(userId);
+    }
 
+    /**
+     * 确保用户拥有普通用户角色（不覆盖已有商家等其他角色）
+     */
+    private void ensureDefaultUserRoleIfAbsent(Long userId) {
+        UserRole existingRole = userRoleMapper.selectByUserIdAndRoleId(userId, DEFAULT_USER_ROLE_ID);
         if (Objects.nonNull(existingRole)) {
-            // 已存在角色关联，无需处理
-            log.info("==> 用户角色关联已存在, userId: {}, roleId: {}", userId, existingRole.getRoleId());
+            log.info("==> 用户普通角色关联已存在, userId: {}, roleId: {}", userId, DEFAULT_USER_ROLE_ID);
             return;
         }
 
-        // 检查是否有已删除的角色关联记录
-        UserRole deletedRole = userRoleMapper.selectDeletedByUserId(userId);
-
-        if (Objects.nonNull(deletedRole)) {
-            // 恢复已删除的角色关联
+        UserRole anyRole = userRoleMapper.selectByUserIdAndRoleIdIgnoreDelete(userId, DEFAULT_USER_ROLE_ID);
+        if (Objects.nonNull(anyRole)) {
             UserRole userRole = UserRole.builder()
-                    .id(deletedRole.getId())
-                    .isDelete(0) // 恢复为未删除状态
+                    .id(anyRole.getId())
+                    .isDelete(0)
                     .build();
             userRoleMapper.updateByPrimaryKeySelective(userRole);
-            log.info("==> 恢复已删除的用户角色关联, userId: {}, roleId: {}", userId, deletedRole.getRoleId());
-        } else {
-            // 创建新的角色关联
-            try {
-                UserRole userRole = UserRole.builder()
-                        .id(IdUtil.getSnowflakeNextId())
-                        .userId(userId)
-                        .roleId(1L) // 默认分配普通用户角色
-                        .isDelete(0) // 未删除
-                        .createTime(new java.util.Date())
-                        .build();
-                userRoleMapper.insertSelective(userRole);
+            log.info("==> 恢复已删除的普通用户角色关联, userId: {}, roleId: {}", userId, DEFAULT_USER_ROLE_ID);
+            return;
+        }
 
-                log.info("==> 用户角色关联创建成功, userId: {}, roleId: 1", userId);
-            } catch (Exception e) {
-                log.error("==> 用户角色关联创建失败, userId: {}", userId, e);
-                throw new BizException(ResponseCodeEnum.SYSTEM_ERROR, "用户角色关联创建失败");
-            }
+        try {
+            UserRole userRole = UserRole.builder()
+                    .id(IdUtil.getSnowflakeNextId())
+                    .userId(userId)
+                    .roleId(DEFAULT_USER_ROLE_ID)
+                    .isDelete(0)
+                    .createTime(new java.util.Date())
+                    .build();
+            userRoleMapper.insertSelective(userRole);
+            log.info("==> 用户普通角色关联创建成功, userId: {}, roleId: {}", userId, DEFAULT_USER_ROLE_ID);
+        } catch (Exception e) {
+            log.error("==> 用户角色关联创建失败, userId: {}", userId, e);
+            throw new BizException(ResponseCodeEnum.SYSTEM_ERROR, "用户角色关联创建失败");
         }
     }
 
@@ -493,12 +502,10 @@ public class UserServiceImpl implements UserService {
      */
     private void sendSms(String mobile, String verifyCode) {
         try {
-            // TODO: 调用短信服务商 API 发送验证码
-
-            // 开发阶段通过日志打印验证码，方便调试
-            log.info("==> 验证码发送成功, mobile: {}, verifyCode: {}", mobile, verifyCode);
+            smsAuthService.sendVerifyCode(mobile, verifyCode);
+            log.info("==> 验证码发送成功, mobile: {}", mobile);
         } catch (Exception e) {
-            log.error("==> 验证码发送失败, mobile: {}, verifyCode: {}", mobile, verifyCode, e);
+            log.error("==> 验证码发送失败, mobile: {}", mobile, e);
         }
     }
 
@@ -794,11 +801,10 @@ public class UserServiceImpl implements UserService {
                 .status(user.getStatus())
                 .build();
 
-        // 3. 使用独立的Redis Key存储用户资料，避免Session带来的数据一致性问题
-        String profileKey = USER_PROFILE_KEY_PREFIX + userId;
-        redisTemplate.opsForValue().set(profileKey, profileVO, USER_PROFILE_EXPIRE_HOURS, TimeUnit.HOURS);
+        // 3. 使用 Redis Hash 存储用户资料（独立 Key，不放在 Session 中）
+        userProfileRedisService.save(profileVO);
 
-        log.debug("==> 用户资料缓存已主动刷新, userId: {}, key: {}", userId, profileKey);
+        log.debug("==> 用户资料 Hash 缓存已刷新, userId: {}, key: {}", userId, RedisKeyConstants.userProfileKey(userId));
     }
 
     /**
@@ -811,21 +817,19 @@ public class UserServiceImpl implements UserService {
         // 1. 获取当前登录用户 ID
         Long userId = StpUtil.getLoginIdAsLong();
 
-        // 2. 尝试从 Redis 独立Key中获取用户资料缓存
-        String profileKey = USER_PROFILE_KEY_PREFIX + userId;
-        UserProfileVO cachedProfile = (UserProfileVO) redisTemplate.opsForValue().get(profileKey);
+        // 2. 尝试从 Redis Hash 获取用户资料
+        UserProfileVO cachedProfile = userProfileRedisService.get(userId);
 
         if (cachedProfile != null) {
-            log.info("==> 从 Redis 缓存获取用户资料, userId: {}, key: {}", userId, profileKey);
+            log.info("==> 从 Redis Hash 获取用户资料, userId: {}, key: {}", userId, RedisKeyConstants.userProfileKey(userId));
             return Response.success(cachedProfile);
         }
 
-        // 3. 缓存未命中，调用刷新方法从数据库加载
+        // 3. 缓存未命中，从数据库加载并写入 Hash
         log.info("==> 缓存未命中，从数据库查询用户资料, userId: {}", userId);
         refreshUserProfileCache(userId);
 
-        // 4. 再次从 Redis 获取刚刚存入的数据
-        UserProfileVO freshProfile = (UserProfileVO) redisTemplate.opsForValue().get(profileKey);
+        UserProfileVO freshProfile = userProfileRedisService.get(userId);
         return Response.success(freshProfile);
     }
 
@@ -890,9 +894,8 @@ public class UserServiceImpl implements UserService {
             }
             
             // 清除用户缓存（禁用用户不需要缓存）
-            String profileKey = USER_PROFILE_KEY_PREFIX + userId;
+            userProfileRedisService.delete(userId);
             String rolesKey = RedisKeyConstants.USER_ROLES_KEY_PREFIX + userId;
-            redisTemplate.delete(profileKey);
             redisTemplate.delete(rolesKey);
             log.info("==> 已清除禁用用户的缓存, userId: {}", userId);
         } else {
@@ -914,27 +917,28 @@ public class UserServiceImpl implements UserService {
      */
     @Override
     public Response<?> assignMerchantRole(Long userId, Long roleId) {
-        log.info("==> 为用户分配商家角色, userId: {}, roleId: {}", userId, roleId);
+        log.info("==> 为用户分配角色, userId: {}, roleId: {}", userId, roleId);
 
         User existUser = userMapper.selectByPrimaryKey(userId);
         if (existUser == null) {
             throw new BizException(ResponseCodeEnum.PARAM_NOT_VALID, "用户不存在");
         }
 
-        UserRole existingUserRole = userRoleMapper.selectByUserId(userId);
-        if (Objects.nonNull(existingUserRole) && existingUserRole.getRoleId().equals(roleId)) {
+        UserRole activeRole = userRoleMapper.selectByUserIdAndRoleId(userId, roleId);
+        if (Objects.nonNull(activeRole)) {
             log.info("==> 用户已拥有该角色，无需重复分配, userId: {}, roleId: {}", userId, roleId);
+            refreshUserRolesCache(userId);
             return Response.success();
         }
 
-        if (Objects.nonNull(existingUserRole)) {
-            UserRole userRole = UserRole.builder()
-                    .id(existingUserRole.getId())
-                    .roleId(roleId)
+        UserRole anyRole = userRoleMapper.selectByUserIdAndRoleIdIgnoreDelete(userId, roleId);
+        if (Objects.nonNull(anyRole)) {
+            UserRole restoreRole = UserRole.builder()
+                    .id(anyRole.getId())
                     .isDelete(0)
                     .build();
-            userRoleMapper.updateByPrimaryKeySelective(userRole);
-            log.info("==> 更新用户角色成功, userId: {}, roleId: {}", userId, roleId);
+            userRoleMapper.updateByPrimaryKeySelective(restoreRole);
+            log.info("==> 恢复用户角色关联, userId: {}, roleId: {}", userId, roleId);
         } else {
             UserRole userRole = UserRole.builder()
                     .id(IdUtil.getSnowflakeNextId())
@@ -947,7 +951,15 @@ public class UserServiceImpl implements UserService {
             log.info("==> 新增用户角色成功, userId: {}, roleId: {}", userId, roleId);
         }
 
-        // 刷新用户角色缓存（使用独立Redis Key）
+        if (!DEFAULT_USER_ROLE_ID.equals(roleId)) {
+            ensureDefaultUserRoleIfAbsent(userId);
+        }
+
+        refreshUserRolesCache(userId);
+        return Response.success();
+    }
+
+    private void refreshUserRolesCache(Long userId) {
         List<Role> roles = roleMapper.selectRolesByUserId(userId);
         if (roles != null && !roles.isEmpty()) {
             List<String> roleCodes = roles.stream()
@@ -957,8 +969,6 @@ public class UserServiceImpl implements UserService {
             redisTemplate.opsForValue().set(rolesKey, roleCodes, USER_PROFILE_EXPIRE_HOURS, TimeUnit.HOURS);
             log.info("==> 用户角色缓存已刷新, userId: {}, roles: {}, key: {}", userId, roleCodes, rolesKey);
         }
-
-        return Response.success();
     }
 
     /**
@@ -1082,9 +1092,8 @@ public class UserServiceImpl implements UserService {
         userMapper.updateByPrimaryKeySelective(updateUser);
 
         // 7. 清除用户缓存（密码已修改，需要重新登录）
-        String profileKey = USER_PROFILE_KEY_PREFIX + userId;
+        userProfileRedisService.delete(userId);
         String rolesKey = RedisKeyConstants.USER_ROLES_KEY_PREFIX + userId;
-        redisTemplate.delete(profileKey);
         redisTemplate.delete(rolesKey);
         log.info("==> 已清除用户缓存, userId: {}", userId);
 
@@ -1093,6 +1102,111 @@ public class UserServiceImpl implements UserService {
         log.info("==> 用户密码修改成功，强制下线, userId: {}", userId);
 
         return Response.success();
+    }
+
+    /**
+     * 用户注销账号（本人操作）
+     */
+    @Override
+    @Transactional(rollbackFor = Exception.class)
+    public Response<?> cancelAccount(CancelAccountRequest request) {
+        Long userId = StpUtil.getLoginIdAsLong();
+
+        User user = userMapper.selectByPrimaryKey(userId);
+        if (user == null) {
+            throw new BizException(ResponseCodeEnum.PARAM_NOT_VALID, "用户不存在");
+        }
+
+        // 管理员不能注销自己（与 Sa-Token 角色判断一致）
+        if (isCurrentLoginAdmin()) {
+            throw new BizException(ResponseCodeEnum.USER_CANNOT_CANCEL_ADMIN);
+        }
+
+        if (!PASSWORD_ENCODER.matches(request.getPassword(), user.getPassword())) {
+            throw new BizException(ResponseCodeEnum.USER_PASSWORD_ERROR);
+        }
+
+        checkVerifyCode(request.getVerifyCode(), user.getMobile(), VerifyCodeTypeEnum.CANCEL_ACCOUNT.getPurpose());
+
+        logicalDeleteUser(user);
+        StpUtil.logout();
+
+        log.info("==> 用户注销账号成功, userId: {}, mobile: {}", userId, user.getMobile());
+        return Response.success();
+    }
+
+    /**
+     * 管理员删除用户
+     */
+    @Override
+    @Transactional(rollbackFor = Exception.class)
+    public Response<?> adminDeleteUser(Long userId) {
+        Long adminId = StpUtil.getLoginIdAsLong();
+
+        if (adminId.equals(userId)) {
+            if (isCurrentLoginAdmin()) {
+                throw new BizException(ResponseCodeEnum.USER_CANNOT_CANCEL_ADMIN);
+            }
+            throw new BizException(ResponseCodeEnum.USER_CANNOT_DELETE_SELF);
+        }
+
+        User targetUser = userMapper.selectByPrimaryKey(userId);
+        if (targetUser == null) {
+            throw new BizException(ResponseCodeEnum.PARAM_NOT_VALID, "用户不存在");
+        }
+
+        if (isAdminUser(userId)) {
+            throw new BizException(ResponseCodeEnum.USER_CANNOT_DELETE_ADMIN);
+        }
+
+        logicalDeleteUser(targetUser);
+
+        log.info("==> 管理员删除用户成功, adminId: {}, targetUserId: {}, mobile: {}",
+                adminId, userId, targetUser.getMobile());
+        return Response.success();
+    }
+
+    /**
+     * 逻辑删除用户并清理关联数据、缓存与会话
+     */
+    private void logicalDeleteUser(User user) {
+        Long userId = user.getId();
+        userMapper.deleteByPrimaryKey(userId);
+        userRoleMapper.logicalDeleteByUserId(userId);
+        clearUserCacheAndSession(userId, user.getMobile());
+    }
+
+    /**
+     * 当前登录用户是否为管理员（基于 Sa-Token 会话角色，与 @SaCheckRole 一致）
+     */
+    private boolean isCurrentLoginAdmin() {
+        List<String> roles = StpUtil.getRoleList();
+        return roles != null && roles.contains("admin");
+    }
+
+    /**
+     * 判断用户是否拥有管理员角色（查库，用于管理员删除他人时的校验）
+     */
+    private boolean isAdminUser(Long userId) {
+        List<Role> roles = roleMapper.selectRolesByUserId(userId);
+        if (roles == null || roles.isEmpty()) {
+            return false;
+        }
+        return roles.stream().anyMatch(role -> "admin".equals(role.getRoleCode()));
+    }
+
+    /**
+     * 清除用户 Redis 缓存、登录失败计数，并强制下线
+     */
+    private void clearUserCacheAndSession(Long userId, String mobile) {
+        userProfileRedisService.delete(userId);
+        redisTemplate.delete(RedisKeyConstants.USER_ROLES_KEY_PREFIX + userId);
+        if (StrUtil.isNotBlank(mobile)) {
+            stringRedisTemplate.delete(LOGIN_FAIL_COUNT_KEY_PREFIX + mobile);
+        }
+        if (StpUtil.isLogin(userId)) {
+            StpUtil.kickout(userId);
+        }
     }
 }
 

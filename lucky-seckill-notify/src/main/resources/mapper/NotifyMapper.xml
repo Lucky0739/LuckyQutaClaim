@@ -172,4 +172,107 @@
     and notify_type = #{notifyType,jdbcType=INTEGER}
     and isDelete = 0
   </select>
+
+  <sql id="UserNotifyWhere">
+    where receive_user_id = #{receiveUserId,jdbcType=BIGINT}
+    and isDelete = 0
+    <choose>
+      <when test="notifyType != null">
+        and notify_type = #{notifyType,jdbcType=INTEGER}
+      </when>
+      <otherwise>
+        and notify_type != 1
+      </otherwise>
+    </choose>
+    <if test="isRead != null">
+      and is_read = #{isRead,jdbcType=INTEGER}
+    </if>
+  </sql>
+
+  <select id="selectUserNotifyPage" resultMap="BaseResultMap">
+    select
+    <include refid="Base_Column_List" />
+    from t_notify
+    <include refid="UserNotifyWhere" />
+    order by create_time desc
+    limit #{offset,jdbcType=INTEGER}, #{limit,jdbcType=INTEGER}
+  </select>
+
+  <select id="countUserNotify" resultType="java.lang.Long">
+    select count(id)
+    from t_notify
+    <include refid="UserNotifyWhere" />
+  </select>
+
+  <select id="countUserUnreadNotify" resultType="java.lang.Long">
+    select count(id)
+    from t_notify
+    where receive_user_id = #{receiveUserId,jdbcType=BIGINT}
+    and isDelete = 0
+    and is_read = 0
+    <choose>
+      <when test="notifyType != null">
+        and notify_type = #{notifyType,jdbcType=INTEGER}
+      </when>
+      <otherwise>
+        and notify_type != 1
+      </otherwise>
+    </choose>
+  </select>
+
+  <select id="countUnreadGroupByUserIdAndNotifyType"
+          resultType="com.lucky.seckill.notify.model.vo.NotifyUnreadStatVO">
+    select receive_user_id as receiveUserId,
+           notify_type as notifyType,
+           count(id) as unreadCount
+    from t_notify
+    where receive_user_id = #{receiveUserId,jdbcType=BIGINT}
+      and isDelete = 0
+      and is_read = 0
+      and notify_type != 1
+    group by receive_user_id, notify_type
+    order by notify_type asc
+  </select>
+
+  <select id="countUserNotifySummaryGroupByType"
+          resultType="com.lucky.seckill.notify.model.dto.NotifyTypeCountDTO">
+    select notify_type as notifyType,
+           count(id) as totalCount,
+           sum(case when is_read = 0 then 1 else 0 end) as unreadCount
+    from t_notify
+    where receive_user_id = #{receiveUserId,jdbcType=BIGINT}
+      and isDelete = 0
+      and notify_type != 1
+    group by notify_type
+    order by notify_type asc
+  </select>
+
+  <select id="selectByNotifyTypeAndBusinessId" resultMap="BaseResultMap">
+    select
+    <include refid="Base_Column_List" />
+    from t_notify
+    where notify_type = #{notifyType,jdbcType=INTEGER}
+      and business_id = #{businessId,jdbcType=BIGINT}
+      and isDelete = 0
+    order by create_time desc
+    limit 1
+  </select>
+
+  <update id="markAllReadByReceiveUserId">
+    update t_notify
+    set is_read = 1,
+        read_time = #{readTime,jdbcType=TIMESTAMP},
+        update_time = #{updateTime,jdbcType=TIMESTAMP}
+    where receive_user_id = #{receiveUserId,jdbcType=BIGINT}
+    and isDelete = 0
+    and is_read = 0
+    <choose>
+      <when test="notifyType != null">
+        and notify_type = #{notifyType,jdbcType=INTEGER}
+      </when>
+      <otherwise>
+        and notify_type != 1
+      </otherwise>
+    </choose>
+  </update>
 </mapper>

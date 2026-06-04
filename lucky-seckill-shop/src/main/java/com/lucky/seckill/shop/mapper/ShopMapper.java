@@ -3,7 +3,6 @@ package com.lucky.seckill.shop.mapper;
 import com.lucky.seckill.shop.model.entity.Shop;
 import io.lettuce.core.dynamic.annotation.Param;
 
-import java.util.Date;
 import java.util.List;
 
 public interface ShopMapper {
@@ -41,9 +40,7 @@ public interface ShopMapper {
     List<Shop> selectShopApplyList(
             @Param("username") String username,
             @Param("shopName") String shopName,
-            @Param("auditStatus") Integer auditStatus,
-            @Param("startTime") Date startTime,
-            @Param("endTime") Date endTime
+            @Param("auditStatus") Integer auditStatus
     );
 
     /**
@@ -53,13 +50,16 @@ public interface ShopMapper {
             @Param("username") String username,
             @Param("shopName") String shopName,
             @Param("auditStatus") Integer auditStatus,
-            @Param("shopStatus") Integer shopStatus,
-            @Param("startTime") Date startTime,
-            @Param("endTime") Date endTime
+            @Param("shopStatus") Integer shopStatus
     );
 
     /**
      * 更新店铺状态
      */
     int updateShopStatus(@Param("shopId") Long shopId, @Param("shopStatus") Integer shopStatus);
+
+    /**
+     * 更新店铺收藏数
+     */
+    int updateCollectNum(@Param("shopId") Long shopId, @Param("collectNum") Integer collectNum);
 }

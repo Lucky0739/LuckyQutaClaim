@@ -22,6 +22,10 @@ public class SeckillGoods {
 
     private Long skuId;
 
+    private Long userId;
+
+    private String skuSpecName;
+
     private String seckillTitle;
 
     private String seckillImg;
@@ -35,6 +39,10 @@ public class SeckillGoods {
     private Integer seckillLimit;
 
     private Integer sort;
+
+    private Integer auditStatus;
+
+    private String auditRemark;
 
     private Integer version;
 

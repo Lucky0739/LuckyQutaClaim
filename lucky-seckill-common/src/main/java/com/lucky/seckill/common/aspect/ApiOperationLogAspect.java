@@ -2,6 +2,9 @@
 package com.lucky.seckill.common.aspect;
 
 import com.lucky.seckill.common.utils.JsonUtils;
+import jakarta.servlet.ServletRequest;
+import jakarta.servlet.ServletResponse;
+import jakarta.servlet.http.Part;
 import lombok.extern.slf4j.Slf4j;
 import org.aspectj.lang.ProceedingJoinPoint;
 import org.aspectj.lang.annotation.Around;
@@ -9,7 +12,10 @@ import org.aspectj.lang.annotation.Aspect;
 import org.aspectj.lang.annotation.Pointcut;
 import org.aspectj.lang.reflect.MethodSignature;
 import org.springframework.stereotype.Component;
+import org.springframework.web.multipart.MultipartFile;
 
+import java.io.InputStream;
+import java.io.OutputStream;
 import java.lang.reflect.Method;
 import java.util.Arrays;
 import java.util.function.Function;
@@ -21,7 +27,7 @@ import java.util.stream.Collectors;
 public class ApiOperationLogAspect {
 
     /** 以自定义 @ApiOperationLog 注解为切点，凡是添加 @ApiOperationLog 的方法，都会执行环绕中的代码 */
-    @Pointcut("@annotation(com.quanxiaoha.seckill.common.aspect.ApiOperationLog)")
+    @Pointcut("@annotation(com.lucky.seckill.common.aspect.ApiOperationLog)")
     public void apiOperationLog() {}
 
     /**
@@ -59,7 +65,7 @@ public class ApiOperationLogAspect {
 
         // 打印出参等相关信息
         log.info("====== 请求结束: [{}], 耗时: {}ms, 出参: {} =================================== ",
-                description, executionTime, JsonUtils.toJsonString(result));
+                description, executionTime, safeToJsonStr(result));
 
         return result;
     }
@@ -84,12 +90,38 @@ public class ApiOperationLogAspect {
     }
 
     /**
-     * 转 JSON 字符串
-     * @return
+     * 转 JSON 字符串（跳过不可序列化的参数，如 MultipartFile）
      */
     private Function<Object, String> toJsonStr() {
-        return JsonUtils::toJsonString;
+        return this::safeToJsonStr;
+    }
+
+    private String safeToJsonStr(Object arg) {
+        if (arg == null) {
+            return "null";
+        }
+        if (arg instanceof MultipartFile file) {
+            return formatMultipartFile(file);
+        }
+        if (arg instanceof Part part) {
+            return String.format("[Part: name=%s, size=%d, contentType=%s]",
+                    part.getName(), part.getSize(), part.getContentType());
+        }
+        if (arg instanceof ServletRequest || arg instanceof ServletResponse
+                || arg instanceof InputStream || arg instanceof OutputStream) {
+            return "[" + arg.getClass().getSimpleName() + "]";
+        }
+        try {
+            return JsonUtils.toJsonString(arg);
+        } catch (Exception e) {
+            log.debug("参数序列化失败, type: {}", arg.getClass().getName(), e);
+            return "[" + arg.getClass().getSimpleName() + "]";
+        }
+    }
+
+    private String formatMultipartFile(MultipartFile file) {
+        return String.format("[MultipartFile: name=%s, originalFilename=%s, size=%d, contentType=%s]",
+                file.getName(), file.getOriginalFilename(), file.getSize(), file.getContentType());
     }
 
 }
-

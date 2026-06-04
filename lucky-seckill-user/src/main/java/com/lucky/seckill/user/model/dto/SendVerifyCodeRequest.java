@@ -28,7 +28,7 @@ public class SendVerifyCodeRequest {
     private String mobile;
 
     /**
-     * 验证码类型（1: 注册，2: 登录）
+     * 验证码类型（1: 注册，2: 登录，3: 修改密码，4: 注销账号）
      */
     @NotNull(message = "验证码类型不能为空")
     private Integer type;

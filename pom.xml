@@ -44,7 +44,7 @@
     <spring-cloud.version>2023.0.3</spring-cloud.version>
     <spring-boot.version>3.3.5</spring-boot.version>
     <springdoc.version>2.6.0</springdoc.version>
-    <lombok.version>1.18.32</lombok.version>
+    <lombok.version>1.18.42</lombok.version>
     <disruptor.version>3.4.4</disruptor.version>
     <sa-token.version>1.45.0</sa-token.version>
     <spring-ai.version>1.0.0</spring-ai.version>

@@ -36,6 +36,18 @@ server:
   port: 8086
   forward-headers-strategy: framework
 
+seata:
+  enabled: true
+  application-id: ${spring.application.name}
+  tx-service-group: lucky_seckill_tx_group
+  enable-auto-data-source-proxy: true
+  data-source-proxy-mode: AT
+  service:
+    vgroup-mapping:
+      lucky_seckill_tx_group: default
+    grouplist:
+      default: 127.0.0.1:8091
+
 mybatis:
   mapper-locations: classpath:/mapper/**/*.xml
   configuration:
@@ -73,9 +85,13 @@ alipay:
   charset: UTF-8
   format: JSON
   # 异步通知地址（必须公网可访问，用ngrok穿透）
-  notify-url: https://donator-smith-gumdrop.ngrok-free.dev/pay/callback
-  # 支付成功跳转页（前端地址）
-  return-url: http://localhost:8080/pay/success
-
+  notify-url: https://donator-smith-gumdrop.ngrok-free.dev/pay/notify
+  # 支付成功后，支付宝同步跳回的前端页面
+  return-url: http://localhost:5173/pay/result
+  config:
+    # 连接超时时间
+    connectTimeout: 10000
+    # 读取超时时间
+    readTimeout: 15000
 sa-token:
   ignore-paths: /user/login,/user/register,/user/send-verify-code,/pay/**,/order/**,/goods/**,/notify/**,/actuator/**

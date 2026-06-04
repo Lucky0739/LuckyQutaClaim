@@ -19,20 +19,26 @@ spring:
           enabled: false
 
 server:
-  port: 8091
+  port: 8092
   forward-headers-strategy: framework
+
+seata:
+  enabled: true
+  application-id: ${spring.application.name}
+  tx-service-group: lucky_seckill_tx_group
+  enable-auto-data-source-proxy: true
+  data-source-proxy-mode: AT
+  service:
+    vgroup-mapping:
+      lucky_seckill_tx_group: default
+    grouplist:
+      default: 127.0.0.1:8091
 
 mybatis:
   mapper-locations: classpath:/mapper/**/*.xml
   configuration:
     log-impl: org.apache.ibatis.logging.stdout.StdOutImpl
 
-springdoc:
-  api-docs:
-    path: /v3/api-docs
-  swagger-ui:
-    path: /swagger-ui.html
-  show-actuator: false
 
 management:
   endpoints:
@@ -41,4 +47,4 @@ management:
         include: '*'
 
 sa-token:
-  ignore-paths: /user/login,/user/register,/user/send-verify-code
+  ignore-paths: /user/login,/user/register,/user/send-verify-code,/cart/count

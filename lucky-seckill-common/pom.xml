@@ -155,6 +155,12 @@
             </exclusions>
         </dependency>
 
+        <!-- Spring Boot Actuator（网关健康检查 /actuator/health） -->
+        <dependency>
+            <groupId>org.springframework.boot</groupId>
+            <artifactId>spring-boot-starter-actuator</artifactId>
+        </dependency>
+
         <!-- 腾讯云 COS 对象存储（适配 SpringBoot 3.x） -->
         <dependency>
             <groupId>com.qcloud</groupId>
@@ -185,6 +191,17 @@
             <groupId>com.github.pagehelper</groupId>
             <artifactId>pagehelper-spring-boot-starter</artifactId>
             <version>2.1.0</version>
+        </dependency>
+        <!-- Sentinel -->
+        <dependency>
+            <groupId>com.alibaba.cloud</groupId>
+            <artifactId>spring-cloud-starter-alibaba-sentinel</artifactId>
+        </dependency>
+
+        <!-- Seata 分布式事务 -->
+        <dependency>
+            <groupId>com.alibaba.cloud</groupId>
+            <artifactId>spring-cloud-starter-alibaba-seata</artifactId>
         </dependency>
 
         <!-- RocketMQ Spring Boot Starter（已排除日志冲突） -->

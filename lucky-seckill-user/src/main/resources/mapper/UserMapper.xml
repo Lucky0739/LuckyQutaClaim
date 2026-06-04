@@ -194,5 +194,14 @@
     </where>
     order by create_time desc
   </select>
+
+  <select id="selectByNicknamePrefix" resultMap="BaseResultMap">
+    select
+    <include refid="Base_Column_List" />
+    from t_user
+    where nickname like CONCAT(#{nicknamePrefix,jdbcType=VARCHAR}, '%')
+    AND isDelete = 0
+    order by id asc
+  </select>
 </mapper>
 

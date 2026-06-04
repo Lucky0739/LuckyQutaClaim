@@ -38,4 +38,11 @@
         FROM t_goods_detail
         WHERE goods_id = #{goodsId,jdbcType=BIGINT}
     </select>
+
+    <update id="updateContentByGoodsId">
+        UPDATE t_goods_detail
+        SET detail_content = #{detailContent,jdbcType=LONGVARCHAR},
+            update_time = #{updateTime,jdbcType=TIMESTAMP}
+        WHERE goods_id = #{goodsId,jdbcType=BIGINT}
+    </update>
 </mapper>

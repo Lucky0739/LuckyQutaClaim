@@ -39,6 +39,17 @@ public class PayOrderController {
     }
 
     /**
+     * 余额支付
+     * @param orderNo 订单号
+     * @return 支付结果
+     */
+    @PostMapping("/balance")
+    public Response<PayResultVO> balancePay(@RequestParam("orderNo") String orderNo) {
+        log.info("==> 收到余额支付请求, orderNo: {}", orderNo);
+        return payOrderService.balancePay(orderNo);
+    }
+
+    /**
      * 支付宝异步回调
      * @return success
      */

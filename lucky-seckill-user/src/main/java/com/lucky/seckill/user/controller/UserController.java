@@ -187,4 +187,26 @@ public class UserController {
         log.info("==> 用户修改密码, userId: {}", StpUtil.getLoginId());
         return userService.changePassword(request);
     }
+
+    /**
+     * 用户注销账号（本人操作，需密码 + 短信验证码）
+     */
+    @SaCheckLogin
+    @PostMapping("/account/cancel")
+    @ApiOperationLog(description = "用户注销账号")
+    public Response<?> cancelAccount(@Validated @RequestBody CancelAccountRequest request) {
+        log.info("==> 用户注销账号, userId: {}", StpUtil.getLoginId());
+        return userService.cancelAccount(request);
+    }
+
+    /**
+     * 管理员删除用户（逻辑删除）
+     */
+    @SaCheckRole("admin")
+    @PostMapping("/admin/delete")
+    @ApiOperationLog(description = "管理员删除用户")
+    public Response<?> adminDeleteUser(@RequestParam("userId") Long userId) {
+        log.info("==> 管理员删除用户, adminId: {}, targetUserId: {}", StpUtil.getLoginId(), userId);
+        return userService.adminDeleteUser(userId);
+    }
 }

@@ -98,5 +98,15 @@ public interface UserService {
      * @return
      */
     Response<?> changePassword(ChangePasswordRequest request);
+
+    /**
+     * 用户注销账号（本人操作，逻辑删除）
+     */
+    Response<?> cancelAccount(CancelAccountRequest request);
+
+    /**
+     * 管理员删除用户（逻辑删除）
+     */
+    Response<?> adminDeleteUser(Long userId);
 }
 

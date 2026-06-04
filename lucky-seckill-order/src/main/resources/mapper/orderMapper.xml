@@ -5,6 +5,7 @@
         <id column="id" property="id" jdbcType="BIGINT"/>
         <result column="user_id" property="userId" jdbcType="BIGINT"/>
         <result column="goods_id" property="goodsId" jdbcType="BIGINT"/>
+        <result column="shop_id" property="shopId" jdbcType="BIGINT"/>
         <result column="order_no" property="orderNo" jdbcType="VARCHAR"/>
         <result column="goods_price" property="goodsPrice" jdbcType="DECIMAL"/>
         <result column="buyGoods_num" property="buyGoodsNum" jdbcType="INTEGER"/>
@@ -30,7 +31,7 @@
     </resultMap>
 
     <sql id="Base_Column_List">
-        id, user_id, goods_id, order_no, goods_price, buyGoods_num, total_amount,
+        id, user_id, goods_id, shop_id, order_no, goods_price, buyGoods_num, total_amount,
         goods_name, goods_img, sku_id, user_address_id, status, mobile, receiver,
         province, city, area, detail_address, pay_time, delivery_time, receive_time,
         expire_time, isDelete, create_time, update_time
@@ -42,6 +43,7 @@
             <if test="id != null">id,</if>
             <if test="userId != null">user_id,</if>
             <if test="goodsId != null">goods_id,</if>
+            <if test="shopId != null">shop_id,</if>
             <if test="orderNo != null">order_no,</if>
             <if test="goodsPrice != null">goods_price,</if>
             <if test="buyGoodsNum != null">buyGoods_num,</if>
@@ -70,6 +72,7 @@
             <if test="id != null">#{id,jdbcType=BIGINT},</if>
             <if test="userId != null">#{userId,jdbcType=BIGINT},</if>
             <if test="goodsId != null">#{goodsId,jdbcType=BIGINT},</if>
+            <if test="shopId != null">#{shopId,jdbcType=BIGINT},</if>
             <if test="orderNo != null">#{orderNo,jdbcType=VARCHAR},</if>
             <if test="goodsPrice != null">#{goodsPrice,jdbcType=DECIMAL},</if>
             <if test="buyGoodsNum != null">#{buyGoodsNum,jdbcType=INTEGER},</if>
@@ -117,6 +120,9 @@
         FROM t_order
         WHERE user_id = #{userId,jdbcType=BIGINT}
           AND isDelete = 0
+        <if test="orderNo != null and orderNo != ''">
+            AND order_no = #{orderNo,jdbcType=VARCHAR}
+        </if>
         <if test="status != null">
             AND status = #{status,jdbcType=TINYINT}
         </if>
@@ -124,6 +130,29 @@
             AND goods_name LIKE CONCAT('%', #{goodsName,jdbcType=VARCHAR}, '%')
         </if>
         ORDER BY create_time DESC
+    </select>
+
+    <select id="selectOrdersByMerchantUserId" resultMap="BaseResultMap">
+        SELECT
+        o.id, o.user_id, o.goods_id, o.shop_id, o.order_no, o.goods_price, o.buyGoods_num, o.total_amount,
+        o.goods_name, o.goods_img, o.sku_id, o.user_address_id, o.status, o.mobile, o.receiver,
+        o.province, o.city, o.area, o.detail_address, o.pay_time, o.delivery_time, o.receive_time,
+        o.expire_time, o.isDelete, o.create_time, o.update_time
+        FROM t_order o
+        INNER JOIN t_goods g ON o.goods_id = g.id
+        WHERE g.user_id = #{merchantUserId,jdbcType=BIGINT}
+          AND o.isDelete = 0
+          AND g.isDelete = 0
+        <if test="orderNo != null and orderNo != ''">
+            AND o.order_no = #{orderNo,jdbcType=VARCHAR}
+        </if>
+        <if test="status != null">
+            AND o.status = #{status,jdbcType=TINYINT}
+        </if>
+        <if test="goodsName != null and goodsName != ''">
+            AND o.goods_name LIKE CONCAT('%', #{goodsName,jdbcType=VARCHAR}, '%')
+        </if>
+        ORDER BY o.create_time DESC
     </select>
 
     <select id="selectByIds" resultMap="BaseResultMap">
@@ -142,6 +171,7 @@
         <set>
             <if test="userId != null">user_id = #{userId,jdbcType=BIGINT},</if>
             <if test="goodsId != null">goods_id = #{goodsId,jdbcType=BIGINT},</if>
+            <if test="shopId != null">shop_id = #{shopId,jdbcType=BIGINT},</if>
             <if test="orderNo != null">order_no = #{orderNo,jdbcType=VARCHAR},</if>
             <if test="goodsPrice != null">goods_price = #{goodsPrice,jdbcType=DECIMAL},</if>
             <if test="buyGoodsNum != null">buyGoods_num = #{buyGoodsNum,jdbcType=INTEGER},</if>
@@ -174,4 +204,16 @@
         WHERE order_no = #{orderNo}
           AND isDelete = 0
     </update>
+
+    <select id="selectExpiredPendingOrders" resultMap="BaseResultMap">
+        SELECT
+        <include refid="Base_Column_List"/>
+        FROM t_order
+        WHERE status = 0
+          AND isDelete = 0
+          AND expire_time IS NOT NULL
+          AND expire_time &lt;= #{now,jdbcType=TIMESTAMP}
+        ORDER BY expire_time ASC
+        LIMIT 200
+    </select>
 </mapper>

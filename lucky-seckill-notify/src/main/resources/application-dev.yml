@@ -26,6 +26,11 @@ spring:
       # 连接测试语句
       connection-test-query: SELECT 1
 
+  cloud:
+    nacos:
+      discovery:
+        ip: 127.0.0.1
+
 # MyBatis 开发环境专属配置
 mybatis:
   configuration:

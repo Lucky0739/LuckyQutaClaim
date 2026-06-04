@@ -1,12 +1,9 @@
-        package com.lucky.seckill.shop.model.dto;
+package com.lucky.seckill.shop.model.dto;
 
 import lombok.AllArgsConstructor;
 import lombok.Builder;
 import lombok.Data;
 import lombok.NoArgsConstructor;
-import org.springframework.format.annotation.DateTimeFormat;
-
-import java.time.LocalDateTime;
 
 /**
  * 商家申请列表查询请求DTO
@@ -36,18 +33,6 @@ public class ShopApplyQueryRequest {
      * 店铺状态 1-正常 0-关闭/禁用
      */
     private Integer shopStatus;
-
-    /**
-     * 开始时间
-     */
-    @DateTimeFormat(pattern = "yyyy-MM-dd HH:mm:ss")
-    private LocalDateTime startTime;
-
-    /**
-     * 结束时间
-     */
-    @DateTimeFormat(pattern = "yyyy-MM-dd HH:mm:ss")
-    private LocalDateTime endTime;
 
     /**
      * 页码（默认第1页）

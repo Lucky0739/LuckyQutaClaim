@@ -31,6 +31,11 @@ public class Order {
     private Long goodsId;
 
     /**
+     * 店铺ID（冗余，来源于商品）
+     */
+    private Long shopId;
+
+    /**
      * 商品规格ID
      */
     private Long skuId;

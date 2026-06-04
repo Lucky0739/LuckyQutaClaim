@@ -1,6 +1,7 @@
 package com.lucky.seckill.goods.mapper;
 
 import com.lucky.seckill.goods.model.dto.GoodsQueryRequest;
+import com.lucky.seckill.goods.model.dto.GoodsRankStatDTO;
 import com.lucky.seckill.goods.model.entity.Goods;
 import org.apache.ibatis.annotations.Param;
 
@@ -22,4 +23,18 @@ public interface GoodsMapper {
     int updateAuditStatus(@Param("id") Long id,
                           @Param("auditStatus") Integer auditStatus,
                           @Param("updateTime") java.time.LocalDateTime updateTime);
+
+    int updateCollectNum(@Param("id") Long id,
+                         @Param("collectNum") Integer collectNum,
+                         @Param("updateTime") java.time.LocalDateTime updateTime);
+
+    /**
+     * 已上架且审核通过的商品排行统计（用于 ZSet 全量重建）
+     */
+    List<GoodsRankStatDTO> selectOnShelfGoodsRankStats();
+
+    /**
+     * 按 ID 批量查询已上架商品（首页列表）
+     */
+    List<Goods> selectOnShelfByIds(@Param("goodsIds") List<Long> goodsIds);
 }

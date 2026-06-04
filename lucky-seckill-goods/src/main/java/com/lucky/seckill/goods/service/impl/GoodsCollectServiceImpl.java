@@ -14,6 +14,7 @@ import com.lucky.seckill.goods.model.entity.GoodsCollect;
 import com.lucky.seckill.goods.model.vo.GoodsCollectStatusVO;
 import com.lucky.seckill.goods.model.vo.GoodsCollectVO;
 import com.lucky.seckill.goods.service.GoodsCollectService;
+import com.lucky.seckill.goods.service.GoodsRankRedisService;
 import jakarta.annotation.Resource;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
@@ -38,6 +39,9 @@ public class GoodsCollectServiceImpl implements GoodsCollectService {
 
     @Resource
     private CollectRedisService collectRedisService;
+
+    @Resource
+    private GoodsRankRedisService goodsRankRedisService;
 
     @Override
     @Transactional(rollbackFor = Exception.class)
@@ -70,6 +74,7 @@ public class GoodsCollectServiceImpl implements GoodsCollectService {
             }
         }
 
+        goodsRankRedisService.refreshGoodsRankIfOnShelf(goodsId);
         log.info("==> 收藏商品成功, userId: {}, goodsId: {}", userId, goodsId);
         return Response.success();
     }
@@ -87,6 +92,7 @@ public class GoodsCollectServiceImpl implements GoodsCollectService {
         }
 
         goodsCollectMapper.deleteByUserIdAndGoodsId(userId, goodsId);
+        goodsRankRedisService.refreshGoodsRankIfOnShelf(goodsId);
         log.info("==> 取消收藏商品成功, userId: {}, goodsId: {}", userId, goodsId);
         return Response.success();
     }
@@ -146,6 +152,7 @@ public class GoodsCollectServiceImpl implements GoodsCollectService {
                     continue;
                 }
                 goodsMapper.updateCollectNum(goodsId, count, LocalDateTime.now());
+                goodsRankRedisService.refreshGoodsRankIfOnShelf(goodsId);
                 log.info("==> 同步商品收藏数到MySQL, goodsId: {}, collectNum: {}", goodsId, count);
             } catch (Exception e) {
                 log.error("==> 同步商品收藏数失败, goodsId: {}", goodsIdStr, e);

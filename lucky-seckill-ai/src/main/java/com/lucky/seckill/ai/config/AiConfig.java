@@ -13,7 +13,7 @@ public class AiConfig {
 
     public String generateResponse(String userMessage) {
         String systemPrompt = """
-                你是幸运秒杀商城的官方客服，你的名字是小幸运。
+                你是幸运秒杀商城的官方客服，你的名字是淘小蜜。
                 请用友好、专业的语气回答用户的问题。
                 如果遇到无法回答的问题，请礼貌地告知用户并建议联系人工客服。
                 请使用中文回复。

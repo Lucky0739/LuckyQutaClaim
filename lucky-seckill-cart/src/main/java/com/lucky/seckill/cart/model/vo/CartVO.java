@@ -13,11 +13,16 @@ import java.time.LocalDateTime;
 @NoArgsConstructor
 @Builder
 public class CartVO {
+
     private Long id;
 
     private Long goodsId;
 
     private Long skuId;
+
+    private Long shopId;
+
+    private String shopName;
 
     private String goodsName;
 
@@ -27,9 +32,29 @@ public class CartVO {
 
     private BigDecimal salePrice;
 
+    private Integer stockNum;
+
+    /** 商品上架状态（列表内部校验用） */
+    private Integer goodsStatus;
+
+    /** 商品审核状态 */
+    private Integer auditStatus;
+
+    /** SKU 状态 */
+    private Integer skuStatus;
+
     private Integer goodsCount;
 
     private Integer selected;
+
+    /** 小计 = salePrice * goodsCount */
+    private BigDecimal subtotal;
+
+    /** 是否可购买 */
+    private Boolean valid;
+
+    /** 不可购买原因 */
+    private String invalidReason;
 
     private LocalDateTime createTime;
 }

@@ -1,5 +1,6 @@
 package com.lucky.seckill.goods.model.dto;
 
+import com.fasterxml.jackson.annotation.JsonIgnore;
 import lombok.AllArgsConstructor;
 import lombok.Builder;
 import lombok.Data;
@@ -7,6 +8,7 @@ import lombok.NoArgsConstructor;
 import org.springframework.format.annotation.DateTimeFormat;
 
 import java.time.LocalDateTime;
+import java.util.List;
 
 @Data
 @Builder
@@ -25,14 +27,42 @@ public class GoodsQueryRequest{
     private Integer status;
 
     /**
-     * 审核状态 0-待审核 1-审核通过 2-审核拒绝
+     * 审核状态：0=未申请 1=待审核 2=通过 3=拒绝
      */
     private Integer auditStatus;
 
     /**
-     * 分类ID
+     * 审核状态 IN 查询（管理员已审核列表等，服务端注入）
+     */
+    @JsonIgnore
+    private List<Integer> auditStatusIn;
+
+    /**
+     * 子分类ID（叶子分类，精确匹配）
      */
     private Long categoryId;
+
+    /**
+     * 父分类ID（查询该父分类下所有子分类的商品）
+     */
+    private Long parentCategoryId;
+
+    /**
+     * 子分类ID集合（由服务层根据父分类解析，无需前端传入）
+     */
+    @JsonIgnore
+    private List<Long> categoryIds;
+
+    /**
+     * 店铺ID
+     */
+    private Long shopId;
+
+    /**
+     * 发布者用户ID（商户「我的商品」查询由服务端注入，前端勿传）
+     */
+    @JsonIgnore
+    private Long userId;
 
     /**
      * 开始时间

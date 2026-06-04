@@ -2,13 +2,20 @@ package com.lucky.seckill.activity.controller;
 
 import cn.dev33.satoken.annotation.SaCheckRole;
 import cn.dev33.satoken.annotation.SaIgnore;
+import cn.dev33.satoken.annotation.SaMode;
+import com.lucky.seckill.activity.model.dto.SeckillGoodsApplyQueryRequest;
+import com.lucky.seckill.activity.model.dto.SeckillGoodsApplyRequest;
+import com.lucky.seckill.activity.model.dto.SeckillGoodsAuditRequest;
 import com.lucky.seckill.activity.model.dto.SeckillRequest;
 import com.lucky.seckill.activity.model.vo.SeckillActivityVO;
+import com.lucky.seckill.activity.model.vo.SeckillGoodsApplyVO;
 import com.lucky.seckill.activity.model.vo.SeckillGoodsVO;
 import com.lucky.seckill.activity.model.vo.SeckillResultVO;
 import com.lucky.seckill.activity.service.SeckillActivityService;
+import com.lucky.seckill.activity.service.SeckillGoodsService;
 import com.lucky.seckill.activity.service.SeckillService;
 import com.lucky.seckill.common.aspect.ApiOperationLog;
+import com.lucky.seckill.common.model.entity.PageResult;
 import com.lucky.seckill.common.utils.Response;
 import jakarta.annotation.Resource;
 import lombok.extern.slf4j.Slf4j;
@@ -28,6 +35,8 @@ public class SeckillController {
     @Resource
     private SeckillService seckillService;
 
+    @Resource
+    private SeckillGoodsService seckillGoodsService;
     @SaIgnore
     @GetMapping("/list")
     @ApiOperationLog(description = "秒杀活动列表")
@@ -53,9 +62,50 @@ public class SeckillController {
     @PostMapping("/seckill")
     @ApiOperationLog(description = "参与秒杀")
     public Response<SeckillResultVO> doSeckill(@Validated @RequestBody SeckillRequest request) {
-        log.info("==> 秒杀请求, activityId={}, goodsId={}, skuId={}",
-                request.getActivityId(), request.getGoodsId(), request.getSkuId());
+        log.info("==> 秒杀请求, seckillGoodsId={}", request.getSeckillGoodsId());
         return seckillService.doSeckill(request);
+    }
+
+    @SaCheckRole("merchant")
+    @PostMapping("/seckill-goods/apply")
+    @ApiOperationLog(description = "申请加入秒杀商品")
+    public Response<Long> applySeckillGoods(@Validated @RequestBody SeckillGoodsApplyRequest request) {
+        log.info("==> 申请加入秒杀商品, activityId={}, goodsId={}, skuId={}",
+                request.getActivityId(), request.getGoodsId(), request.getSkuId());
+        return seckillGoodsService.applySeckillGoods(request);
+    }
+
+    @SaCheckRole("admin")
+    @PostMapping("/seckill-goods/audit")
+    @ApiOperationLog(description = "审核秒杀商品申请")
+    public Response<Void> auditSeckillGoods(@Validated @RequestBody SeckillGoodsAuditRequest request) {
+        log.info("==> 审核秒杀商品申请, seckillGoodsId={}, auditStatus={}",
+                request.getSeckillGoodsId(), request.getAuditStatus());
+        return seckillGoodsService.auditSeckillGoods(request);
+    }
+
+    @SaCheckRole(value = {"admin", "merchant"}, mode = SaMode.OR)
+    @GetMapping("/seckill-goods/apply/page")
+    @ApiOperationLog(description = "分页查询秒杀商品申请")
+    public Response<PageResult<SeckillGoodsApplyVO>> listSeckillGoodsApply(
+            @RequestParam(value = "activityId", required = false) Long activityId,
+            @RequestParam(value = "auditStatus", required = false) Integer auditStatus,
+            @RequestParam(value = "pageNum", defaultValue = "1") Integer pageNum,
+            @RequestParam(value = "pageSize", defaultValue = "10") Integer pageSize) {
+        SeckillGoodsApplyQueryRequest query = SeckillGoodsApplyQueryRequest.builder()
+                .activityId(activityId)
+                .auditStatus(auditStatus)
+                .pageNum(pageNum)
+                .pageSize(pageSize)
+                .build();
+        return seckillGoodsService.listApplyPage(query);
+    }
+
+    @SaIgnore
+    @GetMapping("/seckill-goods/{seckillGoodsId}")
+    @ApiOperationLog(description = "秒杀商品详情（单规格，无需选规格）")
+    public Response<SeckillGoodsApplyVO> getSeckillGoodsDetail(@PathVariable Long seckillGoodsId) {
+        return seckillGoodsService.getSeckillGoodsDetail(seckillGoodsId);
     }
 
     @SaCheckRole("admin")

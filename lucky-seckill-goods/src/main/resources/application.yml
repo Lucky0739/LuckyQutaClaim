@@ -17,9 +17,23 @@ spring:
         file-extension: yml
         import-check:
           enabled: false
+  mvc:
+    static-path-pattern: /static/**
+
+seata:
+  enabled: true
+  application-id: ${spring.application.name}
+  tx-service-group: lucky_seckill_tx_group
+  enable-auto-data-source-proxy: true
+  data-source-proxy-mode: AT
+  service:
+    vgroup-mapping:
+      lucky_seckill_tx_group: default
+    grouplist:
+      default: 127.0.0.1:8091
 
 server:
-  port: 8082
+  port: 8095
   forward-headers-strategy: framework
 
 management:
@@ -37,4 +51,16 @@ rocketmq:
     retry-times-when-send-async-failed: 2
 
 sa-token:
-  ignore-paths: /user/login,/user/register,/user/send-verify-code,/goods/sku/lockStock,/goods/sku/deductStock,/goods/sku/releaseStock
+  ignore-paths: /user/login,/user/register,/user/send-verify-code,/goods/sku/lockStock,/goods/sku/deductStock,/goods/sku/releaseStock,/goods/home/**,/goods/page,/goods/detail/**,/goods/get/**
+
+# 首页商品排行权重：综合分 = collect-weight × 收藏数 + sales-weight × 已售数
+goods:
+  rank:
+    collect-weight: 3
+    sales-weight: 1
+  cache:
+    logical-expire-minutes: 10
+    physical-expire-minutes: 30
+    lock-expire-seconds: 10
+    lock-retry-times: 3
+    lock-retry-interval-ms: 50

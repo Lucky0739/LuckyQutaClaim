@@ -1,6 +1,7 @@
 
 package com.lucky.seckill.goods.model.vo;
 
+import com.fasterxml.jackson.annotation.JsonFormat;
 import lombok.AllArgsConstructor;
 import lombok.Builder;
 import lombok.Data;
@@ -22,20 +23,31 @@ public class GoodsListVO {
 
     private BigDecimal goodsPrice;
 
-    private Integer status;
-
-    private String statusDesc;
-
-    private Integer auditStatus;
-
-    private String auditStatusDesc;
-
     /**
      * 已售数量（该商品对应的所有规格的已售数量之和）
      */
     private Integer salesNum;
 
-    private LocalDateTime createTime;
+    private Long categoryId;
 
-    private LocalDateTime updateTime;
+    private String categoryName;
+
+    private Long parentCategoryId;
+
+    private String parentCategoryName;
+
+    /**
+     * 上架状态：0=下架 1=上架
+     */
+    private Integer status;
+
+    /**
+     * 审核状态：0=未申请 1=待审核 2=通过 3=拒绝
+     */
+    private Integer auditStatus;
+
+    private Long shopId;
+
+    @JsonFormat(pattern = "yyyy-MM-dd HH:mm:ss", timezone = "GMT+8")
+    private LocalDateTime createTime;
 }

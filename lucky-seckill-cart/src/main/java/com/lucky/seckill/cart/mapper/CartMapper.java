@@ -32,4 +32,12 @@ public interface CartMapper {
     int updateAllSelectedByUserId(@Param("userId") Long userId, @Param("selected") Integer selected);
 
     int batchDeleteByIds(@Param("userId") Long userId, @Param("cartIds") List<Long> cartIds);
+
+    int countLinesByUserId(@Param("userId") Long userId);
+
+    int sumGoodsCountByUserId(@Param("userId") Long userId);
+
+    int deleteByUserId(@Param("userId") Long userId);
+
+    int deleteSelectedByUserId(@Param("userId") Long userId);
 }

@@ -7,6 +7,8 @@
         <result column="activity_id" property="activityId" jdbcType="BIGINT"/>
         <result column="goods_id" property="goodsId" jdbcType="BIGINT"/>
         <result column="sku_id" property="skuId" jdbcType="BIGINT"/>
+        <result column="user_id" property="userId" jdbcType="BIGINT"/>
+        <result column="sku_spec_name" property="skuSpecName" jdbcType="VARCHAR"/>
         <result column="seckill_title" property="seckillTitle" jdbcType="VARCHAR"/>
         <result column="seckill_img" property="seckillImg" jdbcType="VARCHAR"/>
         <result column="seckill_price" property="seckillPrice" jdbcType="DECIMAL"/>
@@ -14,6 +16,8 @@
         <result column="seckill_stock" property="seckillStock" jdbcType="INTEGER"/>
         <result column="seckill_limit" property="seckillLimit" jdbcType="INTEGER"/>
         <result column="sort" property="sort" jdbcType="INTEGER"/>
+        <result column="audit_status" property="auditStatus" jdbcType="TINYINT"/>
+        <result column="audit_remark" property="auditRemark" jdbcType="VARCHAR"/>
         <result column="version" property="version" jdbcType="INTEGER"/>
         <result column="is_deleted" property="isDeleted" jdbcType="TINYINT"/>
         <result column="create_time" property="createTime" jdbcType="TIMESTAMP"/>
@@ -21,8 +25,8 @@
     </resultMap>
 
     <sql id="Base_Column_List">
-        id, activity_id, goods_id, sku_id, seckill_title, seckill_img, seckill_price,
-        seckill_total, seckill_stock, seckill_limit, sort, version, is_deleted, create_time, update_time
+        id, activity_id, goods_id, sku_id, user_id, sku_spec_name, seckill_title, seckill_img, seckill_price,
+        seckill_total, seckill_stock, seckill_limit, sort, audit_status, audit_remark, version, is_deleted, create_time, update_time
     </sql>
 
     <select id="selectByPrimaryKey" resultMap="BaseResultMap">
@@ -42,6 +46,17 @@
         LIMIT 1
     </select>
 
+    <select id="selectActiveByActivityAndGoodsAndSku" resultMap="BaseResultMap">
+        SELECT <include refid="Base_Column_List"/>
+        FROM t_seckill_goods
+        WHERE activity_id = #{activityId}
+          AND goods_id = #{goodsId}
+          AND sku_id = #{skuId}
+          AND audit_status = 2
+          AND is_deleted = 0
+        LIMIT 1
+    </select>
+
     <select id="selectByActivityId" resultMap="BaseResultMap">
         SELECT <include refid="Base_Column_List"/>
         FROM t_seckill_goods
@@ -49,6 +64,83 @@
           AND is_deleted = 0
         ORDER BY sort ASC, id ASC
     </select>
+
+    <select id="selectApprovedByActivityId" resultMap="BaseResultMap">
+        SELECT <include refid="Base_Column_List"/>
+        FROM t_seckill_goods
+        WHERE activity_id = #{activityId}
+          AND audit_status = 2
+          AND is_deleted = 0
+        ORDER BY sort ASC, id ASC
+    </select>
+
+    <select id="selectApplyPage" resultMap="BaseResultMap">
+        SELECT <include refid="Base_Column_List"/>
+        FROM t_seckill_goods
+        WHERE is_deleted = 0
+        <if test="activityId != null">
+            AND activity_id = #{activityId}
+        </if>
+        <if test="auditStatus != null">
+            AND audit_status = #{auditStatus}
+        </if>
+        ORDER BY create_time DESC, id DESC
+    </select>
+
+    <insert id="insertSelective" parameterType="com.lucky.seckill.activity.model.entity.SeckillGoods">
+        INSERT INTO t_seckill_goods
+        <trim prefix="(" suffix=")" suffixOverrides=",">
+            <if test="id != null">id,</if>
+            <if test="activityId != null">activity_id,</if>
+            <if test="goodsId != null">goods_id,</if>
+            <if test="skuId != null">sku_id,</if>
+            <if test="userId != null">user_id,</if>
+            <if test="skuSpecName != null">sku_spec_name,</if>
+            <if test="seckillTitle != null">seckill_title,</if>
+            <if test="seckillImg != null">seckill_img,</if>
+            <if test="seckillPrice != null">seckill_price,</if>
+            <if test="seckillTotal != null">seckill_total,</if>
+            <if test="seckillStock != null">seckill_stock,</if>
+            <if test="seckillLimit != null">seckill_limit,</if>
+            <if test="sort != null">sort,</if>
+            <if test="auditStatus != null">audit_status,</if>
+            <if test="auditRemark != null">audit_remark,</if>
+            <if test="version != null">version,</if>
+            <if test="isDeleted != null">is_deleted,</if>
+            <if test="createTime != null">create_time,</if>
+            <if test="updateTime != null">update_time,</if>
+        </trim>
+        <trim prefix="VALUES (" suffix=")" suffixOverrides=",">
+            <if test="id != null">#{id},</if>
+            <if test="activityId != null">#{activityId},</if>
+            <if test="goodsId != null">#{goodsId},</if>
+            <if test="skuId != null">#{skuId},</if>
+            <if test="userId != null">#{userId},</if>
+            <if test="skuSpecName != null">#{skuSpecName},</if>
+            <if test="seckillTitle != null">#{seckillTitle},</if>
+            <if test="seckillImg != null">#{seckillImg},</if>
+            <if test="seckillPrice != null">#{seckillPrice},</if>
+            <if test="seckillTotal != null">#{seckillTotal},</if>
+            <if test="seckillStock != null">#{seckillStock},</if>
+            <if test="seckillLimit != null">#{seckillLimit},</if>
+            <if test="sort != null">#{sort},</if>
+            <if test="auditStatus != null">#{auditStatus},</if>
+            <if test="auditRemark != null">#{auditRemark},</if>
+            <if test="version != null">#{version},</if>
+            <if test="isDeleted != null">#{isDeleted},</if>
+            <if test="createTime != null">#{createTime},</if>
+            <if test="updateTime != null">#{updateTime},</if>
+        </trim>
+    </insert>
+
+    <update id="updateAuditStatus">
+        UPDATE t_seckill_goods
+        SET audit_status = #{auditStatus},
+            audit_remark = #{auditRemark},
+            update_time = #{updateTime}
+        WHERE id = #{id}
+          AND is_deleted = 0
+    </update>
 
     <update id="deductStock">
         UPDATE t_seckill_goods

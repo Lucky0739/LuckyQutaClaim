@@ -21,6 +21,11 @@ public interface GoodsCategoryMapper {
 
     List<GoodsCategory> selectByParentId(@Param("parentId") Long parentId);
 
+    /**
+     * 查询父分类下所有子分类 ID
+     */
+    List<Long> selectIdsByParentId(@Param("parentId") Long parentId);
+
     int updateStatus(@Param("id") Long id,
                      @Param("status") Integer status,
                      @Param("updateTime") java.time.LocalDateTime updateTime);

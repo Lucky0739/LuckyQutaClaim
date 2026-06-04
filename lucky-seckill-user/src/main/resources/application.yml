@@ -20,6 +20,18 @@ spring:
 server:
   port: 8081
 
+seata:
+  enabled: true
+  application-id: ${spring.application.name}
+  tx-service-group: lucky_seckill_tx_group
+  enable-auto-data-source-proxy: true
+  data-source-proxy-mode: AT
+  service:
+    vgroup-mapping:
+      lucky_seckill_tx_group: default
+    grouplist:
+      default: 127.0.0.1:8091
+
 management:
   endpoints:
     web:
@@ -32,7 +44,7 @@ sa-token:
   token-prefix: Bearer
   is-read-header: true
   is-read-cookie: false
-  ignore-paths: /user/login,/user/register,/user/code/send,/captcha/**
+  ignore-paths: /user/login,/user/register,/user/code/send,/captcha/**,/test/**
 
 rocketmq:
   name-server: 127.0.0.1:9876

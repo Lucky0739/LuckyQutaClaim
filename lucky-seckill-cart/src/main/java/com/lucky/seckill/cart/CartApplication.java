@@ -10,7 +10,7 @@ import org.springframework.context.annotation.ComponentScan;
 @SpringBootApplication
 @EnableDiscoveryClient
 @EnableFeignClients(basePackages = {"com.lucky.seckill.cart", "com.lucky.seckill.goods.feign"})
-@ComponentScan({"com.lucky.seckill.cart"})
+@ComponentScan({"com.lucky.seckill.cart", "com.lucky.seckill.common"})
 @MapperScan("com.lucky.seckill.cart.mapper")
 public class CartApplication {
 

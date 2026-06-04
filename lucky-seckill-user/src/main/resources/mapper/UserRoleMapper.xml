@@ -91,7 +91,7 @@
     where id = #{id,jdbcType=BIGINT}
   </update>
 
-  <!-- 根据用户ID查询角色关联（包括已删除的） -->
+  <!-- 根据用户ID查询角色关联（未删除的，仅返回一条） -->
   <select id="selectByUserId" parameterType="java.lang.Long" resultMap="BaseResultMap">
     select
     <include refid="Base_Column_List" />
@@ -100,6 +100,33 @@
     AND isDelete = 0
     limit 1
   </select>
+
+  <select id="selectByUserIdAndRoleId" resultMap="BaseResultMap">
+    select
+    <include refid="Base_Column_List" />
+    from t_user_role
+    where user_id = #{userId,jdbcType=BIGINT}
+      and role_id = #{roleId,jdbcType=BIGINT}
+      and isDelete = 0
+    limit 1
+  </select>
+
+  <select id="selectByUserIdAndRoleIdIgnoreDelete" resultMap="BaseResultMap">
+    select
+    <include refid="Base_Column_List" />
+    from t_user_role
+    where user_id = #{userId,jdbcType=BIGINT}
+      and role_id = #{roleId,jdbcType=BIGINT}
+    limit 1
+  </select>
+
+  <!-- 按用户 ID 逻辑删除全部角色关联 -->
+  <update id="logicalDeleteByUserId">
+    update t_user_role
+    set isDelete = 1
+    where user_id = #{userId,jdbcType=BIGINT}
+      and isDelete = 0
+  </update>
 
   <!-- 根据用户ID查询已逻辑删除的角色关联 -->
   <select id="selectDeletedByUserId" parameterType="java.lang.Long" resultMap="BaseResultMap">

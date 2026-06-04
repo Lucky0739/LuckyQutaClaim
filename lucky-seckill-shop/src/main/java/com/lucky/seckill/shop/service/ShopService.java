@@ -2,11 +2,14 @@ package com.lucky.seckill.shop.service;
 
 import com.lucky.seckill.common.model.entity.PageResult;
 import com.lucky.seckill.common.model.file.UploadPictureResult;
+import com.lucky.seckill.common.model.entity.PageResult;
 import com.lucky.seckill.common.utils.Response;
+import com.lucky.seckill.goods.model.vo.GoodsListVO;
 import com.lucky.seckill.shop.model.dto.CreateShopRequest;
 import com.lucky.seckill.shop.model.dto.ShopApplyQueryRequest;
 import com.lucky.seckill.shop.model.dto.ShopAuditRequest;
 import com.lucky.seckill.shop.model.vo.ShopApplyVO;
+import com.lucky.seckill.shop.model.vo.ShopListVO;
 import org.springframework.web.multipart.MultipartFile;
 
 public interface ShopService {
@@ -34,9 +37,24 @@ public interface ShopService {
     Response<PageResult<ShopApplyVO>> getShopList(ShopApplyQueryRequest queryRequest);
 
     /**
+     * 普通用户分页查询店铺列表（仅返回公开字段）
+     */
+    Response<PageResult<ShopListVO>> getPublicShopList(ShopApplyQueryRequest queryRequest);
+
+    /**
      * 禁用/启用店铺
      * @param shopId 店铺ID
      * @param shopStatus 店铺状态 0-禁用 1-启用
      */
     Response<?> updateShopStatus(Long shopId, Integer shopStatus);
+
+    /**
+     * 按店铺ID查询店铺商品列表
+     */
+    Response<PageResult<GoodsListVO>> getShopGoods(Long shopId, Integer pageNum, Integer pageSize);
+
+    /**
+     * 根据店铺ID查询店铺信息
+     */
+    Response<ShopListVO> getShopById(Long shopId);
 }

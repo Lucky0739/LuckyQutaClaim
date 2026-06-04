@@ -22,5 +22,5 @@ public interface NotifyFeignClient {
 
     @PutMapping("/apply/read")
     Response<Void> markApplyNotifyRead(@RequestParam("notifyType") Integer notifyType,
-                                       @RequestParam("notifyId") Long notifyId);
+                                       @RequestParam("businessId") Long businessId);
 }

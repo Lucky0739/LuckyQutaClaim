@@ -5,13 +5,15 @@ import com.lucky.seckill.common.model.file.UploadPictureResult;
 import com.lucky.seckill.common.utils.Response;
 import com.lucky.seckill.goods.model.dto.AddGoodsRequest;
 import com.lucky.seckill.goods.model.dto.GoodsAuditRequest;
+import com.lucky.seckill.goods.model.dto.GoodsHomeQueryRequest;
 import com.lucky.seckill.goods.model.dto.GoodsQueryRequest;
-import com.lucky.seckill.goods.model.dto.GoodsSkuRequest;
+import com.lucky.seckill.goods.model.dto.UpdateGoodsRequest;
 import com.lucky.seckill.goods.model.entity.Goods;
 import com.lucky.seckill.goods.model.entity.GoodsSku;
 import com.lucky.seckill.goods.model.vo.GoodsDetailVO;
 import com.lucky.seckill.goods.model.vo.GoodsListVO;
-import com.lucky.seckill.goods.model.vo.SkuImgVO;
+import com.lucky.seckill.goods.model.vo.MerchantGoodsDetailVO;
+import com.lucky.seckill.goods.model.vo.MerchantGoodsListVO;
 import org.springframework.web.multipart.MultipartFile;
 
 import java.util.List;
@@ -40,18 +42,27 @@ public interface GoodsService {
     Response<GoodsDetailVO> getGoodsDetail(Long goodsId);
 
     /**
-     * 查看规格对应的图片
-     * @param goodsId
-     * @return
-     */
-    Response<List<SkuImgVO>> getSkuImages(Long goodsId);
-
-    /**
      * 分页查询商品列表
      * @param goodsQueryRequest
      * @return
      */
     Response<PageResult<GoodsListVO>> getGoodsPage(GoodsQueryRequest goodsQueryRequest);
+
+    /**
+     * 管理员待审核商品列表（直连数据库，不走分页缓存，保证申请上架后立即可见）
+     */
+    Response<PageResult<GoodsListVO>> getPendingAuditGoodsPage(GoodsQueryRequest request);
+
+    /**
+     * 管理员已审核商品列表（直连数据库）
+     */
+    Response<PageResult<GoodsListVO>> getAuditedGoodsPage(GoodsQueryRequest request);
+
+    /**
+     * 首页商品列表（按收藏量/已售数量排序，数据来自 Redis ZSet）
+     */
+    Response<PageResult<GoodsListVO>> getHomeGoodsList(GoodsHomeQueryRequest request);
+
     /**
      * 申请上架商品
      * @param goodsId 商品ID
@@ -111,5 +122,25 @@ public interface GoodsService {
      * @return true=扣减成功
      */
     Response<Boolean> deductStock(Long skuId, Integer stockNum);
+
+    /**
+     * 商户分页查询自己发布的商品
+     */
+    Response<PageResult<MerchantGoodsListVO>> getMyGoodsPage(GoodsQueryRequest request);
+
+    /**
+     * 商户查看自己发布的商品详情
+     */
+    Response<MerchantGoodsDetailVO> getMyGoodsDetail(Long goodsId);
+
+    /**
+     * 商户更新自己发布的商品
+     */
+    Response<Void> updateMyGoods(UpdateGoodsRequest request);
+
+    /**
+     * 商户删除自己发布的商品（逻辑删除）
+     */
+    Response<Void> deleteMyGoods(Long goodsId);
 
 }

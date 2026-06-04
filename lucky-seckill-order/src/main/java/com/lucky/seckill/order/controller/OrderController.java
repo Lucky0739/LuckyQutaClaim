@@ -1,5 +1,7 @@
 package com.lucky.seckill.order.controller;
 
+import cn.dev33.satoken.annotation.SaCheckLogin;
+import cn.dev33.satoken.annotation.SaCheckRole;
 import com.lucky.seckill.common.model.entity.PageResult;
 import com.lucky.seckill.common.utils.Response;
 import com.lucky.seckill.order.model.dto.AddOrderRequest;
@@ -51,6 +53,7 @@ public class OrderController {
     /**
      * 查询订单信息（VO格式）
      */
+    @SaCheckLogin
     @GetMapping("/query/vo")
     public Response<OrderVO> getOrderVOByOrderNo(@RequestParam("orderNo") String orderNo) {
         log.info("==> 查询订单VO信息, orderNo: {}", orderNo);
@@ -68,12 +71,53 @@ public class OrderController {
     }
 
     /**
+     * 商家发货
+     */
+    @SaCheckRole("merchant")
+    @PostMapping("/deliver")
+    public Response<Boolean> deliverOrder(@RequestParam("orderNo") String orderNo) {
+        log.info("==> 商家发货, orderNo: {}", orderNo);
+        return orderService.deliverOrder(orderNo);
+    }
+
+    /**
+     * 用户确认收货
+     */
+    @SaCheckLogin
+    @PostMapping("/receive")
+    public Response<Boolean> confirmReceipt(@RequestParam("orderNo") String orderNo) {
+        log.info("==> 用户确认收货, orderNo: {}", orderNo);
+        return orderService.confirmReceipt(orderNo);
+    }
+
+    /**
+     * 用户确认收货（PUT，便于前端调用）
+     */
+    @SaCheckLogin
+    @PutMapping("/receive")
+    public Response<Boolean> confirmReceiptByPut(@RequestParam("orderNo") String orderNo) {
+        log.info("==> 用户确认收货(PUT), orderNo: {}", orderNo);
+        return orderService.confirmReceipt(orderNo);
+    }
+
+    /**
      * 查询当前用户的订单列表
      */
+    @SaCheckLogin
     @PostMapping("/list")
     public Response<PageResult<OrderVO>> getOrderList(@RequestBody(required = false) OrderQueryRequest request) {
         log.info("==> 查询订单列表, request: {}", request);
         return orderService.getOrderList(request);
+    }
+
+    /**
+     * 商家查询自己商品的订单列表
+     */
+    @SaCheckRole("merchant")
+    @PostMapping("/merchant/list")
+    public Response<PageResult<OrderVO>> getMerchantOrderList(@RequestBody(required = false) OrderQueryRequest request) {
+        log.info("==> 商家查询订单列表, request: {}", request);
+        return orderService.getMerchantOrderList(request);
     }
 
     /**
@@ -83,6 +127,15 @@ public class OrderController {
     public Response<Order> getOrderById(@PathVariable("orderId") Long orderId) {
         log.info("==> 根据订单ID查询订单, orderId: {}", orderId);
         return orderService.getOrderById(orderId);
+    }
+
+    /**
+     * 根据商品ID查询店铺ID
+     */
+    @GetMapping("/shopId")
+    public Response<Long> getShopIdByGoodsId(@RequestParam("goodsId") Long goodsId) {
+        log.info("==> 根据商品ID查询店铺ID, goodsId: {}", goodsId);
+        return orderService.getShopIdByGoodsId(goodsId);
     }
 
     /**

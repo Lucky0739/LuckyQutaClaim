@@ -143,12 +143,6 @@
             <if test="auditStatus != null">
                 AND audit_status = #{auditStatus}
             </if>
-            <if test="startTime != null">
-                AND create_time &gt;= #{startTime}
-            </if>
-            <if test="endTime != null">
-                AND create_time &lt;= #{endTime}
-            </if>
         </where>
         order by create_time desc
     </select>
@@ -170,12 +164,6 @@
             <if test="shopStatus != null">
                 AND shop_status = #{shopStatus}
             </if>
-            <if test="startTime != null">
-                AND create_time &gt;= #{startTime}
-            </if>
-            <if test="endTime != null">
-                AND create_time &lt;= #{endTime}
-            </if>
         </where>
         order by create_time desc
     </select>
@@ -185,5 +173,12 @@
         set shop_status = #{shopStatus},
             update_time = now()
         where id = #{shopId}
+    </update>
+
+    <update id="updateCollectNum">
+        update t_shop
+        set collect_num = #{collectNum,jdbcType=INTEGER},
+            update_time = now()
+        where id = #{shopId,jdbcType=BIGINT}
     </update>
 </mapper>

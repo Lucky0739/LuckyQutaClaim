@@ -96,8 +96,28 @@
             <if test="auditStatus != null">
                 AND audit_status = #{auditStatus,jdbcType=TINYINT}
             </if>
-            <if test="categoryId != null">
-                AND category_id = #{categoryId,jdbcType=BIGINT}
+            <if test="auditStatusIn != null and auditStatusIn.size() > 0">
+                AND audit_status IN
+                <foreach collection="auditStatusIn" item="as" open="(" separator="," close=")">
+                    #{as,jdbcType=TINYINT}
+                </foreach>
+            </if>
+            <choose>
+                <when test="categoryId != null">
+                    AND category_id = #{categoryId,jdbcType=BIGINT}
+                </when>
+                <when test="categoryIds != null and categoryIds.size() > 0">
+                    AND category_id IN
+                    <foreach collection="categoryIds" item="cid" open="(" separator="," close=")">
+                        #{cid,jdbcType=BIGINT}
+                    </foreach>
+                </when>
+            </choose>
+            <if test="shopId != null">
+                AND shop_id = #{shopId,jdbcType=BIGINT}
+            </if>
+            <if test="userId != null">
+                AND user_id = #{userId,jdbcType=BIGINT}
             </if>
             <if test="startTime != null">
                 AND create_time &gt;= #{startTime,jdbcType=TIMESTAMP}
@@ -132,4 +152,29 @@
         WHERE id = #{id,jdbcType=BIGINT}
           AND isDelete = 0
     </update>
+
+    <select id="selectOnShelfGoodsRankStats" resultType="com.lucky.seckill.goods.model.dto.GoodsRankStatDTO">
+        SELECT g.id AS goodsId,
+               IFNULL(g.collect_num, 0) AS collectNum,
+               IFNULL(SUM(CASE WHEN s.isDelete = 0 THEN s.sales_num ELSE 0 END), 0) AS salesNum
+        FROM t_goods g
+        LEFT JOIN t_goods_sku s ON g.id = s.goods_id
+        WHERE g.isDelete = 0
+          AND g.status = 1
+          AND g.audit_status = 2
+        GROUP BY g.id, g.collect_num
+    </select>
+
+    <select id="selectOnShelfByIds" resultMap="BaseResultMap">
+        SELECT
+        <include refid="Base_Column_List"/>
+        FROM t_goods
+        WHERE isDelete = 0
+          AND status = 1
+          AND audit_status = 2
+          AND id IN
+        <foreach collection="goodsIds" item="gid" open="(" separator="," close=")">
+            #{gid,jdbcType=BIGINT}
+        </foreach>
+    </select>
 </mapper>

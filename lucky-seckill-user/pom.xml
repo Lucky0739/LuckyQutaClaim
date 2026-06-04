@@ -138,6 +138,20 @@
             <artifactId>sa-token-redis-template</artifactId>
         </dependency>
 
+        <!-- 阿里云核心SDK（必须） -->
+        <dependency>
+            <groupId>com.aliyun</groupId>
+            <artifactId>aliyun-java-sdk-core</artifactId>
+            <version>4.5.2</version>
+        </dependency>
+
+        <!-- 阿里云号码认证 PNVS（短信认证）SDK -->
+        <dependency>
+            <groupId>com.aliyun</groupId>
+            <artifactId>aliyun-java-sdk-dypnsapi</artifactId>
+            <version>1.2.10</version>
+        </dependency>
+
     </dependencies>
 
     <build>

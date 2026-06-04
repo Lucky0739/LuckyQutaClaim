@@ -36,9 +36,22 @@ public enum ResponseCodeEnum implements BaseExceptionInterface {
     PERMISSION_DENIED("20013", "权限不足"),
     USER_NOT_LOGIN("20014", "用户未登录，请先登录"),
     USER_PERMISSION_DENIED("20015", "该用户没有权限"),
+    USER_CANNOT_DELETE_ADMIN("20016", "不能删除管理员账号"),
+    USER_CANNOT_DELETE_SELF("20017", "不能删除自己的账号"),
+    USER_CANNOT_CANCEL_ADMIN("20018", "管理员不能注销自己"),
+    BALANCE_NOT_ENOUGH("20019", "账户余额不足"),
+    BALANCE_RECHARGE_FAIL("20020", "余额充值失败"),
 
     // ----------- 店铺模块异常状态码 -----------
     SHOP_COUNT_LIMIT_EXCEEDED("30001", "店铺数量已达上限，最多可创建3家店铺"),
+    SHOP_NOT_EXIST("30002", "店铺不存在"),
+
+    // ----------- 商品模块异常状态码 -----------
+    GOODS_NOT_EXIST("35001", "商品不存在"),
+
+    // ----------- 收藏模块异常状态码 -----------
+    COLLECT_ALREADY_EXISTS("36001", "已收藏，请勿重复操作"),
+    COLLECT_NOT_EXISTS("36002", "未收藏，无法取消"),
 
     // ----------- 库存模块异常状态码 -----------
     STOCK_NOT_ENOUGH("40001", "库存不足"),
@@ -48,6 +61,21 @@ public enum ResponseCodeEnum implements BaseExceptionInterface {
     ORDER_STATUS_ERROR("50001", "订单状态异常"),
     ORDER_EXPIRED("50002", "订单已过期"),
     ORDER_NOT_EXIST("50003", "订单不存在"),
+
+    // ----------- 秒杀模块异常状态码 -----------
+    SECKILL_ACTIVITY_NOT_EXIST("60001", "秒杀活动不存在"),
+    SECKILL_ACTIVITY_NOT_STARTED("60002", "秒杀活动未开始"),
+    SECKILL_ACTIVITY_ENDED("60003", "秒杀活动已结束"),
+    SECKILL_GOODS_NOT_EXIST("60004", "秒杀商品不存在"),
+    SECKILL_LIMIT_EXCEEDED("60005", "超过限购数量"),
+    SECKILL_REPEAT("60006", "您已参与过该商品秒杀"),
+    SECKILL_BUSY("60007", "秒杀太火爆了，请稍后再试"),
+    SECKILL_ORDER_CREATE_FAIL("60008", "秒杀下单失败"),
+    SECKILL_ACTIVITY_ALREADY_STARTED("60009", "秒杀活动已在进行中"),
+    SECKILL_ACTIVITY_NO_GOODS("60010", "秒杀活动未配置商品"),
+    SECKILL_GOODS_APPLY_PENDING("60011", "该规格秒杀申请审核中"),
+    SECKILL_GOODS_ALREADY_EXISTS("60012", "该规格已是秒杀商品"),
+    SECKILL_GOODS_NOT_APPROVED("60013", "秒杀商品未通过审核"),
 
     ;
 

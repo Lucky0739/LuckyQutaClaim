@@ -5,13 +5,17 @@ import com.lucky.seckill.common.aspect.ApiOperationLog;
 import com.lucky.seckill.common.model.entity.PageResult;
 import com.lucky.seckill.common.model.file.UploadPictureResult;
 import com.lucky.seckill.common.utils.Response;
+import com.lucky.seckill.goods.model.vo.GoodsListVO;
 import com.lucky.seckill.shop.model.dto.CreateShopRequest;
+import com.lucky.seckill.shop.model.dto.ShopApplyQueryRequest;
 import com.lucky.seckill.shop.model.dto.ShopAuditRequest;
 import com.lucky.seckill.shop.model.vo.ShopApplyVO;
+import com.lucky.seckill.shop.model.vo.ShopListVO;
 import com.lucky.seckill.shop.service.ShopService;
 import jakarta.annotation.Resource;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.validation.annotation.Validated;
+import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
@@ -55,6 +59,21 @@ public class ShopController {
     }
 
     /**
+     * 分页查询店铺列表（公开访问）
+     */
+    @PostMapping("/list")
+    @ApiOperationLog(description = "分页查询店铺列表")
+    public Response<PageResult<ShopListVO>> getShopList(@RequestBody(required = false) ShopApplyQueryRequest queryRequest) {
+        if (queryRequest == null) {
+            queryRequest = new ShopApplyQueryRequest();
+        }
+        queryRequest.setAuditStatus(1);
+        queryRequest.setShopStatus(1);
+        log.info("==> 公开查询店铺列表, 查询条件: {}", queryRequest);
+        return shopService.getPublicShopList(queryRequest);
+    }
+
+    /**
      * 商家查看自己的店铺列表
      */
     @SaCheckLogin
@@ -63,6 +82,28 @@ public class ShopController {
     public Response<PageResult<ShopApplyVO>> getMyShopList() {
         log.info("==> 商家查看自己的店铺列表请求");
         return shopService.getMyShopList();
+    }
+
+    /**
+     * 根据店铺ID查询店铺信息（公开访问）
+     */
+    @GetMapping("/{shopId}")
+    @ApiOperationLog(description = "根据店铺ID查询店铺信息")
+    public Response<ShopListVO> getShopById(@PathVariable("shopId") Long shopId) {
+        log.info("==> 根据店铺ID查询店铺信息, shopId: {}", shopId);
+        return shopService.getShopById(shopId);
+    }
+
+    /**
+     * 按店铺ID查询店铺商品列表（公开访问）
+     */
+    @GetMapping("/{shopId}/goods")
+    @ApiOperationLog(description = "按店铺ID查询商品列表")
+    public Response<PageResult<GoodsListVO>> getShopGoods(@PathVariable("shopId") Long shopId,
+                                                          @RequestParam(value = "pageNum", defaultValue = "1") Integer pageNum,
+                                                          @RequestParam(value = "pageSize", defaultValue = "10") Integer pageSize) {
+        log.info("==> 按店铺ID查询商品, shopId: {}, pageNum: {}, pageSize: {}", shopId, pageNum, pageSize);
+        return shopService.getShopGoods(shopId, pageNum, pageSize);
     }
 
 }

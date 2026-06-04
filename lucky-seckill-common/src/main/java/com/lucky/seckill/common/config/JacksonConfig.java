@@ -40,10 +40,16 @@ public class JacksonConfig {
         objectMapper.configure(SerializationFeature.FAIL_ON_EMPTY_BEANS, false);
         objectMapper.configure(SerializationFeature.WRITE_DATES_AS_TIMESTAMPS, false);
 
+        // 与 DATE_TIME_PATTERN 一致，同时兼容 yyyy-M-d 与 yyyy-MM-dd
         DateTimeFormatter dateTimeFormatter = new DateTimeFormatterBuilder()
-                .appendPattern("yyyy-MM-dd")
+                .appendValue(ChronoField.YEAR, 4)
+                .appendLiteral('-')
+                .appendValue(ChronoField.MONTH_OF_YEAR)
+                .appendLiteral('-')
+                .appendValue(ChronoField.DAY_OF_MONTH)
                 .optionalStart()
-                .appendPattern(" HH:mm:ss")
+                .appendLiteral(' ')
+                .appendPattern("HH:mm:ss")
                 .optionalEnd()
                 .parseDefaulting(ChronoField.HOUR_OF_DAY, 0)
                 .parseDefaulting(ChronoField.MINUTE_OF_HOUR, 0)
@@ -55,9 +61,11 @@ public class JacksonConfig {
         javaTimeModule.addDeserializer(LocalDateTime.class, new LocalDateTimeDeserializer(dateTimeFormatter));
 
         DateTimeFormatter dateFormatter = new DateTimeFormatterBuilder()
-                .appendPattern("yyyy-MM-dd")
-                .parseDefaulting(ChronoField.DAY_OF_MONTH, 1)
-                .parseDefaulting(ChronoField.MONTH_OF_YEAR, 1)
+                .appendValue(ChronoField.YEAR, 4)
+                .appendLiteral('-')
+                .appendValue(ChronoField.MONTH_OF_YEAR)
+                .appendLiteral('-')
+                .appendValue(ChronoField.DAY_OF_MONTH)
                 .toFormatter();
         javaTimeModule.addSerializer(LocalDate.class, new LocalDateSerializer(DateTimeFormatter.ofPattern(DATE_PATTERN)));
         javaTimeModule.addDeserializer(LocalDate.class, new LocalDateDeserializer(dateFormatter));

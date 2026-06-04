@@ -39,4 +39,8 @@
         WHERE goods_id = #{goodsId,jdbcType=BIGINT}
         ORDER BY sort ASC
     </select>
+
+    <delete id="deleteByGoodsId" parameterType="java.lang.Long">
+        DELETE FROM t_goods_img WHERE goods_id = #{goodsId,jdbcType=BIGINT}
+    </delete>
 </mapper>

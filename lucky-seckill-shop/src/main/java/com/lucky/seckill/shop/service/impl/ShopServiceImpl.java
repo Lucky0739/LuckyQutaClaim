@@ -7,6 +7,9 @@ import com.github.pagehelper.PageHelper;
 import com.lucky.seckill.common.enums.ResponseCodeEnum;
 import com.lucky.seckill.common.exception.BizException;
 import com.lucky.seckill.common.model.entity.PageResult;
+import com.lucky.seckill.common.utils.Response;
+import com.lucky.seckill.goods.feign.GoodsFeignClient;
+import com.lucky.seckill.goods.model.vo.GoodsListVO;
 import com.lucky.seckill.notify.feign.NotifyFeignClient;
 import com.lucky.seckill.notify.model.entity.Notify;
 import com.lucky.seckill.shop.model.dto.ShopApplyQueryRequest;
@@ -22,6 +25,7 @@ import com.lucky.seckill.shop.model.dto.CreateShopRequest;
 import com.lucky.seckill.shop.model.dto.ShopAuditRequest;
 import com.lucky.seckill.shop.model.entity.Shop;
 import com.lucky.seckill.shop.service.ShopService;
+import com.lucky.seckill.shop.model.vo.ShopListVO;
 import jakarta.annotation.Resource;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
@@ -53,6 +57,9 @@ public class ShopServiceImpl implements ShopService {
 
     @Resource
     private NotifyFeignClient notifyFeignClient;
+
+    @Resource
+    private GoodsFeignClient goodsFeignClient;
 
     @Resource
     private FilePictureUpload filePictureUpload;
@@ -151,7 +158,7 @@ public class ShopServiceImpl implements ShopService {
                 .shopName(createShopRequest.getShopName())
                 .shopAvatar(createShopRequest.getShopAvatar())
                 .shopDesc(createShopRequest.getShopDesc())
-                .applyTime(new java.util.Date())
+                .applyTime(new Date())
                 .status(0)
                 .messageId(messageId)
                 .build();
@@ -290,50 +297,26 @@ public class ShopServiceImpl implements ShopService {
      */
     @Override
     public Response<PageResult<ShopApplyVO>> getShopApplyList(ShopApplyQueryRequest queryRequest) {
-        log.info("==> 查询商家申请列表, 用户名: {}, 店铺名: {}, 审核状态: {}, 时间范围: {} - {}",
-                queryRequest.getUsername(), queryRequest.getShopName(),
-                queryRequest.getAuditStatus(), queryRequest.getStartTime(), queryRequest.getEndTime());
+        log.info("==> 查询商家申请列表, 用户名: {}, 店铺名: {}, 审核状态: {}",
+                queryRequest.getUsername(), queryRequest.getShopName(), queryRequest.getAuditStatus());
 
-        // 设置默认分页参数
         Integer pageNum = queryRequest.getPageNum() != null ? queryRequest.getPageNum() : 1;
         Integer pageSize = queryRequest.getPageSize() != null ? queryRequest.getPageSize() : 10;
 
-        // 开启分页
         PageHelper.startPage(pageNum, pageSize);
 
-        // 查询数据
         List<Shop> shopList = shopMapper.selectShopApplyList(
                 queryRequest.getUsername(),
                 queryRequest.getShopName(),
-                queryRequest.getAuditStatus(),
-                queryRequest.getStartTime() != null ? Date.from(queryRequest.getStartTime().atZone(ZoneId.systemDefault()).toInstant()) : null,
-                queryRequest.getEndTime() != null ? Date.from(queryRequest.getEndTime().atZone(ZoneId.systemDefault()).toInstant()) : null
+                queryRequest.getAuditStatus()
         );
 
-        // 获取分页信息
         Page<Shop> page = (Page<Shop>) shopList;
 
-        // 转换为 VO
-        List<ShopApplyVO> voList = shopList.stream().map(shop -> {
-            ShopApplyVO vo = new ShopApplyVO();
-            vo.setId(shop.getId());
-            vo.setShopName(shop.getShopName());
-            vo.setShopAvatar(shop.getShopAvatar());
-            vo.setShopDesc(shop.getShopDesc());
-            vo.setUserId(shop.getUserId());
-            vo.setUsername(shop.getUsername());
-            vo.setAuditStatus(shop.getAuditStatus());
-            vo.setAuditStatusDesc(getAuditStatusDesc(shop.getAuditStatus()));
-            vo.setAuditRemark(shop.getAuditRemark());
-            vo.setShopStatus(shop.getShopStatus());
-            vo.setCreateTime(shop.getCreateTime() != null ?
-                    LocalDateTime.ofInstant(shop.getCreateTime().toInstant(), ZoneId.systemDefault()) : null);
-            vo.setUpdateTime(shop.getUpdateTime() != null ?
-                    LocalDateTime.ofInstant(shop.getUpdateTime().toInstant(), ZoneId.systemDefault()) : null);
-            return vo;
-        }).collect(Collectors.toList());
+        List<ShopApplyVO> voList = shopList.stream()
+                .map(this::convertToShopApplyVO)
+                .collect(Collectors.toList());
 
-        // 构建分页结果
         PageResult<ShopApplyVO> pageResult = PageResult.<ShopApplyVO>builder()
                 .records(voList)
                 .total(page.getTotal())
@@ -416,11 +399,6 @@ public class ShopServiceImpl implements ShopService {
      */
     @Override
     public Response<PageResult<ShopApplyVO>> getShopList(ShopApplyQueryRequest queryRequest) {
-        log.info("==> 管理员查询店铺列表, 用户名: {}, 店铺名: {}, 审核状态: {}, 店铺状态: {}, 时间范围: {} - {}",
-                queryRequest.getUsername(), queryRequest.getShopName(),
-                queryRequest.getAuditStatus(), queryRequest.getShopStatus(),
-                queryRequest.getStartTime(), queryRequest.getEndTime());
-
         // 设置默认分页参数
         Integer pageNum = queryRequest.getPageNum() != null ? queryRequest.getPageNum() : 1;
         Integer pageSize = queryRequest.getPageSize() != null ? queryRequest.getPageSize() : 10;
@@ -433,9 +411,7 @@ public class ShopServiceImpl implements ShopService {
                 queryRequest.getUsername(),
                 queryRequest.getShopName(),
                 queryRequest.getAuditStatus(),
-                queryRequest.getShopStatus(),
-                queryRequest.getStartTime() != null ? Date.from(queryRequest.getStartTime().atZone(ZoneId.systemDefault()).toInstant()) : null,
-                queryRequest.getEndTime() != null ? Date.from(queryRequest.getEndTime().atZone(ZoneId.systemDefault()).toInstant()) : null
+                queryRequest.getShopStatus()
         );
 
         // 获取分页信息
@@ -461,6 +437,89 @@ public class ShopServiceImpl implements ShopService {
     }
 
     /**
+     * 普通用户分页查询店铺列表（仅返回公开字段）
+     */
+    @Override
+    public Response<PageResult<ShopListVO>> getPublicShopList(ShopApplyQueryRequest queryRequest) {
+        log.info("==> 普通用户查询店铺列表, 店铺名: {}, 审核状态: {}, 店铺状态: {}",
+                queryRequest.getShopName(), queryRequest.getAuditStatus(), queryRequest.getShopStatus());
+
+        Integer pageNum = queryRequest.getPageNum() != null ? queryRequest.getPageNum() : 1;
+        Integer pageSize = queryRequest.getPageSize() != null ? queryRequest.getPageSize() : 10;
+
+        PageHelper.startPage(pageNum, pageSize);
+        List<Shop> shopList = shopMapper.selectShopList(
+                queryRequest.getUsername(),
+                queryRequest.getShopName(),
+                queryRequest.getAuditStatus(),
+                queryRequest.getShopStatus()
+        );
+        Page<Shop> page = (Page<Shop>) shopList;
+
+        List<ShopListVO> voList = shopList.stream()
+                .map(this::convertToShopListVO)
+                .collect(Collectors.toList());
+
+        PageResult<ShopListVO> pageResult = PageResult.<ShopListVO>builder()
+                .records(voList)
+                .total(page.getTotal())
+                .pageNum(pageNum)
+                .pageSize(pageSize)
+                .totalPages((int) Math.ceil((double) page.getTotal() / pageSize))
+                .build();
+
+        log.info("==> 普通用户查询店铺列表完成, 总数: {}, 当前页: {}", page.getTotal(), pageNum);
+        return Response.success(pageResult);
+    }
+
+    @Override
+    public Response<PageResult<GoodsListVO>> getShopGoods(Long shopId, Integer pageNum, Integer pageSize) {
+        if (shopId == null) {
+            throw new BizException(ResponseCodeEnum.PARAM_NOT_VALID, "店铺ID不能为空");
+        }
+
+        Shop shop = shopMapper.selectByPrimaryKey(shopId);
+        if (Objects.isNull(shop) || (shop.getIsDelete() != null && shop.getIsDelete() == 1)) {
+            throw new BizException(ResponseCodeEnum.PARAM_NOT_VALID, "店铺不存在");
+        }
+        if (!Integer.valueOf(1).equals(shop.getAuditStatus())) {
+            throw new BizException(ResponseCodeEnum.PARAM_NOT_VALID, "店铺未通过审核");
+        }
+        if (!Integer.valueOf(1).equals(shop.getShopStatus())) {
+            throw new BizException(ResponseCodeEnum.PARAM_NOT_VALID, "店铺已关闭");
+        }
+
+        pageNum = pageNum == null ? 1 : pageNum;
+        pageSize = pageSize == null ? 10 : pageSize;
+
+        try {
+            Response<PageResult<GoodsListVO>> goodsResponse = goodsFeignClient.getGoodsPage(
+                    shopId, pageNum, pageSize, 1, 1);
+            checkFeignResponse(goodsResponse, "查询店铺商品失败");
+            log.info("==> 查询店铺商品成功, shopId: {}, total: {}", shopId,
+                    goodsResponse.getData() != null ? goodsResponse.getData().getTotal() : 0);
+            return Response.success(goodsResponse.getData());
+        } catch (BizException e) {
+            throw e;
+        } catch (Exception e) {
+            log.error("==> 查询店铺商品失败, shopId: {}, error: {}", shopId, e.getMessage(), e);
+            throw new BizException(ResponseCodeEnum.SYSTEM_ERROR, "查询店铺商品失败");
+        }
+    }
+
+    @Override
+    public Response<ShopListVO> getShopById(Long shopId) {
+        if (shopId == null) {
+            throw new BizException(ResponseCodeEnum.PARAM_NOT_VALID, "店铺ID不能为空");
+        }
+        Shop shop = shopMapper.selectByPrimaryKey(shopId);
+        if (Objects.isNull(shop) || (shop.getIsDelete() != null && shop.getIsDelete() == 1)) {
+            throw new BizException(ResponseCodeEnum.PARAM_NOT_VALID, "店铺不存在");
+        }
+        return Response.success(convertToShopListVO(shop));
+    }
+
+    /**
      * 将 Shop 转换为 ShopApplyVO
      */
     private ShopApplyVO convertToShopApplyVO(Shop shop) {
@@ -479,6 +538,16 @@ public class ShopServiceImpl implements ShopService {
                         LocalDateTime.ofInstant(shop.getCreateTime().toInstant(), ZoneId.systemDefault()) : null)
                 .updateTime(shop.getUpdateTime() != null ?
                         LocalDateTime.ofInstant(shop.getUpdateTime().toInstant(), ZoneId.systemDefault()) : null)
+                .build();
+    }
+
+    private ShopListVO convertToShopListVO(Shop shop) {
+        return ShopListVO.builder()
+                .id(shop.getId())
+                .shopName(shop.getShopName())
+                .shopAvatar(shop.getShopAvatar())
+                .shopDesc(shop.getShopDesc())
+                .shopStatus(shop.getShopStatus())
                 .build();
     }
 

@@ -25,4 +25,19 @@ public class NotifyTypeConstants {
      * 支付成功通知
      */
     public static final Integer PAY_SUCCESS = 5;
+
+    /**
+     * 发货通知
+     */
+    public static final Integer ORDER_DELIVERY = 6;
+
+    /**
+     * 确认收货通知
+     */
+    public static final Integer ORDER_RECEIVE = 7;
+
+    /**
+     * 秒杀商品申请通知（管理员）
+     */
+    public static final Integer SECKILL_GOODS_APPLY = 8;
 }

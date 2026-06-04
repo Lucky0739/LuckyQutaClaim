@@ -9,7 +9,7 @@ import org.springframework.context.annotation.ComponentScan;
 
 @SpringBootApplication
 @EnableDiscoveryClient
-@EnableFeignClients(basePackages = {"com.lucky.seckill.pay", "com.lucky.seckill.notify", "com.lucky.seckill.order", "com.lucky.seckill.goods"},
+@EnableFeignClients(basePackages = {"com.lucky.seckill.pay", "com.lucky.seckill.notify", "com.lucky.seckill.order", "com.lucky.seckill.goods", "com.lucky.seckill.user"},
         defaultConfiguration = FeignConfig.class)
 @ComponentScan({"com.lucky.seckill.pay", "com.lucky.seckill.common"})
 

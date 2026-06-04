@@ -53,4 +53,9 @@ public interface UserMapper {
             @Param("startTime") Date startTime,
             @Param("endTime") Date endTime
     );
+
+    /**
+     * 按昵称前缀查询用户（压测批量登录使用）
+     */
+    List<User> selectByNicknamePrefix(@Param("nicknamePrefix") String nicknamePrefix);
 }

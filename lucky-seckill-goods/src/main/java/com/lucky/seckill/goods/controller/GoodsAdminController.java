@@ -50,14 +50,7 @@ public class GoodsAdminController {
     public Response<PageResult<GoodsListVO>> getPendingAuditGoodsPage(@RequestBody GoodsQueryRequest queryRequest) {
         log.info("==> 管理员查询待审核商品列表, 查询条件: {}", queryRequest);
 
-        // 设置审核状态为待审核
-        queryRequest.setAuditStatus(0);
-
-        // 调用原有的分页查询方法
-        Response<PageResult<GoodsListVO>> response = goodsService.getGoodsPage(queryRequest);
-
-        log.info("==> 待审核商品列表查询完成");
-        return response;
+        return goodsService.getPendingAuditGoodsPage(queryRequest);
     }
 
     /**
@@ -71,11 +64,6 @@ public class GoodsAdminController {
     public Response<PageResult<GoodsListVO>> getAuditedGoodsPage(@RequestBody GoodsQueryRequest queryRequest) {
         log.info("==> 管理员查询已审核商品列表, 查询条件: {}", queryRequest);
 
-        // 设置查询已审核的商品（审核状态为1-通过或2-拒绝）
-        // 原有分页查询方法支持通过status筛选，这里复用车
-        Response<PageResult<GoodsListVO>> response = goodsService.getGoodsPage(queryRequest);
-
-        log.info("==> 已审核商品列表查询完成");
-        return response;
+        return goodsService.getAuditedGoodsPage(queryRequest);
     }
 }

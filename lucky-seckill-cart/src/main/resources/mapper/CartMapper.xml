@@ -17,10 +17,16 @@
         <id column="id" property="id" jdbcType="BIGINT"/>
         <result column="goods_id" property="goodsId" jdbcType="BIGINT"/>
         <result column="sku_id" property="skuId" jdbcType="BIGINT"/>
+        <result column="shop_id" property="shopId" jdbcType="BIGINT"/>
+        <result column="shop_name" property="shopName" jdbcType="VARCHAR"/>
         <result column="goods_name" property="goodsName" jdbcType="VARCHAR"/>
         <result column="goods_img" property="goodsImg" jdbcType="VARCHAR"/>
         <result column="sku_spec_name" property="skuSpecName" jdbcType="VARCHAR"/>
         <result column="sale_price" property="salePrice" jdbcType="DECIMAL"/>
+        <result column="stock_num" property="stockNum" jdbcType="INTEGER"/>
+        <result column="goods_status" property="goodsStatus" jdbcType="INTEGER"/>
+        <result column="audit_status" property="auditStatus" jdbcType="INTEGER"/>
+        <result column="sku_status" property="skuStatus" jdbcType="INTEGER"/>
         <result column="goods_count" property="goodsCount" jdbcType="INTEGER"/>
         <result column="selected" property="selected" jdbcType="TINYINT"/>
         <result column="create_time" property="createTime" jdbcType="TIMESTAMP"/>
@@ -78,16 +84,46 @@
         c.goods_count,
         c.selected,
         c.create_time,
+        g.shop_id,
+        s.shop_name,
         g.goods_name,
-        g.goods_img,
+        IFNULL(NULLIF(sku.sku_img, ''), g.goods_img) AS goods_img,
         sku.sku_spec_name,
-        sku.sale_price
+        sku.sale_price,
+        sku.stock_num,
+        g.status AS goods_status,
+        g.audit_status,
+        sku.status AS sku_status
         FROM t_shopping_cart c
-        LEFT JOIN t_goods g ON c.goods_id = g.id
-        LEFT JOIN t_goods_sku sku ON c.sku_id = sku.id
+        LEFT JOIN t_goods g ON c.goods_id = g.id AND (g.isDelete = 0 OR g.isDelete IS NULL)
+        LEFT JOIN t_goods_sku sku ON c.sku_id = sku.id AND (sku.isDelete = 0 OR sku.isDelete IS NULL)
+        LEFT JOIN t_shop s ON g.shop_id = s.id
         WHERE c.user_id = #{userId,jdbcType=BIGINT}
         ORDER BY c.create_time DESC
     </select>
+
+    <select id="countLinesByUserId" resultType="int">
+        SELECT COUNT(id)
+        FROM t_shopping_cart
+        WHERE user_id = #{userId,jdbcType=BIGINT}
+    </select>
+
+    <select id="sumGoodsCountByUserId" resultType="int">
+        SELECT IFNULL(SUM(goods_count), 0)
+        FROM t_shopping_cart
+        WHERE user_id = #{userId,jdbcType=BIGINT}
+    </select>
+
+    <delete id="deleteByUserId">
+        DELETE FROM t_shopping_cart
+        WHERE user_id = #{userId,jdbcType=BIGINT}
+    </delete>
+
+    <delete id="deleteSelectedByUserId">
+        DELETE FROM t_shopping_cart
+        WHERE user_id = #{userId,jdbcType=BIGINT}
+        AND selected = 1
+    </delete>
 
     <update id="updateGoodsCountByUserIdAndSkuId">
         UPDATE t_shopping_cart

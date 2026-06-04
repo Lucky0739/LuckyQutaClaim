@@ -56,3 +56,28 @@ mybatis:
     log-impl: org.apache.ibatis.logging.stdout.StdOutImpl
   # 指定 Mapper XML 文件的位置
   mapper-locations: classpath:mapper/*.xml
+
+# 阿里云号码认证 PNVS（短信认证）配置
+aliyun:
+  pnvs:
+    # AccessKey ID（从阿里云控制台获取）
+    access-key-id: LTAI5tAnQ1MZM1gyaW7ZaeeL
+    # AccessKey Secret（从阿里云控制台获取）
+    access-key-secret: nSF2QjhvrXSbvUy0po9pOrWUzhh69U
+    # PNVS 控制台赠送或配置的短信签名名称
+    sign-name: 速通互联验证码
+    # PNVS 短信认证模板 Code
+    template-code: 100001
+    # 可选：PNVS 方案名称，不填则使用默认方案
+    scheme-name:
+    # PNVS 服务地域和访问域名
+    region-id: cn-hangzhou
+    endpoint: dypnsapi.aliyuncs.com
+    # 验证码有效期和频控间隔（单位：秒）
+    valid-time: 300
+    interval: 60
+    # 验证码长度（4~8 位）和生成类型
+    code-length: 6
+    code-type: 1
+    # 使用本地生成的验证码，不要求接口返回验证码
+    return-verify-code: false

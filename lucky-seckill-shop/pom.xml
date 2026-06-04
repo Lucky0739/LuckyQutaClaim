@@ -98,6 +98,11 @@
             <groupId>com.luckySeckill</groupId>
             <artifactId>lucky-seckill-user</artifactId>
         </dependency>
+        <dependency>
+            <groupId>com.luckySeckill</groupId>
+            <artifactId>lucky-seckill-goods</artifactId>
+            <version>${revision}</version>
+        </dependency>
     </dependencies>
 </project>
 

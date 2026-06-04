@@ -58,7 +58,7 @@ public class SeckillActivityServiceImpl implements SeckillActivityService {
             throw new BizException(ResponseCodeEnum.SECKILL_ACTIVITY_NOT_EXIST);
         }
 
-        List<SeckillGoodsVO> list = seckillGoodsMapper.selectByActivityId(activityId).stream()
+        List<SeckillGoodsVO> list = seckillGoodsMapper.selectApprovedByActivityId(activityId).stream()
                 .map(goods -> {
                     SeckillGoodsVO vo = SeckillGoodsVO.fromEntity(goods);
                     if (SeckillActivityStatusEnum.IN_PROGRESS.getCode().equals(activity.getStatus())
@@ -124,7 +124,7 @@ public class SeckillActivityServiceImpl implements SeckillActivityService {
      * 预热 Redis 库存并将活动置为进行中（供手动开始与定时任务复用）
      */
     public void warmUpAndStart(SeckillActivity activity, LocalDateTime now) {
-        List<SeckillGoods> goodsList = seckillGoodsMapper.selectByActivityId(activity.getId());
+        List<SeckillGoods> goodsList = seckillGoodsMapper.selectApprovedByActivityId(activity.getId());
         if (goodsList == null || goodsList.isEmpty()) {
             throw new BizException(ResponseCodeEnum.SECKILL_ACTIVITY_NO_GOODS);
         }

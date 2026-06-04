@@ -1,5 +1,6 @@
 package com.lucky.seckill.activity.mapper;
 
+import com.lucky.seckill.activity.model.dto.SeckillGoodsApplyQueryRequest;
 import com.lucky.seckill.activity.model.entity.SeckillGoods;
 import org.apache.ibatis.annotations.Param;
 
@@ -14,7 +15,22 @@ public interface SeckillGoodsMapper {
                                                 @Param("goodsId") Long goodsId,
                                                 @Param("skuId") Long skuId);
 
+    SeckillGoods selectActiveByActivityAndGoodsAndSku(@Param("activityId") Long activityId,
+                                                      @Param("goodsId") Long goodsId,
+                                                      @Param("skuId") Long skuId);
+
     List<SeckillGoods> selectByActivityId(@Param("activityId") Long activityId);
+
+    List<SeckillGoods> selectApprovedByActivityId(@Param("activityId") Long activityId);
+
+    List<SeckillGoods> selectApplyPage(SeckillGoodsApplyQueryRequest request);
+
+    int insertSelective(SeckillGoods record);
+
+    int updateAuditStatus(@Param("id") Long id,
+                          @Param("auditStatus") Integer auditStatus,
+                          @Param("auditRemark") String auditRemark,
+                          @Param("updateTime") LocalDateTime updateTime);
 
     int deductStock(@Param("id") Long id,
                     @Param("deductNum") Integer deductNum,

@@ -86,6 +86,13 @@
         ORDER BY sort ASC, create_time DESC
     </select>
 
+    <select id="selectIdsByParentId" resultType="java.lang.Long">
+        SELECT id
+        FROM t_goods_category
+        WHERE parent_id = #{parentId,jdbcType=BIGINT}
+          AND isDelete = 0
+    </select>
+
     <update id="updateStatus" parameterType="map">
         UPDATE t_goods_category
         SET status = #{status}, update_time = #{updateTime}

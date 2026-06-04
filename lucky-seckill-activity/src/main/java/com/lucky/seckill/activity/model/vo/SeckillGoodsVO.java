@@ -22,6 +22,8 @@ public class SeckillGoodsVO {
 
     private Long skuId;
 
+    private String skuSpecName;
+
     private String seckillTitle;
 
     private String seckillImg;
@@ -43,6 +45,7 @@ public class SeckillGoodsVO {
                 .activityId(goods.getActivityId())
                 .goodsId(goods.getGoodsId())
                 .skuId(goods.getSkuId())
+                .skuSpecName(goods.getSkuSpecName())
                 .seckillTitle(goods.getSeckillTitle())
                 .seckillImg(goods.getSeckillImg())
                 .seckillPrice(goods.getSeckillPrice())

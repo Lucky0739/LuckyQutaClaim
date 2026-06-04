@@ -46,7 +46,6 @@ public class GoodsCollectController {
         log.info("==> 取消收藏商品请求, goodsId: {}", request.getGoodsId());
         return goodsCollectService.cancelCollect(request);
     }
-
     /**
      * 查询商品收藏状态（含收藏数，登录用户返回是否已收藏）
      */
@@ -56,7 +55,6 @@ public class GoodsCollectController {
         log.info("==> 查询商品收藏状态请求, goodsId: {}", goodsId);
         return goodsCollectService.getCollectStatus(goodsId);
     }
-
     /**
      * 查询我的商品收藏列表
      */

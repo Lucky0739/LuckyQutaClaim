@@ -6,6 +6,8 @@ import com.github.pagehelper.PageHelper;
 import com.github.pagehelper.PageInfo;
 import com.lucky.seckill.common.enums.ResponseCodeEnum;
 import com.lucky.seckill.common.exception.BizException;
+import com.lucky.seckill.common.model.entity.OrderDeliveryMessage;
+import com.lucky.seckill.common.model.entity.OrderReceiveMessage;
 import com.lucky.seckill.common.model.entity.PageResult;
 import com.lucky.seckill.common.utils.Response;
 import com.lucky.seckill.goods.feign.GoodsFeignClient;
@@ -13,13 +15,20 @@ import com.lucky.seckill.goods.model.entity.Goods;
 import com.lucky.seckill.goods.model.entity.GoodsSku;
 import com.lucky.seckill.user.feign.UserAddressFeignClient;
 import com.lucky.seckill.user.model.entity.UserAddress;
+import com.lucky.seckill.order.constant.OrderConstants;
 import com.lucky.seckill.order.enums.OrderStatusEnum;
 import com.lucky.seckill.order.mapper.OrderMapper;
 import com.lucky.seckill.order.model.dto.AddOrderRequest;
 import com.lucky.seckill.order.model.dto.OrderQueryRequest;
 import com.lucky.seckill.order.model.entity.Order;
+import com.lucky.seckill.order.model.vo.OrderGoodsVO;
+import com.lucky.seckill.order.model.vo.OrderShopVO;
 import com.lucky.seckill.order.model.vo.OrderVO;
+import com.lucky.seckill.order.mq.OrderDeliveryProducer;
+import com.lucky.seckill.order.mq.OrderReceiveProducer;
 import com.lucky.seckill.order.service.OrderService;
+import com.lucky.seckill.shop.feign.ShopFeignClient;
+import com.lucky.seckill.shop.model.vo.ShopListVO;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import jakarta.annotation.Resource;
 import lombok.extern.slf4j.Slf4j;
@@ -40,9 +49,17 @@ public class OrderServiceImpl implements OrderService {
     @Resource
     private GoodsFeignClient goodsFeignClient;
     @Resource
+    private ShopFeignClient shopFeignClient;
+    @Resource
     private UserAddressFeignClient userAddressFeignClient;
     @Resource
     private ObjectMapper objectMapper;
+
+    @Resource
+    private OrderDeliveryProducer orderDeliveryProducer;
+
+    @Resource
+    private OrderReceiveProducer orderReceiveProducer;
     /**
      * 创建订单（下单）
      */
@@ -128,12 +145,13 @@ public class OrderServiceImpl implements OrderService {
         long orderId = IdUtil.getSnowflakeNextId();
         String orderNo = generateOrderNo(userId);
         BigDecimal totalAmount = goodsSku.getSalePrice().multiply(BigDecimal.valueOf(goodsNum));
-        LocalDateTime expireTime = LocalDateTime.now().plusMinutes(30);
+        LocalDateTime expireTime = LocalDateTime.now().plusMinutes(OrderConstants.PAY_TIMEOUT_MINUTES);
 
         Order order = Order.builder()
                 .id(orderId)
                 .userId(userId)
                 .goodsId(addOrderRequest.getGoodsId())
+                .shopId(goods.getShopId())
                 .skuId(skuId)
                 .userAddressId(addOrderRequest.getUserAddressId())
                 .orderNo(orderNo)
@@ -182,6 +200,7 @@ public class OrderServiceImpl implements OrderService {
         }
 
         orderMapper.updateStatusByOrderNo(orderNo, OrderStatusEnum.CANCELLED.getCode());
+        releaseLockedStock(order);
 
         log.info("==> 订单已取消，orderNo: {}", orderNo);
         return Response.success(true);
@@ -209,7 +228,23 @@ public class OrderServiceImpl implements OrderService {
     @Override
     public Response<OrderVO> getOrderVOByOrderNo(String orderNo) {
         Order order = getOrderByOrderNo(orderNo).getData();
-        return Response.success(OrderVO.fromEntity(order));
+        Long userId = StpUtil.getLoginIdAsLong();
+        if (!userId.equals(order.getUserId())) {
+            throw new BizException(ResponseCodeEnum.USER_PERMISSION_DENIED, "无权查看该订单");
+        }
+        return Response.success(toOrderVO(order));
+    }
+
+    @Override
+    public Response<Long> getShopIdByGoodsId(Long goodsId) {
+        if (goodsId == null) {
+            throw new BizException(ResponseCodeEnum.PARAM_NOT_VALID, "商品ID不能为空");
+        }
+        Goods goods = queryGoods(goodsId);
+        if (goods == null) {
+            throw new BizException(ResponseCodeEnum.GOODS_NOT_EXIST, "商品不存在");
+        }
+        return Response.success(goods.getShopId());
     }
 
     @Override
@@ -251,6 +286,124 @@ public class OrderServiceImpl implements OrderService {
         return Response.success(false);
     }
 
+    /**
+     * 发货
+     * @param orderNo 订单号
+     * @return
+     */
+    @Override
+    @Transactional(rollbackFor = Exception.class)
+    public Response<Boolean> deliverOrder(String orderNo) {
+        if (orderNo == null || orderNo.isEmpty()) {
+            throw new BizException(ResponseCodeEnum.PARAM_NOT_VALID, "订单号不能为空");
+        }
+
+        Order order = orderMapper.selectByOrderNo(orderNo);
+        if (order == null) {
+            throw new BizException(ResponseCodeEnum.ORDER_NOT_EXIST, "订单不存在");
+        }
+        if (!OrderStatusEnum.PAID.getCode().equals(order.getStatus())) {
+            throw new BizException(ResponseCodeEnum.ORDER_STATUS_ERROR, "订单状态异常，无法发货");
+        }
+
+        Long userId = StpUtil.getLoginIdAsLong();
+        Goods goods = queryGoods(order.getGoodsId());
+        if (goods == null) {
+            throw new BizException(ResponseCodeEnum.GOODS_NOT_EXIST, "商品不存在");
+        }
+        if (!userId.equals(goods.getUserId())) {
+            throw new BizException(ResponseCodeEnum.USER_PERMISSION_DENIED, "无权发货该订单");
+        }
+
+        Order updateOrder = Order.builder()
+                .id(order.getId())
+                .status(OrderStatusEnum.SHIPPED.getCode())
+                .deliveryTime(LocalDateTime.now())
+                .updateTime(LocalDateTime.now())
+                .build();
+        int result = orderMapper.updateByPrimaryKeySelective(updateOrder);
+        if (result <= 0) {
+            throw new BizException(ResponseCodeEnum.SYSTEM_ERROR, "订单发货失败");
+        }
+
+        LocalDateTime deliveryTime = LocalDateTime.now();
+        OrderDeliveryMessage message = OrderDeliveryMessage.builder()
+                .orderId(order.getId())
+                .orderNo(orderNo)
+                .buyerUserId(order.getUserId())
+                .sellerUserId(userId)
+                .goodsId(order.getGoodsId())
+                .goodsName(order.getGoodsName())
+                .goodsImg(order.getGoodsImg())
+                .deliveryTime(deliveryTime)
+                .build();
+
+        try {
+            orderDeliveryProducer.sendOrderDeliveryMessage(message);
+            log.info("==> 订单发货消息发送成功, orderNo: {}, buyerUserId: {}", orderNo, order.getUserId());
+        } catch (Exception e) {
+            log.warn("==> 订单发货消息发送失败, orderNo: {}, buyerUserId: {}", orderNo, order.getUserId(), e);
+        }
+
+        log.info("==> 商家发货成功，orderNo: {}, userId: {}", orderNo, userId);
+        return Response.success(true);
+    }
+
+    @Override
+    @Transactional(rollbackFor = Exception.class)
+    public Response<Boolean> confirmReceipt(String orderNo) {
+        if (orderNo == null || orderNo.isEmpty()) {
+            throw new BizException(ResponseCodeEnum.PARAM_NOT_VALID, "订单号不能为空");
+        }
+
+        Order order = orderMapper.selectByOrderNo(orderNo);
+        if (order == null) {
+            throw new BizException(ResponseCodeEnum.ORDER_NOT_EXIST, "订单不存在");
+        }
+
+        Long userId = StpUtil.getLoginIdAsLong();
+        if (!userId.equals(order.getUserId())) {
+            throw new BizException(ResponseCodeEnum.USER_PERMISSION_DENIED, "无权确认该订单");
+        }
+        if (!OrderStatusEnum.SHIPPED.getCode().equals(order.getStatus())) {
+            throw new BizException(ResponseCodeEnum.ORDER_STATUS_ERROR, "订单状态异常，无法确认收货");
+        }
+
+        LocalDateTime receiveTime = LocalDateTime.now();
+        Order updateOrder = Order.builder()
+                .id(order.getId())
+                .status(OrderStatusEnum.RECEIVED.getCode())
+                .receiveTime(receiveTime)
+                .updateTime(receiveTime)
+                .build();
+        int result = orderMapper.updateByPrimaryKeySelective(updateOrder);
+        if (result <= 0) {
+            throw new BizException(ResponseCodeEnum.SYSTEM_ERROR, "确认收货失败");
+        }
+
+        Goods goods = queryGoods(order.getGoodsId());
+        Long sellerUserId = goods != null ? goods.getUserId() : null;
+        OrderReceiveMessage message = OrderReceiveMessage.builder()
+                .orderId(order.getId())
+                .orderNo(orderNo)
+                .buyerUserId(userId)
+                .sellerUserId(sellerUserId)
+                .goodsId(order.getGoodsId())
+                .goodsName(order.getGoodsName())
+                .receiveTime(receiveTime)
+                .build();
+
+        try {
+            orderReceiveProducer.sendOrderReceiveMessage(message);
+            log.info("==> 订单确认收货消息发送成功, orderNo: {}, sellerUserId: {}", orderNo, sellerUserId);
+        } catch (Exception e) {
+            log.warn("==> 订单确认收货消息发送失败, orderNo: {}, sellerUserId: {}", orderNo, sellerUserId, e);
+        }
+
+        log.info("==> 用户确认收货成功，orderNo: {}, userId: {}", orderNo, userId);
+        return Response.success(true);
+    }
+
     @Override
     public Response<PageResult<OrderVO>> getOrderList(OrderQueryRequest request) {
         if (request == null) {
@@ -266,11 +419,46 @@ public class OrderServiceImpl implements OrderService {
         Long userId = StpUtil.getLoginIdAsLong();
 
         PageHelper.startPage(request.getPageNum(), request.getPageSize());
-        List<Order> orderList = orderMapper.selectOrdersByUserId(userId, request.getStatus(), request.getGoodsName());
+        List<Order> orderList = orderMapper.selectOrdersByUserId(
+                userId, request.getOrderNo(), request.getStatus(), request.getGoodsName());
         PageInfo<Order> pageInfo = new PageInfo<>(orderList);
 
         List<OrderVO> voList = orderList.stream()
-                .map(OrderVO::fromEntity)
+                .map(this::toOrderVO)
+                .collect(Collectors.toList());
+
+        PageResult<OrderVO> result = PageResult.<OrderVO>builder()
+                .records(voList)
+                .pageNum(pageInfo.getPageNum())
+                .pageSize(pageInfo.getPageSize())
+                .total(pageInfo.getTotal())
+                .totalPages(pageInfo.getPages())
+                .build();
+
+        return Response.success(result);
+    }
+
+    @Override
+    public Response<PageResult<OrderVO>> getMerchantOrderList(OrderQueryRequest request) {
+        if (request == null) {
+            request = new OrderQueryRequest();
+        }
+        if (request.getPageNum() == null || request.getPageNum() < 1) {
+            request.setPageNum(1);
+        }
+        if (request.getPageSize() == null || request.getPageSize() < 1) {
+            request.setPageSize(10);
+        }
+
+        Long merchantUserId = StpUtil.getLoginIdAsLong();
+
+        PageHelper.startPage(request.getPageNum(), request.getPageSize());
+        List<Order> orderList = orderMapper.selectOrdersByMerchantUserId(
+                merchantUserId, request.getOrderNo(), request.getStatus(), request.getGoodsName());
+        PageInfo<Order> pageInfo = new PageInfo<>(orderList);
+
+        List<OrderVO> voList = orderList.stream()
+                .map(this::toOrderVO)
                 .collect(Collectors.toList());
 
         PageResult<OrderVO> result = PageResult.<OrderVO>builder()
@@ -308,6 +496,11 @@ public class OrderServiceImpl implements OrderService {
         return Response.success(orders);
     }
 
+    /**
+     * 关闭过期订单
+     * @param orderNo 订单号
+     * @return
+     */
     @Override
     @Transactional(rollbackFor = Exception.class)
     public Response<Boolean> closeExpiredOrder(String orderNo) {
@@ -330,10 +523,60 @@ public class OrderServiceImpl implements OrderService {
             return Response.success(true);
         }
 
-        orderMapper.updateStatusByOrderNo(orderNo, OrderStatusEnum.EXPIRED.getCode());
-
-        log.info("==> 过期订单已关闭，orderNo: {}", orderNo);
+        closePendingOrderAsExpired(order);
         return Response.success(true);
+    }
+
+    @Override
+    public void closeExpiredOrders() {
+        List<Order> expiredOrders = orderMapper.selectExpiredPendingOrders(LocalDateTime.now());
+        if (expiredOrders == null || expiredOrders.isEmpty()) {
+            return;
+        }
+
+        log.info("==> 扫描到 {} 笔超时未支付订单，开始关闭", expiredOrders.size());
+        for (Order order : expiredOrders) {
+            try {
+                closeExpiredOrder(order.getOrderNo());
+            } catch (Exception e) {
+                log.error("==> 关闭超时订单失败, orderNo: {}, error: {}", order.getOrderNo(), e.getMessage(), e);
+            }
+        }
+    }
+
+    private void closePendingOrderAsExpired(Order order) {
+        if (order == null || order.getOrderNo() == null) {
+            return;
+        }
+        if (order.getStatus() != OrderStatusEnum.PENDING_PAYMENT.getCode()) {
+            return;
+        }
+        if (order.getExpireTime() != null && LocalDateTime.now().isBefore(order.getExpireTime())) {
+            return;
+        }
+
+        orderMapper.updateStatusByOrderNo(order.getOrderNo(), OrderStatusEnum.EXPIRED.getCode());
+        releaseLockedStock(order);
+        log.info("==> 超时未支付订单已关闭，orderNo: {}, expireTime: {}", order.getOrderNo(), order.getExpireTime());
+    }
+
+    private void releaseLockedStock(Order order) {
+        if (order.getSkuId() == null || order.getBuyGoodsNum() == null || order.getBuyGoodsNum() <= 0) {
+            return;
+        }
+        try {
+            Response<Boolean> releaseResult = goodsFeignClient.releaseStock(order.getSkuId(), order.getBuyGoodsNum());
+            if (releaseResult == null || !releaseResult.isSuccess() || !Boolean.TRUE.equals(releaseResult.getData())) {
+                log.warn("==> 释放预占库存失败，orderNo: {}, skuId: {}, num: {}",
+                        order.getOrderNo(), order.getSkuId(), order.getBuyGoodsNum());
+                return;
+            }
+            log.info("==> 释放预占库存成功，orderNo: {}, skuId: {}, num: {}",
+                    order.getOrderNo(), order.getSkuId(), order.getBuyGoodsNum());
+        } catch (Exception e) {
+            log.error("==> 释放预占库存异常，orderNo: {}, skuId: {}, error: {}",
+                    order.getOrderNo(), order.getSkuId(), e.getMessage(), e);
+        }
     }
 
     private String generateOrderNo(Long userId) {
@@ -341,5 +584,72 @@ public class OrderServiceImpl implements OrderService {
         String userIdStr = String.format("%04d", userId % 10000);
         String random = String.format("%04d", (int) (Math.random() * 10000));
         return "ORD" + timestamp + userIdStr + random;
+    }
+
+    private Goods queryGoods(Long goodsId) {
+        if (goodsId == null) {
+            return null;
+        }
+        try {
+            Response<Goods> goodsResponse = goodsFeignClient.getGoodsById(goodsId);
+            if (goodsResponse != null && goodsResponse.isSuccess()) {
+                return goodsResponse.getData();
+            }
+        } catch (Exception e) {
+            log.error("==> 查询商品信息失败，goodsId: {}", goodsId, e);
+            throw new BizException(ResponseCodeEnum.SYSTEM_ERROR, "查询商品信息失败");
+        }
+        return null;
+    }
+
+    private void enrichShopId(Order order) {
+        if (order == null || order.getShopId() != null || order.getGoodsId() == null) {
+            return;
+        }
+        Goods goods = queryGoods(order.getGoodsId());
+        if (goods != null) {
+            order.setShopId(goods.getShopId());
+        }
+    }
+
+    private OrderVO toOrderVO(Order order) {
+        enrichShopId(order);
+        OrderVO vo = OrderVO.fromEntity(order);
+        vo.setGoods(buildOrderGoodsVO(order));
+        return vo;
+    }
+
+    private OrderGoodsVO buildOrderGoodsVO(Order order) {
+        if (order == null) {
+            return null;
+        }
+        return OrderGoodsVO.builder()
+                .goodsId(order.getGoodsId())
+                .goodsName(order.getGoodsName())
+                .goodsImg(order.getGoodsImg())
+                .skuId(order.getSkuId())
+                .shop(queryOrderShop(order.getShopId()))
+                .build();
+    }
+
+    private OrderShopVO queryOrderShop(Long shopId) {
+        if (shopId == null) {
+            return null;
+        }
+        try {
+            Response<ShopListVO> shopResponse = shopFeignClient.getShopById(shopId);
+            if (shopResponse != null && shopResponse.isSuccess() && shopResponse.getData() != null) {
+                ShopListVO shop = shopResponse.getData();
+                return OrderShopVO.builder()
+                        .shopId(shop.getId())
+                        .shopName(shop.getShopName())
+                        .shopAvatar(shop.getShopAvatar())
+                        .shopDesc(shop.getShopDesc())
+                        .build();
+            }
+        } catch (Exception e) {
+            log.warn("==> 查询店铺信息失败, shopId: {}", shopId, e);
+        }
+        return OrderShopVO.builder().shopId(shopId).build();
     }
 }

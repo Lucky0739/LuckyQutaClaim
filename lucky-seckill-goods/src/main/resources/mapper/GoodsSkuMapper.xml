@@ -107,4 +107,34 @@
         WHERE id = #{skuId}
           AND isDelete = 0
     </update>
+
+    <select id="sumSalesNumByGoodsId" resultType="java.lang.Integer">
+        SELECT IFNULL(SUM(sales_num), 0)
+        FROM t_goods_sku
+        WHERE goods_id = #{goodsId}
+          AND isDelete = 0
+    </select>
+
+    <update id="updateByPrimaryKeySelective" parameterType="com.lucky.seckill.goods.model.entity.GoodsSku">
+        UPDATE t_goods_sku
+        <set>
+            <if test="skuSpecName != null">sku_spec_name = #{skuSpecName,jdbcType=VARCHAR},</if>
+            <if test="skuImg != null">sku_img = #{skuImg,jdbcType=VARCHAR},</if>
+            <if test="marketPrice != null">market_price = #{marketPrice,jdbcType=DECIMAL},</if>
+            <if test="salePrice != null">sale_price = #{salePrice,jdbcType=DECIMAL},</if>
+            <if test="stockNum != null">stock_num = #{stockNum,jdbcType=INTEGER},</if>
+            <if test="status != null">status = #{status,jdbcType=TINYINT},</if>
+            <if test="isDelete != null">isDelete = #{isDelete,jdbcType=TINYINT},</if>
+            <if test="updateTime != null">update_time = #{updateTime,jdbcType=TIMESTAMP},</if>
+        </set>
+        WHERE id = #{id,jdbcType=BIGINT} AND isDelete = 0
+    </update>
+
+    <update id="softDeleteById">
+        UPDATE t_goods_sku
+        SET isDelete = 1,
+            update_time = #{updateTime,jdbcType=TIMESTAMP}
+        WHERE id = #{id,jdbcType=BIGINT}
+          AND isDelete = 0
+    </update>
 </mapper>

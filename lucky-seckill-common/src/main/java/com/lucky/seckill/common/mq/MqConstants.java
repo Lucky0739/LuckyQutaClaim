@@ -7,4 +7,13 @@ public class MqConstants {
 
     public static final String MERCHANT_APPLY_TOPIC = "merchant-apply-topic";
     public static final String MERCHANT_APPLY_TAG = "merchant-apply";
+
+    public static final String SECKILL_ORDER_TOPIC = "seckill-order-topic";
+    public static final String SECKILL_ORDER_TAG = "seckill-order";
+
+    public static final String ORDER_DELIVERY_TOPIC = "order-delivery-topic";
+    public static final String ORDER_DELIVERY_TAG = "order-delivery";
+
+    public static final String ORDER_RECEIVE_TOPIC = "order-receive-topic";
+    public static final String ORDER_RECEIVE_TAG = "order-receive";
 }

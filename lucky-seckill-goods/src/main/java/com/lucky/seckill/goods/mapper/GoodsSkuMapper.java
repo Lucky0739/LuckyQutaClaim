@@ -43,4 +43,13 @@ public interface GoodsSkuMapper {
      * @return 影响的行数
      */
     int increaseSalesNum(@Param("skuId") Long skuId, @Param("salesNum") Integer salesNum);
+
+    /**
+     * 统计商品下所有 SKU 已售数量之和
+     */
+    Integer sumSalesNumByGoodsId(@Param("goodsId") Long goodsId);
+
+    int updateByPrimaryKeySelective(GoodsSku record);
+
+    int softDeleteById(@Param("id") Long id, @Param("updateTime") java.time.LocalDateTime updateTime);
 }

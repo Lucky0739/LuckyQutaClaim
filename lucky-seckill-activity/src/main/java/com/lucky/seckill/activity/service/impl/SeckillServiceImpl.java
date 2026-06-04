@@ -1,8 +1,8 @@
 package com.lucky.seckill.activity.service.impl;
 
 import cn.dev33.satoken.stp.StpUtil;
-import cn.hutool.core.util.IdUtil;
 import com.lucky.seckill.activity.enums.SeckillActivityStatusEnum;
+import com.lucky.seckill.activity.enums.SeckillGoodsAuditStatusEnum;
 import com.lucky.seckill.activity.mapper.SeckillActivityMapper;
 import com.lucky.seckill.activity.mapper.SeckillGoodsMapper;
 import com.lucky.seckill.activity.mapper.SeckillOrderMapper;
@@ -49,9 +49,19 @@ public class SeckillServiceImpl implements SeckillService {
     @Override
     public Response<SeckillResultVO> doSeckill(SeckillRequest request) {
         Long userId = StpUtil.getLoginIdAsLong();
-        Long activityId = request.getActivityId();
-        Long goodsId = request.getGoodsId();
-        Long skuId = request.getSkuId();
+        Long seckillGoodsId = request.getSeckillGoodsId();
+
+        SeckillGoods seckillGoods = seckillGoodsMapper.selectByPrimaryKey(seckillGoodsId);
+        if (seckillGoods == null) {
+            throw new BizException(ResponseCodeEnum.SECKILL_GOODS_NOT_EXIST);
+        }
+        if (!SeckillGoodsAuditStatusEnum.APPROVED.getCode().equals(seckillGoods.getAuditStatus())) {
+            throw new BizException(ResponseCodeEnum.SECKILL_GOODS_NOT_APPROVED);
+        }
+
+        Long activityId = seckillGoods.getActivityId();
+        Long goodsId = seckillGoods.getGoodsId();
+        Long skuId = seckillGoods.getSkuId();
 
         SeckillActivity activity = seckillActivityMapper.selectByPrimaryKey(activityId);
         if (activity == null) {
@@ -65,11 +75,6 @@ public class SeckillServiceImpl implements SeckillService {
         }
         if (!seckillRedisService.isWarmedUp(activityId)) {
             throw new BizException(ResponseCodeEnum.SECKILL_ACTIVITY_NOT_STARTED, "活动库存预热中，请稍后再试");
-        }
-
-        SeckillGoods seckillGoods = seckillGoodsMapper.selectByActivityAndGoodsAndSku(activityId, goodsId, skuId);
-        if (seckillGoods == null) {
-            throw new BizException(ResponseCodeEnum.SECKILL_GOODS_NOT_EXIST);
         }
 
         SeckillOrder existOrder = seckillOrderMapper.selectByUserActivityGoodsSku(
@@ -115,8 +120,8 @@ public class SeckillServiceImpl implements SeckillService {
             throw new BizException(ResponseCodeEnum.SECKILL_ORDER_CREATE_FAIL);
         }
 
-        log.info("==> 秒杀请求成功，userId={}, activityId={}, goodsId={}, skuId={}, orderNo={}",
-                userId, activityId, goodsId, skuId, orderNo);
+        log.info("==> 秒杀请求成功，userId={}, seckillGoodsId={}, activityId={}, goodsId={}, skuId={}, orderNo={}",
+                userId, seckillGoodsId, activityId, goodsId, skuId, orderNo);
 
         return Response.success(SeckillResultVO.builder()
                 .orderNo(orderNo)

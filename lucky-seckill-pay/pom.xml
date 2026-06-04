@@ -104,6 +104,12 @@
             <artifactId>lucky-seckill-order</artifactId>
         </dependency>
 
+        <!-- 用户模块依赖（余额支付） -->
+        <dependency>
+            <groupId>com.luckySeckill</groupId>
+            <artifactId>lucky-seckill-user</artifactId>
+        </dependency>
+
 
         <!-- Lombok -->
         <dependency>
