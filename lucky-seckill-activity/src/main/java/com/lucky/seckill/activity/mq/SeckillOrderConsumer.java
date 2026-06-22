@@ -99,7 +99,8 @@ public class SeckillOrderConsumer implements RocketMQListener<SeckillOrderMessag
                 message.getUserId(),
                 message.getGoodsId(),
                 message.getSkuId(),
-                message.getBuyNum()
+                message.getBuyNum(),
+                message.getOrderNo()
         );
     }
 }
