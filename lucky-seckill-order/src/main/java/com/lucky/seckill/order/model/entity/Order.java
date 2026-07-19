@@ -76,7 +76,7 @@ public class Order {
     private String goodsImg;
 
     /**
-     * 订单状态(0:待支付 1:待发货 2:已发货 3:已收货 4:已退款 5:已取消 6:已关闭)
+     * 订单状态(0:待支付 1:待发货 2:已发货 3:已收货 4:已取消 5:已退款 6:已关闭)
      */
     private Integer status;
 
