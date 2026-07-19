@@ -18,15 +18,20 @@
 - **接口路径**: `GET /ai/customer/chat`
 - **参数**:
   - `message`: 用户消息（必填）
-  - `chatId`: 会话ID（可选）
-- **返回**: JSON格式的统一响应
+  - `chatId`: 会话ID（可选，不传则自动生成；多轮对话请回传上次返回的 chatId）
+- **返回**: `Response<CustomerChatResponse>`，含 `chatId` 与 `content`
+
+### 会话记忆（上下文）
+- 基于 Spring AI `MessageChatMemoryAdvisor` + Redis 滑动窗口（默认最近 20 条消息，24 小时过期）
+- 同一 `chatId` 下模型可理解追问与指代（如「那退款多久到账」）
+- Redis Key：`ai:chat:memory:{chatId}`
 
 ### 2. 流式聊天接口（SSE）
 - **接口路径**: `GET /ai/customer/chat/stream`
 - **参数**:
   - `message`: 用户消息（必填）
   - `chatId`: 会话ID（可选）
-- **返回**: Server-Sent Events流
+- **返回**: Server-Sent Events流；响应头 `X-Chat-Id` 为会话 ID（请保存用于下一轮）
 
 ### 3. SSE聊天接口
 - **接口路径**: `GET /ai/customer/chat/sse`

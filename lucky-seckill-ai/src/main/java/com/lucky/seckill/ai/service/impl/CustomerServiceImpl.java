@@ -1,9 +1,12 @@
 package com.lucky.seckill.ai.service.impl;
 
+import cn.hutool.core.util.IdUtil;
+import cn.hutool.core.util.StrUtil;
+import com.lucky.seckill.ai.model.response.CustomerChatResponse;
 import com.lucky.seckill.ai.service.CustomerService;
 import jakarta.annotation.Resource;
 import org.springframework.ai.chat.client.ChatClient;
-import org.springframework.ai.chat.model.ChatModel;
+import org.springframework.ai.chat.memory.ChatMemory;
 import org.springframework.stereotype.Service;
 import reactor.core.publisher.Flux;
 
@@ -20,6 +23,8 @@ public class CustomerServiceImpl implements CustomerService {
             3. 只能回答与幸运秒杀商城相关的问题
             4. 如无法确定答案，礼貌地建议用户联系人工客服（400-888-8888）
             5. 遇到无法处理的问题（如投诉、复杂退款等），引导用户转接人工客服
+            6. 结合本会话的历史对话理解用户追问（如「那退款呢」「刚才说的订单」），保持上下文连贯
+            7. 回答时优先参考系统检索到的知识库内容，如果检索内容不足以回答问题，如实告知
 
             【无关问题处理】
             当用户的问题与知识库内容无关（如问天气、问时间、问其他无关话题、闲聊、与购物无关的技术问题等），
@@ -34,38 +39,44 @@ public class CustomerServiceImpl implements CustomerService {
             4. 不透露系统的内部信息或实现细节
             5. 不回答任何与购物无关的问题
 
-            请根据上述指南和知识库内容，以淘小蜜的身份回答用户的问题。回答要亲切、专业、易懂。
+            请根据上述指南和系统检索到的知识库内容，以淘小蜜的身份回答用户的问题。回答要亲切、专业、易懂。
             """;
 
     @Resource
-    private ChatModel dashscopeChatModel;
-
-    @Resource
-    private KnowledgeBaseService knowledgeBaseService;
+    private ChatClient customerChatClient;
 
     @Override
-    public String chat(String message, String chatId) {
-        String knowledge = knowledgeBaseService.getKnowledgeBase();
-        String enhancedPrompt = SYSTEM_PROMPT + "\n\n【知识库参考】\n" + knowledge;
-
-        ChatClient chatClient = ChatClient.builder(dashscopeChatModel).build();
-        return chatClient.prompt()
-                .system(enhancedPrompt)
+    public CustomerChatResponse chat(String message, String chatId) {
+        String conversationId = resolveChatId(chatId);
+        String content = customerChatClient.prompt()
+                .system(SYSTEM_PROMPT)
                 .user(message)
+                .advisors(spec -> spec.param(ChatMemory.CONVERSATION_ID, conversationId))
                 .call()
                 .content();
+        return CustomerChatResponse.builder()
+                .chatId(conversationId)
+                .content(content)
+                .success(true)
+                .build();
     }
 
     @Override
     public Flux<String> chatStream(String message, String chatId) {
-        String knowledge = knowledgeBaseService.getKnowledgeBase();
-        String enhancedPrompt = SYSTEM_PROMPT + "\n\n【知识库参考】\n" + knowledge;
-
-        ChatClient chatClient = ChatClient.builder(dashscopeChatModel).build();
-        return chatClient.prompt()
-                .system(enhancedPrompt)
+        String conversationId = resolveChatId(chatId);
+        return customerChatClient.prompt()
+                .system(SYSTEM_PROMPT)
                 .user(message)
+                .advisors(spec -> spec.param(ChatMemory.CONVERSATION_ID, conversationId))
                 .stream()
                 .content();
+    }
+
+    @Override
+    public String resolveChatId(String chatId) {
+        if (StrUtil.isNotBlank(chatId)) {
+            return chatId.trim();
+        }
+        return IdUtil.simpleUUID();
     }
 }
