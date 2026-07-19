@@ -2,6 +2,7 @@ package com.lucky.seckill.shop.service.impl;
 
 import cn.dev33.satoken.stp.StpUtil;
 import cn.hutool.core.util.IdUtil;
+import cn.hutool.core.util.StrUtil;
 import com.github.pagehelper.Page;
 import com.github.pagehelper.PageHelper;
 import com.lucky.seckill.common.enums.ResponseCodeEnum;
@@ -15,6 +16,7 @@ import com.lucky.seckill.notify.model.entity.Notify;
 import com.lucky.seckill.shop.model.dto.ShopApplyQueryRequest;
 import com.lucky.seckill.shop.model.vo.ShopApplyVO;
 import com.lucky.seckill.user.feign.UserFeignClient;
+import com.lucky.seckill.user.model.vo.UserProfileVO;
 import com.lucky.seckill.common.manager.upload.FilePictureUpload;
 import com.lucky.seckill.shop.mq.MerchantApplyProducer;
 import com.lucky.seckill.common.model.entity.MerchantApplyMessage;
@@ -85,22 +87,7 @@ public class ShopServiceImpl implements ShopService {
             throw new BizException(ResponseCodeEnum.SHOP_COUNT_LIMIT_EXCEEDED);
         }
 
-        // 获取用户信息，设置 username
-        String username = null;
-        try {
-            Object userObj = userFeignClient.getUserById(userId);
-            if (userObj != null) {
-                // 尝试从用户对象中获取 nickname 或 mobile 作为 username
-                if (userObj instanceof java.util.Map) {
-                    java.util.Map<?, ?> userMap = (java.util.Map<?, ?>) userObj;
-                    Object nickname = userMap.get("nickname");
-                    Object mobile = userMap.get("mobile");
-                    username = nickname != null ? nickname.toString() : (mobile != null ? mobile.toString() : null);
-                }
-            }
-        } catch (Exception e) {
-            log.warn("==> 获取用户信息失败，userId: {}, error: {}", userId, e.getMessage());
-        }
+        String username = resolveApplicantUsername(userId);
 
         long shopId = IdUtil.getSnowflakeNextId();
         Shop shop = Shop.builder()
@@ -394,6 +381,48 @@ public class ShopServiceImpl implements ShopService {
         return Response.success(pageResult);
     }
 
+    @Override
+    @Transactional(rollbackFor = Exception.class)
+    public Response<?> deleteMyShop(Long shopId) {
+        if (shopId == null) {
+            throw new BizException(ResponseCodeEnum.PARAM_NOT_VALID, "店铺ID不能为空");
+        }
+
+        Long userId = StpUtil.getLoginIdAsLong();
+        log.info("==> 商家删除自己的店铺, userId: {}, shopId: {}", userId, shopId);
+
+        Shop shop = shopMapper.selectByPrimaryKey(shopId);
+        if (Objects.isNull(shop) || (shop.getIsDelete() != null && shop.getIsDelete() == 1)) {
+            throw new BizException(ResponseCodeEnum.SHOP_NOT_EXIST);
+        }
+        if (!userId.equals(shop.getUserId())) {
+            throw new BizException(ResponseCodeEnum.PARAM_NOT_VALID, "无权删除该店铺");
+        }
+
+        try {
+            Response<PageResult<GoodsListVO>> goodsResponse = goodsFeignClient.getGoodsPage(
+                    shopId, 1, 1, 1, null);
+            checkFeignResponse(goodsResponse, "查询店铺商品失败");
+            PageResult<GoodsListVO> pageResult = goodsResponse.getData();
+            if (pageResult != null && pageResult.getTotal() != null && pageResult.getTotal() > 0) {
+                throw new BizException(ResponseCodeEnum.PARAM_NOT_VALID, "店铺存在上架商品，请先下架全部商品后再删除");
+            }
+        } catch (BizException e) {
+            throw e;
+        } catch (Exception e) {
+            log.error("==> 查询店铺商品失败, shopId: {}, error: {}", shopId, e.getMessage(), e);
+            throw new BizException(ResponseCodeEnum.SYSTEM_ERROR, "查询店铺商品失败");
+        }
+
+        int result = shopMapper.softDeleteById(shopId);
+        if (result <= 0) {
+            throw new BizException(ResponseCodeEnum.SYSTEM_ERROR, "店铺删除失败");
+        }
+
+        log.info("==> 商家删除店铺成功, userId: {}, shopId: {}", userId, shopId);
+        return Response.success();
+    }
+
     /**
      * 管理员分页查询店铺列表（支持多条件筛选）
      */
@@ -595,6 +624,27 @@ public class ShopServiceImpl implements ShopService {
         }
 
         return Response.success(uploadResult);
+    }
+
+    /**
+     * 开店申请写入 t_shop.username：优先昵称，否则用手机号（脱敏）
+     */
+    private String resolveApplicantUsername(Long userId) {
+        try {
+            Response<UserProfileVO> userResponse = userFeignClient.getUserById(userId);
+            if (userResponse != null && userResponse.isSuccess() && userResponse.getData() != null) {
+                UserProfileVO profile = userResponse.getData();
+                if (StrUtil.isNotBlank(profile.getNickname())) {
+                    return profile.getNickname().trim();
+                }
+                if (StrUtil.isNotBlank(profile.getMobile())) {
+                    return profile.getMobile().trim();
+                }
+            }
+        } catch (Exception e) {
+            log.warn("==> 获取申请人用户名失败，userId: {}, error: {}", userId, e.getMessage());
+        }
+        return "";
     }
 
     private void checkFeignResponse(Response<?> response, String errorMessage) {

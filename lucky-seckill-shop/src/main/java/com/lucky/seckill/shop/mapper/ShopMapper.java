@@ -62,4 +62,9 @@ public interface ShopMapper {
      * 更新店铺收藏数
      */
     int updateCollectNum(@Param("shopId") Long shopId, @Param("collectNum") Integer collectNum);
+
+    /**
+     * 软删除店铺
+     */
+    int softDeleteById(@Param("shopId") Long shopId);
 }

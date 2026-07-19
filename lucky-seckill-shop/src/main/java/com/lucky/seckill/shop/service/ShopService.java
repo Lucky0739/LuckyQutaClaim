@@ -32,6 +32,11 @@ public interface ShopService {
     Response<PageResult<ShopApplyVO>> getMyShopList();
 
     /**
+     * 商家删除自己的店铺（软删除）
+     */
+    Response<?> deleteMyShop(Long shopId);
+
+    /**
      * 管理员分页查询店铺列表（支持多条件筛选）
      */
     Response<PageResult<ShopApplyVO>> getShopList(ShopApplyQueryRequest queryRequest);

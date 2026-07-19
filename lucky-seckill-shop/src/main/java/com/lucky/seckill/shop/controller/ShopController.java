@@ -15,6 +15,7 @@ import com.lucky.seckill.shop.service.ShopService;
 import jakarta.annotation.Resource;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.validation.annotation.Validated;
+import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PostMapping;
@@ -82,6 +83,17 @@ public class ShopController {
     public Response<PageResult<ShopApplyVO>> getMyShopList() {
         log.info("==> 商家查看自己的店铺列表请求");
         return shopService.getMyShopList();
+    }
+
+    /**
+     * 商家删除自己的店铺
+     */
+    @SaCheckLogin
+    @DeleteMapping("/my/{shopId}")
+    @ApiOperationLog(description = "商家删除自己的店铺")
+    public Response<?> deleteMyShop(@PathVariable("shopId") Long shopId) {
+        log.info("==> 商家删除自己的店铺, shopId: {}", shopId);
+        return shopService.deleteMyShop(shopId);
     }
 
     /**
