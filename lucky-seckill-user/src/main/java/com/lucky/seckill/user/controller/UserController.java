@@ -131,6 +131,15 @@ public class UserController {
     }
 
     /**
+     * 按用户 ID 查询资料（本人或管理员，供店铺等微服务 Feign 调用）
+     */
+    @SaCheckLogin
+    @GetMapping("/get/{id}")
+    public Response<UserProfileVO> getUserById(@PathVariable("id") Long id) {
+        return userService.getUserById(id);
+    }
+
+    /**
      * 管理员禁用/启用用户
      */
     @SaCheckRole("admin")

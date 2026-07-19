@@ -1,6 +1,7 @@
 package com.lucky.seckill.user.feign;
 
 import com.lucky.seckill.common.utils.Response;
+import com.lucky.seckill.user.model.vo.UserProfileVO;
 import org.springframework.cloud.openfeign.FeignClient;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
@@ -13,10 +14,7 @@ import java.util.List;
 public interface UserFeignClient {
 
     @GetMapping("/get/{id}")
-    Object getUserById(@PathVariable("id") Long id);
-
-    @GetMapping("/info")
-    Object getUserInfo();
+    Response<UserProfileVO> getUserById(@PathVariable("id") Long id);
 
     @PostMapping("/role/assign")
     void assignMerchantRole(@RequestParam("userId") Long userId, @RequestParam("roleId") Long roleId);

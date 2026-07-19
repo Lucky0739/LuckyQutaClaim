@@ -7,7 +7,9 @@ import cn.hutool.core.util.IdUtil;
 import cn.hutool.core.util.RandomUtil;
 import cn.hutool.core.util.StrUtil;
 import com.lucky.seckill.common.constant.RedisKeyConstants;
+import com.lucky.seckill.common.enums.ImageCleanBusinessTypeEnum;
 import com.lucky.seckill.common.enums.ResponseCodeEnum;
+import com.lucky.seckill.common.service.ImageCleanTaskService;
 import com.lucky.seckill.common.exception.BizException;
 import com.lucky.seckill.common.manager.upload.FilePictureUpload;
 import com.lucky.seckill.common.model.entity.PageResult;
@@ -93,6 +95,9 @@ public class UserServiceImpl implements UserService {
 
     @Resource(name = "bizExecutor")
     private Executor bizExecutor;
+
+    @Resource
+    private ImageCleanTaskService imageCleanTaskService;
 
     // Redis 中验证码的 Key 前缀
     private static final String VERIFY_CODE_KEY_PREFIX = "verify_code:";
@@ -688,7 +693,9 @@ public class UserServiceImpl implements UserService {
         // 2. 权限校验：检查是否为本人或管理员
         checkPermission(currentUserId, null);
 
-        // 3. 使用文件上传工具上传头像
+        // 3. 查询旧头像，上传新头像
+        User existUser = userMapper.selectByPrimaryKey(currentUserId);
+        String oldAvatar = existUser != null ? existUser.getAvatar() : null;
         UploadPictureResult uploadResult = filePictureUpload.uploadPicture(file, "avatar", true);
 
         // 4. 更新用户头像 URL 到数据库（默认更新当前登录用户的头像）
@@ -698,6 +705,8 @@ public class UserServiceImpl implements UserService {
                 .updateTime(LocalDateTime.now())
                 .build();
         userMapper.updateByPrimaryKeySelective(user);
+
+        scheduleOldAvatarClean(oldAvatar, uploadResult.getImageUrl());
 
         // 5. 优化：主动从数据库拉取最新信息并更新 Redis 缓存
         refreshUserProfileCache(currentUserId);
@@ -730,7 +739,8 @@ public class UserServiceImpl implements UserService {
             throw new BizException(ResponseCodeEnum.PARAM_NOT_VALID, "用户不存在");
         }
 
-        // 4. 上传头像
+        // 4. 上传头像并登记旧头像待清理
+        String oldAvatar = existUser.getAvatar();
         UploadPictureResult uploadResult = filePictureUpload.uploadPicture(file, "avatar", true);
 
         // 5. 更新目标用户的头像
@@ -741,6 +751,8 @@ public class UserServiceImpl implements UserService {
                 .build();
         userMapper.updateByPrimaryKeySelective(user);
 
+        scheduleOldAvatarClean(oldAvatar, uploadResult.getImageUrl());
+
         // 6. 刷新目标用户的缓存（使用独立Redis Key，不涉及Session）
         refreshUserProfileCache(userId);
 
@@ -748,6 +760,16 @@ public class UserServiceImpl implements UserService {
                 adminId, userId, uploadResult.getImageUrl());
 
         return Response.success(uploadResult);
+    }
+
+    /**
+     * 头像替换后，将旧头像登记为待清理任务（延迟删除 COS 对象）
+     */
+    private void scheduleOldAvatarClean(String oldAvatar, String newAvatar) {
+        if (StrUtil.isBlank(oldAvatar) || StrUtil.equals(oldAvatar, newAvatar)) {
+            return;
+        }
+        imageCleanTaskService.addCleanTask(oldAvatar, ImageCleanBusinessTypeEnum.AVATAR);
     }
 
     /**
@@ -833,6 +855,30 @@ public class UserServiceImpl implements UserService {
         return Response.success(freshProfile);
     }
 
+    @Override
+    public Response<UserProfileVO> getUserById(Long userId) {
+        if (userId == null) {
+            throw new BizException(ResponseCodeEnum.PARAM_NOT_VALID, "用户ID不能为空");
+        }
+        Long loginId = StpUtil.getLoginIdAsLong();
+        if (!loginId.equals(userId) && !StpUtil.hasRole("admin")) {
+            throw new BizException(ResponseCodeEnum.USER_PERMISSION_DENIED);
+        }
+
+        User user = userMapper.selectByPrimaryKey(userId);
+        if (user == null) {
+            throw new BizException(ResponseCodeEnum.PARAM_NOT_VALID, "用户不存在");
+        }
+
+        UserProfileVO profileVO = UserProfileVO.builder()
+                .id(user.getId())
+                .nickname(user.getNickname())
+                .mobile(maskMobile(user.getMobile()))
+                .avatar(user.getAvatar())
+                .status(user.getStatus())
+                .build();
+        return Response.success(profileVO);
+    }
 
     /**
      * 手机号脱敏处理

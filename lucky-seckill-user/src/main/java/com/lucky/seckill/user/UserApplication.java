@@ -11,7 +11,7 @@ import org.springframework.context.annotation.ComponentScan;
 @SpringBootApplication
 @EnableDiscoveryClient
 @EnableFeignClients
-@MapperScan("com.lucky.seckill.user.mapper")
+@MapperScan({"com.lucky.seckill.user.mapper", "com.lucky.seckill.common.mapper"})
 @ComponentScan(basePackages = "com.lucky.seckill")
 public class UserApplication {
     public static void main(String[] args) {

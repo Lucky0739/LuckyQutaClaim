@@ -74,6 +74,11 @@ public interface UserService {
     Response<UserProfileVO> getUserProfile();
 
     /**
+     * 按用户 ID 查询资料（本人或管理员，供微服务 Feign 调用）
+     */
+    Response<UserProfileVO> getUserById(Long userId);
+
+    /**
      * 禁用/启用用户
      * @param userId
      * @param status
