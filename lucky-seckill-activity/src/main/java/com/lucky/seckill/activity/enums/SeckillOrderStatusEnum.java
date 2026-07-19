@@ -11,8 +11,8 @@ public enum SeckillOrderStatusEnum {
     PAID(1, "已支付"),
     SHIPPED(2, "已发货"),
     RECEIVED(3, "已收货"),
-    REFUNDED(4, "已退款"),
-    CANCELLED(5, "已取消"),
+    CANCELLED(4, "已取消"),
+    REFUNDED(5, "已退款"),
     CLOSED(6, "已关闭");
 
     private final Integer code;

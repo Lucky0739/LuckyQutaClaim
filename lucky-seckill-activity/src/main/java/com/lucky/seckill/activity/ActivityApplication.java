@@ -19,7 +19,6 @@ import org.springframework.scheduling.annotation.EnableScheduling;
 @ComponentScan({"com.lucky.seckill.activity", "com.lucky.seckill.common"})
 @MapperScan("com.lucky.seckill.activity.mapper")
 public class ActivityApplication {
-
     public static void main(String[] args) {
         SpringApplication.run(ActivityApplication.class, args);
     }

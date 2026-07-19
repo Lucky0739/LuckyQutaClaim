@@ -24,12 +24,17 @@ public interface SeckillRedisService {
     int deductStock(Long activityId, Long userId, Long goodsId, Long skuId, int buyNum, int limitNum);
 
     /**
-     * 回滚 Redis 库存
+     * 回滚 Redis 库存（带分布式锁 + 幂等标记，防止 MQ 重复回滚导致幽灵库存）
      */
-    void rollbackStock(Long activityId, Long userId, Long goodsId, Long skuId, int rollbackNum);
+    void rollbackStock(Long activityId, Long userId, Long goodsId, Long skuId, int rollbackNum, String orderNo);
 
     /**
      * 获取 Redis 剩余库存
      */
     Integer getStock(Long activityId, Long goodsId, Long skuId);
+
+    /**
+     * 活动已预热后，为审核新通过的秒杀商品补充 Redis 库存（不重复覆盖已有 key）
+     */
+    void supplementGoodsStock(Long activityId, SeckillGoods goods);
 }

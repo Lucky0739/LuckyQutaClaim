@@ -21,6 +21,7 @@ import java.util.concurrent.TimeUnit;
 public class SeckillRedisServiceImpl implements SeckillRedisService {
 
     private static final int LOCK_EXPIRE_SECONDS = 5;
+    private static final int ROLLBACK_FLAG_EXPIRE_SECONDS = 300; // 幂等标记 5 分钟，覆盖 MQ 重试窗口
     private static final String WARMUP_FLAG = "1";
 
     @Resource
@@ -107,15 +108,27 @@ public class SeckillRedisServiceImpl implements SeckillRedisService {
     }
 
     @Override
-    public void rollbackStock(Long activityId, Long userId, Long goodsId, Long skuId, int rollbackNum) {
+    public void rollbackStock(Long activityId, Long userId, Long goodsId, Long skuId, int rollbackNum, String orderNo) {
         String stockKey = RedisKeyConstants.seckillStockKey(activityId, goodsId, skuId);
         String boughtKey = RedisKeyConstants.seckillBoughtKey(activityId, userId, goodsId, skuId);
+        String lockKey = RedisKeyConstants.seckillLockKey(activityId, goodsId, skuId);
+        String rollbackFlagKey = RedisKeyConstants.seckillRollbackFlagKey(orderNo);
+        String lockValue = IdUtil.fastSimpleUUID();
 
-        stringRedisTemplate.execute(
+        Long result = stringRedisTemplate.execute(
                 rollbackStockScript,
-                Arrays.asList(stockKey, boughtKey),
-                String.valueOf(rollbackNum)
+                Arrays.asList(stockKey, boughtKey, lockKey, rollbackFlagKey),
+                String.valueOf(rollbackNum),
+                lockValue,
+                String.valueOf(LOCK_EXPIRE_SECONDS),
+                String.valueOf(ROLLBACK_FLAG_EXPIRE_SECONDS)
         );
+
+        if (result != null && result == 0) {
+            log.warn("==> 回滚已执行过，幂等跳过, orderNo={}", orderNo);
+        } else if (result != null && result == -1) {
+            log.warn("==> 回滚获取锁失败，等待 MQ 重试, orderNo={}", orderNo);
+        }
     }
 
     @Override
@@ -123,5 +136,19 @@ public class SeckillRedisServiceImpl implements SeckillRedisService {
         String stock = stringRedisTemplate.opsForValue()
                 .get(RedisKeyConstants.seckillStockKey(activityId, goodsId, skuId));
         return stock == null ? null : Integer.parseInt(stock);
+    }
+
+    @Override
+    public void supplementGoodsStock(Long activityId, SeckillGoods goods) {
+        if (activityId == null || goods == null || !isWarmedUp(activityId)) {
+            return;
+        }
+        String stockKey = RedisKeyConstants.seckillStockKey(activityId, goods.getGoodsId(), goods.getSkuId());
+        Boolean absent = stringRedisTemplate.opsForValue().setIfAbsent(
+                stockKey, String.valueOf(goods.getSeckillStock()));
+        if (Boolean.TRUE.equals(absent)) {
+            log.info("==> 补充预热库存 activityId={}, goodsId={}, skuId={}, stock={}",
+                    activityId, goods.getGoodsId(), goods.getSkuId(), goods.getSeckillStock());
+        }
     }
 }

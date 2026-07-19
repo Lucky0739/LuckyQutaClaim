@@ -23,6 +23,13 @@ public interface SeckillGoodsMapper {
 
     List<SeckillGoods> selectApprovedByActivityId(@Param("activityId") Long activityId);
 
+    /**
+     * 查询当前进行中秒杀活动内、已审核通过的秒杀商品（goodsId + skuId）
+     */
+    SeckillGoods selectOngoingApprovedByGoodsIdAndSkuId(@Param("goodsId") Long goodsId,
+                                                        @Param("skuId") Long skuId,
+                                                        @Param("now") LocalDateTime now);
+
     List<SeckillGoods> selectApplyPage(SeckillGoodsApplyQueryRequest request);
 
     int insertSelective(SeckillGoods record);

@@ -7,7 +7,6 @@
         <result column="activity_id" property="activityId" jdbcType="BIGINT"/>
         <result column="goods_id" property="goodsId" jdbcType="BIGINT"/>
         <result column="sku_id" property="skuId" jdbcType="BIGINT"/>
-        <result column="user_id" property="userId" jdbcType="BIGINT"/>
         <result column="sku_spec_name" property="skuSpecName" jdbcType="VARCHAR"/>
         <result column="seckill_title" property="seckillTitle" jdbcType="VARCHAR"/>
         <result column="seckill_img" property="seckillImg" jdbcType="VARCHAR"/>
@@ -25,7 +24,7 @@
     </resultMap>
 
     <sql id="Base_Column_List">
-        id, activity_id, goods_id, sku_id, user_id, sku_spec_name, seckill_title, seckill_img, seckill_price,
+        id, activity_id, goods_id, sku_id, sku_spec_name, seckill_title, seckill_img, seckill_price,
         seckill_total, seckill_stock, seckill_limit, sort, audit_status, audit_remark, version, is_deleted, create_time, update_time
     </sql>
 
@@ -74,6 +73,22 @@
         ORDER BY sort ASC, id ASC
     </select>
 
+    <select id="selectOngoingApprovedByGoodsIdAndSkuId" resultMap="BaseResultMap">
+        SELECT sg.id, sg.activity_id, sg.goods_id, sg.sku_id, sg.sku_spec_name, sg.seckill_title, sg.seckill_img,
+               sg.seckill_price, sg.seckill_total, sg.seckill_stock, sg.seckill_limit, sg.sort, sg.audit_status,
+               sg.audit_remark, sg.version, sg.is_deleted, sg.create_time, sg.update_time
+        FROM t_seckill_goods sg
+                 INNER JOIN t_seckill_activity sa ON sg.activity_id = sa.id
+        WHERE sg.goods_id = #{goodsId}
+          AND sg.sku_id = #{skuId}
+          AND sg.audit_status = 2
+          AND sg.is_deleted = 0
+          AND sa.status = 1
+          AND sa.begin_time &lt;= #{now}
+          AND sa.end_time &gt; #{now}
+        LIMIT 1
+    </select>
+
     <select id="selectApplyPage" resultMap="BaseResultMap">
         SELECT <include refid="Base_Column_List"/>
         FROM t_seckill_goods
@@ -94,7 +109,6 @@
             <if test="activityId != null">activity_id,</if>
             <if test="goodsId != null">goods_id,</if>
             <if test="skuId != null">sku_id,</if>
-            <if test="userId != null">user_id,</if>
             <if test="skuSpecName != null">sku_spec_name,</if>
             <if test="seckillTitle != null">seckill_title,</if>
             <if test="seckillImg != null">seckill_img,</if>
@@ -115,7 +129,6 @@
             <if test="activityId != null">#{activityId},</if>
             <if test="goodsId != null">#{goodsId},</if>
             <if test="skuId != null">#{skuId},</if>
-            <if test="userId != null">#{userId},</if>
             <if test="skuSpecName != null">#{skuSpecName},</if>
             <if test="seckillTitle != null">#{seckillTitle},</if>
             <if test="seckillImg != null">#{seckillImg},</if>

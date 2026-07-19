@@ -22,8 +22,6 @@ public class SeckillGoods {
 
     private Long skuId;
 
-    private Long userId;
-
     private String skuSpecName;
 
     private String seckillTitle;

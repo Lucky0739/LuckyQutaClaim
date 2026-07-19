@@ -7,6 +7,7 @@ import com.lucky.seckill.activity.model.entity.SeckillActivity;
 import com.lucky.seckill.activity.model.entity.SeckillGoods;
 import com.lucky.seckill.activity.model.vo.SeckillActivityVO;
 import com.lucky.seckill.activity.model.vo.SeckillGoodsVO;
+import com.lucky.seckill.activity.support.SeckillActivityPurchaseValidator;
 import com.lucky.seckill.activity.service.SeckillActivityService;
 import com.lucky.seckill.activity.service.SeckillRedisService;
 import com.lucky.seckill.common.enums.ResponseCodeEnum;
@@ -33,6 +34,9 @@ public class SeckillActivityServiceImpl implements SeckillActivityService {
 
     @Resource
     private SeckillRedisService seckillRedisService;
+
+    @Resource
+    private SeckillActivityPurchaseValidator seckillActivityPurchaseValidator;
 
     @Override
     public Response<List<SeckillActivityVO>> listActivities() {
@@ -86,6 +90,9 @@ public class SeckillActivityServiceImpl implements SeckillActivityService {
             throw new BizException(ResponseCodeEnum.SECKILL_ACTIVITY_ENDED);
         }
         LocalDateTime now = LocalDateTime.now();
+        if (activity.getBeginTime() != null && now.isBefore(activity.getBeginTime())) {
+            throw new BizException(ResponseCodeEnum.SECKILL_ACTIVITY_NOT_STARTED, "未到活动开始时间，无法提前开启");
+        }
         if (activity.getEndTime() != null && !now.isBefore(activity.getEndTime())) {
             throw new BizException(ResponseCodeEnum.SECKILL_ACTIVITY_ENDED);
         }
@@ -118,6 +125,21 @@ public class SeckillActivityServiceImpl implements SeckillActivityService {
         );
         log.info("==> 手动结束秒杀活动, activityId={}, activityName={}", activityId, activity.getActivityName());
         return Response.success(true);
+    }
+
+    @Override
+    public Response<Boolean> isSkuInOngoingSeckill(Long goodsId, Long skuId) {
+        if (goodsId == null || skuId == null) {
+            return Response.success(false);
+        }
+        SeckillGoods seckillGoods = seckillGoodsMapper.selectOngoingApprovedByGoodsIdAndSkuId(
+                goodsId, skuId, LocalDateTime.now());
+        if (seckillGoods == null) {
+            return Response.success(false);
+        }
+        SeckillActivity activity = seckillActivityMapper.selectByPrimaryKey(seckillGoods.getActivityId());
+        boolean ongoing = seckillActivityPurchaseValidator.isInOngoingSeckillWindow(activity);
+        return Response.success(ongoing);
     }
 
     /**

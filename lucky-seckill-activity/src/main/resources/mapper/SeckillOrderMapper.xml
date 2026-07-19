@@ -14,14 +14,13 @@
         <result column="goods_img" property="goodsImg" jdbcType="VARCHAR"/>
         <result column="status" property="status" jdbcType="TINYINT"/>
         <result column="expire_time" property="expireTime" jdbcType="TIMESTAMP"/>
-        <result column="is_deleted" property="isDeleted" jdbcType="TINYINT"/>
         <result column="create_time" property="createTime" jdbcType="TIMESTAMP"/>
         <result column="update_time" property="updateTime" jdbcType="TIMESTAMP"/>
     </resultMap>
 
     <sql id="Base_Column_List">
         id, user_id, activity_id, goods_id, sku_id, order_no, seckill_price,
-        goods_name, goods_img, status, expire_time, is_deleted, create_time, update_time
+        goods_name, goods_img, status, expire_time, create_time, update_time
     </sql>
 
     <insert id="insertSelective" parameterType="com.lucky.seckill.activity.model.entity.SeckillOrder">
@@ -38,7 +37,6 @@
             <if test="goodsImg != null">goods_img,</if>
             <if test="status != null">status,</if>
             <if test="expireTime != null">expire_time,</if>
-            <if test="isDeleted != null">is_deleted,</if>
             <if test="createTime != null">create_time,</if>
             <if test="updateTime != null">update_time,</if>
         </trim>
@@ -55,7 +53,6 @@
             <if test="goodsImg != null">#{goodsImg,jdbcType=VARCHAR},</if>
             <if test="status != null">#{status,jdbcType=TINYINT},</if>
             <if test="expireTime != null">#{expireTime,jdbcType=TIMESTAMP},</if>
-            <if test="isDeleted != null">#{isDeleted,jdbcType=TINYINT},</if>
             <if test="createTime != null">#{createTime,jdbcType=TIMESTAMP},</if>
             <if test="updateTime != null">#{updateTime,jdbcType=TIMESTAMP},</if>
         </trim>
@@ -65,7 +62,6 @@
         SELECT <include refid="Base_Column_List"/>
         FROM t_seckill_order
         WHERE order_no = #{orderNo}
-          AND is_deleted = 0
         LIMIT 1
     </select>
 
@@ -76,7 +72,6 @@
           AND activity_id = #{activityId}
           AND goods_id = #{goodsId}
           AND sku_id = #{skuId}
-          AND is_deleted = 0
         LIMIT 1
     </select>
 </mapper>

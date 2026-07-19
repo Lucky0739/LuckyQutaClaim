@@ -3,6 +3,7 @@ package com.lucky.seckill.activity.controller;
 import cn.dev33.satoken.annotation.SaCheckRole;
 import cn.dev33.satoken.annotation.SaIgnore;
 import cn.dev33.satoken.annotation.SaMode;
+import cn.dev33.satoken.stp.StpUtil;
 import com.lucky.seckill.activity.model.dto.SeckillGoodsApplyQueryRequest;
 import com.lucky.seckill.activity.model.dto.SeckillGoodsApplyRequest;
 import com.lucky.seckill.activity.model.dto.SeckillGoodsAuditRequest;
@@ -12,6 +13,7 @@ import com.lucky.seckill.activity.model.vo.SeckillGoodsApplyVO;
 import com.lucky.seckill.activity.model.vo.SeckillGoodsVO;
 import com.lucky.seckill.activity.model.vo.SeckillResultVO;
 import com.lucky.seckill.activity.service.SeckillActivityService;
+import com.lucky.seckill.activity.service.SeckillFailedOrderService;
 import com.lucky.seckill.activity.service.SeckillGoodsService;
 import com.lucky.seckill.activity.service.SeckillService;
 import com.lucky.seckill.common.aspect.ApiOperationLog;
@@ -37,6 +39,16 @@ public class SeckillController {
 
     @Resource
     private SeckillGoodsService seckillGoodsService;
+
+    @Resource
+    private SeckillFailedOrderService seckillFailedOrderService;
+    @SaIgnore
+    @GetMapping("/internal/ongoing-seckill")
+    @ApiOperationLog(description = "查询规格是否处于进行中秒杀（服务间调用）")
+    public Response<Boolean> isSkuInOngoingSeckill(@RequestParam Long goodsId, @RequestParam Long skuId) {
+        return seckillActivityService.isSkuInOngoingSeckill(goodsId, skuId);
+    }
+
     @SaIgnore
     @GetMapping("/list")
     @ApiOperationLog(description = "秒杀活动列表")
@@ -64,6 +76,13 @@ public class SeckillController {
     public Response<SeckillResultVO> doSeckill(@Validated @RequestBody SeckillRequest request) {
         log.info("==> 秒杀请求, seckillGoodsId={}", request.getSeckillGoodsId());
         return seckillService.doSeckill(request);
+    }
+
+    @SaCheckRole("user")
+    @GetMapping("/seckill/result")
+    @ApiOperationLog(description = "查询秒杀订单异步处理结果（前端轮询）")
+    public Response<SeckillResultVO> getSeckillResult(@RequestParam("orderNo") String orderNo) {
+        return seckillService.getSeckillResult(orderNo);
     }
 
     @SaCheckRole("merchant")
@@ -122,5 +141,36 @@ public class SeckillController {
     public Response<Boolean> endActivity(@PathVariable Long activityId) {
         log.info("==> 手动结束秒杀活动, activityId={}", activityId);
         return seckillActivityService.endActivity(activityId);
+    }
+
+    // ======================== 死信队列人工处理（管理员） ========================
+
+    @SaCheckRole("admin")
+    @GetMapping("/admin/failed-orders")
+    @ApiOperationLog(description = "查询DLQ最终失败的订单列表（人工处理）")
+    public Response<PageResult<?>> listFailedOrders(
+            @RequestParam(value = "handleStatus", required = false) Integer handleStatus,
+            @RequestParam(value = "pageNum", defaultValue = "1") int pageNum,
+            @RequestParam(value = "pageSize", defaultValue = "10") int pageSize) {
+        return seckillFailedOrderService.listFailedOrders(handleStatus, pageNum, pageSize);
+    }
+
+    @SaCheckRole("admin")
+    @PostMapping("/admin/failed-orders/{id}/retry")
+    @ApiOperationLog(description = "手动重试DLQ失败订单（重新投递到主队列）")
+    public Response<Void> manualRetryFailedOrder(@PathVariable Long id) {
+        String operator = String.valueOf(StpUtil.getLoginIdAsLong());
+        log.info("==> 管理员手动重试失败订单, id={}, operator={}", id, operator);
+        return seckillFailedOrderService.manualRetry(id, operator);
+    }
+
+    @SaCheckRole("admin")
+    @PostMapping("/admin/failed-orders/{id}/discard")
+    @ApiOperationLog(description = "手动放弃DLQ失败订单（标记为已处理）")
+    public Response<Void> manualDiscardFailedOrder(@PathVariable Long id,
+                                                    @RequestParam(value = "remark", defaultValue = "") String remark) {
+        String operator = String.valueOf(StpUtil.getLoginIdAsLong());
+        log.info("==> 管理员手动放弃失败订单, id={}, operator={}, remark={}", id, operator, remark);
+        return seckillFailedOrderService.manualDiscard(id, remark, operator);
     }
 }
