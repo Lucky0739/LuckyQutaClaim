@@ -61,6 +61,7 @@ public enum ResponseCodeEnum implements BaseExceptionInterface {
     ORDER_STATUS_ERROR("50001", "订单状态异常"),
     ORDER_EXPIRED("50002", "订单已过期"),
     ORDER_NOT_EXIST("50003", "订单不存在"),
+    SEATA_DEMO_ROLLBACK("50004", "已回滚"),
 
     // ----------- 秒杀模块异常状态码 -----------
     SECKILL_ACTIVITY_NOT_EXIST("60001", "秒杀活动不存在"),
@@ -76,6 +77,7 @@ public enum ResponseCodeEnum implements BaseExceptionInterface {
     SECKILL_GOODS_APPLY_PENDING("60011", "该规格秒杀申请审核中"),
     SECKILL_GOODS_ALREADY_EXISTS("60012", "该规格已是秒杀商品"),
     SECKILL_GOODS_NOT_APPROVED("60013", "秒杀商品未通过审核"),
+    SECKILL_GOODS_USE_SECKILL_CHANNEL("60014", "该商品正在秒杀活动中，请前往秒杀页面购买"),
 
     ;
 

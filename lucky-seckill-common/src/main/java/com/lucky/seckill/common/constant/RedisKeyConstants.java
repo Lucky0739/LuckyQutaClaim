@@ -56,6 +56,11 @@ public final class RedisKeyConstants {
      */
     public static final String SECKILL_WARMUP_LOCK_KEY_PREFIX = "seckill:warmup:lock:";
 
+    /**
+     * 秒杀回滚幂等标记：seckill:rollback:flag:{orderNo}
+     */
+    public static final String SECKILL_ROLLBACK_FLAG_KEY_PREFIX = "seckill:rollback:flag:";
+
     public static String seckillStockKey(Long activityId, Long goodsId, Long skuId) {
         return SECKILL_STOCK_KEY_PREFIX + activityId + ":" + goodsId + ":" + skuId;
     }
@@ -74,6 +79,10 @@ public final class RedisKeyConstants {
 
     public static String seckillWarmupLockKey(Long activityId) {
         return SECKILL_WARMUP_LOCK_KEY_PREFIX + activityId;
+    }
+
+    public static String seckillRollbackFlagKey(String orderNo) {
+        return SECKILL_ROLLBACK_FLAG_KEY_PREFIX + orderNo;
     }
 
     /**
@@ -189,5 +198,34 @@ public final class RedisKeyConstants {
 
     public static String goodsDetailLockKey(Long goodsId) {
         return GOODS_DETAIL_LOCK_KEY_PREFIX + goodsId;
+    }
+
+    /**
+     * 秒杀订单异步处理状态（仅Redis，不落库）：seckill:order:status:{userId}:{orderNo}
+     * <p>
+     * 值：-1=处理中，0=待支付（创建成功），-2=创建失败（MQ/DLQ 重试全部失败）
+     */
+    public static final String SECKILL_ORDER_STATUS_PREFIX = "seckill:order:status:";
+
+    /** 秒杀订单处理状态 TTL（分钟），超时后前端可认为订单创建失败 */
+    public static final long SECKILL_ORDER_STATUS_TTL_MINUTES = 30;
+
+    /** Redis 临时状态：订单处理中（MQLua扣库存成功，等待消费者创建订单） */
+    public static final int ORDER_STATUS_PROCESSING = -1;
+
+    /** Redis 临时状态：订单创建失败（DLQ 重试全部失败，库存已回滚） */
+    public static final int ORDER_STATUS_FAILED = -2;
+
+    public static String seckillOrderStatusKey(Long userId, String orderNo) {
+        return SECKILL_ORDER_STATUS_PREFIX + userId + ":" + orderNo;
+    }
+
+    /**
+     * AI 客服会话记忆：ai:chat:memory:{chatId}
+     */
+    public static final String AI_CHAT_MEMORY_KEY_PREFIX = "ai:chat:memory:";
+
+    public static String aiChatMemoryKey(String chatId) {
+        return AI_CHAT_MEMORY_KEY_PREFIX + chatId;
     }
 }

@@ -59,4 +59,4 @@ mybatis:
     # 开发阶段打印 SQL 语句，方便调试
     log-impl: org.apache.ibatis.logging.stdout.StdOutImpl
   # 指定 Mapper XML 文件的位置
-  mapper-locations: classpath:mapper/*.xml
+  mapper-locations: classpath*:/mapper/**/*.xml

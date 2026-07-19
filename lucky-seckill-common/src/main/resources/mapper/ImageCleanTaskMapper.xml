@@ -1,0 +1,67 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.lucky.seckill.common.mapper.ImageCleanTaskMapper">
+
+    <resultMap id="BaseResultMap" type="com.lucky.seckill.common.model.entity.ImageCleanTask">
+        <id column="id" property="id" jdbcType="BIGINT"/>
+        <result column="image_url" property="imageUrl" jdbcType="VARCHAR"/>
+        <result column="business_type" property="businessType" jdbcType="VARCHAR"/>
+        <result column="status" property="status" jdbcType="TINYINT"/>
+        <result column="expire_minute" property="expireMinute" jdbcType="INTEGER"/>
+        <result column="delete_time" property="deleteTime" jdbcType="TIMESTAMP"/>
+        <result column="create_time" property="createTime" jdbcType="TIMESTAMP"/>
+        <result column="update_time" property="updateTime" jdbcType="TIMESTAMP"/>
+    </resultMap>
+
+    <sql id="Base_Column_List">
+        id, image_url, business_type, status, expire_minute, delete_time, create_time, update_time
+    </sql>
+
+    <insert id="insertSelective" parameterType="com.lucky.seckill.common.model.entity.ImageCleanTask"
+            useGeneratedKeys="true" keyProperty="id">
+        INSERT INTO t_image_clean_task
+        <trim prefix="(" suffix=")" suffixOverrides=",">
+            <if test="imageUrl != null">image_url,</if>
+            <if test="businessType != null">business_type,</if>
+            <if test="status != null">status,</if>
+            <if test="expireMinute != null">expire_minute,</if>
+            <if test="deleteTime != null">delete_time,</if>
+            <if test="createTime != null">create_time,</if>
+            <if test="updateTime != null">update_time,</if>
+        </trim>
+        <trim prefix="VALUES (" suffix=")" suffixOverrides=",">
+            <if test="imageUrl != null">#{imageUrl,jdbcType=VARCHAR},</if>
+            <if test="businessType != null">#{businessType,jdbcType=VARCHAR},</if>
+            <if test="status != null">#{status,jdbcType=TINYINT},</if>
+            <if test="expireMinute != null">#{expireMinute,jdbcType=INTEGER},</if>
+            <if test="deleteTime != null">#{deleteTime,jdbcType=TIMESTAMP},</if>
+            <if test="createTime != null">#{createTime,jdbcType=TIMESTAMP},</if>
+            <if test="updateTime != null">#{updateTime,jdbcType=TIMESTAMP},</if>
+        </trim>
+    </insert>
+
+    <select id="countPendingByImageUrl" resultType="int">
+        SELECT COUNT(1)
+        FROM t_image_clean_task
+        WHERE image_url = #{imageUrl,jdbcType=VARCHAR}
+          AND status = 0
+    </select>
+
+    <select id="selectExpiredPendingTasks" resultMap="BaseResultMap">
+        SELECT
+        <include refid="Base_Column_List"/>
+        FROM t_image_clean_task
+        WHERE status = 0
+          AND TIMESTAMPDIFF(MINUTE, create_time, NOW()) >= expire_minute
+        ORDER BY create_time ASC
+        LIMIT #{limit}
+    </select>
+
+    <update id="updateStatus" parameterType="com.lucky.seckill.common.model.entity.ImageCleanTask">
+        UPDATE t_image_clean_task
+        SET status = #{status,jdbcType=TINYINT},
+            delete_time = #{deleteTime,jdbcType=TIMESTAMP},
+            update_time = #{updateTime,jdbcType=TIMESTAMP}
+        WHERE id = #{id,jdbcType=BIGINT}
+    </update>
+</mapper>

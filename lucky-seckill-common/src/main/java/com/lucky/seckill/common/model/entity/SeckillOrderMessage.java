@@ -43,4 +43,7 @@ public class SeckillOrderMessage implements Serializable {
     private Integer buyNum;
 
     private LocalDateTime expireTime;
+
+    /** 重试次数，初始为0 */
+    private Integer retryCount;
 }

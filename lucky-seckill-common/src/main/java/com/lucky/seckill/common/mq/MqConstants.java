@@ -16,4 +16,8 @@ public class MqConstants {
 
     public static final String ORDER_RECEIVE_TOPIC = "order-receive-topic";
     public static final String ORDER_RECEIVE_TAG = "order-receive";
+
+    /** 秒杀订单死信队列 */
+    public static final String SECKILL_ORDER_DLQ_TOPIC = "seckill-order-dlq-topic";
+    public static final String SECKILL_ORDER_DLQ_TAG = "seckill-order-dlq";
 }
