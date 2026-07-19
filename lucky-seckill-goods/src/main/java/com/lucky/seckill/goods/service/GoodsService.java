@@ -7,6 +7,7 @@ import com.lucky.seckill.goods.model.dto.AddGoodsRequest;
 import com.lucky.seckill.goods.model.dto.GoodsAuditRequest;
 import com.lucky.seckill.goods.model.dto.GoodsHomeQueryRequest;
 import com.lucky.seckill.goods.model.dto.GoodsQueryRequest;
+import com.lucky.seckill.goods.model.dto.GoodsSearchRequest;
 import com.lucky.seckill.goods.model.dto.UpdateGoodsRequest;
 import com.lucky.seckill.goods.model.entity.Goods;
 import com.lucky.seckill.goods.model.entity.GoodsSku;
@@ -62,6 +63,11 @@ public interface GoodsService {
      * 首页商品列表（按收藏量/已售数量排序，数据来自 Redis ZSet）
      */
     Response<PageResult<GoodsListVO>> getHomeGoodsList(GoodsHomeQueryRequest request);
+
+    /**
+     * 商品搜索（优先 Elasticsearch，不可用时降级 MySQL）
+     */
+    Response<PageResult<GoodsListVO>> searchGoods(GoodsSearchRequest request);
 
     /**
      * 申请上架商品

@@ -20,11 +20,13 @@ import com.lucky.seckill.goods.model.dto.AddGoodsRequest;
 import com.lucky.seckill.goods.model.dto.GoodsAuditRequest;
 import com.lucky.seckill.goods.model.dto.GoodsHomeQueryRequest;
 import com.lucky.seckill.goods.model.dto.GoodsQueryRequest;
+import com.lucky.seckill.goods.model.dto.GoodsSearchRequest;
 import com.lucky.seckill.goods.model.dto.GoodsSkuRequest;
 import com.lucky.seckill.goods.model.dto.UpdateGoodsRequest;
 import com.lucky.seckill.goods.model.dto.UpdateGoodsSkuRequest;
 import com.lucky.seckill.goods.model.vo.MerchantGoodsDetailVO;
 import com.lucky.seckill.goods.model.vo.MerchantGoodsListVO;
+import com.lucky.seckill.goods.elasticsearch.service.GoodsElasticsearchService;
 import com.lucky.seckill.goods.service.GoodsCacheService;
 import com.lucky.seckill.goods.service.GoodsRankRedisService;
 import com.lucky.seckill.goods.model.entity.Goods;
@@ -42,6 +44,7 @@ import jakarta.annotation.Resource;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import org.springframework.util.StringUtils;
 import org.springframework.web.multipart.MultipartFile;
 
 import java.time.LocalDateTime;
@@ -88,6 +91,9 @@ public class GoodsServiceImpl implements GoodsService {
 
     @Resource
     private GoodsCacheService goodsCacheService;
+
+    @Resource
+    private GoodsElasticsearchService goodsElasticsearchService;
 
     @Override
     @Transactional(rollbackFor = Exception.class)
@@ -375,6 +381,61 @@ public class GoodsServiceImpl implements GoodsService {
 
         log.info("==> 首页商品列表查询成功, sortType: {}, total: {}, pageNum: {}", sortType.getCode(), total, pageNum);
         return Response.success(pageResult);
+    }
+
+    @Override
+    public Response<PageResult<GoodsListVO>> searchGoods(GoodsSearchRequest request) {
+        if (request == null || !StringUtils.hasText(request.getKeyword())) {
+            throw new BizException(ResponseCodeEnum.PARAM_NOT_VALID, "搜索关键词不能为空");
+        }
+
+        int pageNum = request.getPageNum() == null || request.getPageNum() < 1 ? 1 : request.getPageNum();
+        int pageSize = request.getPageSize() == null || request.getPageSize() < 1 ? 10 : request.getPageSize();
+        request.setKeyword(request.getKeyword().trim());
+
+        prepareSearchCategoryQuery(request);
+        if (request.getCategoryIds() != null && request.getCategoryIds().isEmpty()) {
+            return Response.success(buildEmptyPageResult(pageNum, pageSize));
+        }
+
+        if (goodsElasticsearchService.isEnabled()) {
+            try {
+                PageResult<GoodsListVO> esResult = goodsElasticsearchService.search(
+                        request.getKeyword(), request.getCategoryIds(), request);
+                log.info("==> 商品 ES 搜索成功, keyword: {}, total: {}", request.getKeyword(), esResult.getTotal());
+                return Response.success(esResult);
+            } catch (Exception e) {
+                log.warn("==> 商品 ES 搜索失败，降级 MySQL, keyword: {}, error: {}",
+                        request.getKeyword(), e.getMessage());
+            }
+        }
+
+        GoodsQueryRequest dbQuery = GoodsQueryRequest.builder()
+                .goodsName(request.getKeyword())
+                .categoryId(request.getCategoryId())
+                .parentCategoryId(request.getParentCategoryId())
+                .categoryIds(request.getCategoryIds())
+                .shopId(request.getShopId())
+                .status(1)
+                .auditStatus(GoodsAuditRequest.AUDIT_PASS)
+                .pageNum(pageNum)
+                .pageSize(pageSize)
+                .build();
+        PageResult<GoodsListVO> dbResult = queryGoodsPageFromDb(dbQuery, pageNum, pageSize);
+        log.info("==> 商品 MySQL 搜索完成, keyword: {}, total: {}", request.getKeyword(), dbResult.getTotal());
+        return Response.success(dbResult);
+    }
+
+    private void prepareSearchCategoryQuery(GoodsSearchRequest request) {
+        GoodsQueryRequest temp = GoodsQueryRequest.builder()
+                .categoryId(request.getCategoryId())
+                .parentCategoryId(request.getParentCategoryId())
+                .categoryIds(request.getCategoryIds())
+                .build();
+        prepareCategoryQuery(temp);
+        request.setCategoryId(temp.getCategoryId());
+        request.setParentCategoryId(temp.getParentCategoryId());
+        request.setCategoryIds(temp.getCategoryIds());
     }
 
     // VO转换抽成方法（优雅、可复用）
@@ -704,6 +765,18 @@ public class GoodsServiceImpl implements GoodsService {
     private void invalidateGoodsCache(Long goodsId) {
         goodsCacheService.clearPageCache();
         goodsCacheService.evictGoodsCache(goodsId);
+        syncSearchIndex(goodsId);
+    }
+
+    private void syncSearchIndex(Long goodsId) {
+        if (!goodsElasticsearchService.isEnabled()) {
+            return;
+        }
+        try {
+            goodsElasticsearchService.syncGoods(goodsId);
+        } catch (Exception e) {
+            log.warn("==> 商品 ES 索引同步失败, goodsId: {}, error: {}", goodsId, e.getMessage());
+        }
     }
 
     @Override

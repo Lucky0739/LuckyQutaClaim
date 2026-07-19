@@ -90,11 +90,10 @@
           AND stock_num >= #{stockNum}
     </update>
 
-    <!-- 释放预占的库存（保留接口，当前下单不再预扣库存） -->
+    <!-- 释放预占的库存（保留接口，当前下单不再预扣库存，无需回加 stock_num） -->
     <update id="releaseStock">
         UPDATE t_goods_sku
-        SET stock_num = stock_num + #{buyGoodsNum},
-            update_time = NOW()
+        SET update_time = NOW()
         WHERE id = #{skuId}
           AND isDelete = 0
     </update>

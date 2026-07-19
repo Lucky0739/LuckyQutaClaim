@@ -177,4 +177,14 @@
             #{gid,jdbcType=BIGINT}
         </foreach>
     </select>
+
+    <select id="selectSearchableGoods" resultMap="BaseResultMap">
+        SELECT
+        <include refid="Base_Column_List"/>
+        FROM t_goods
+        WHERE isDelete = 0
+          AND status = 1
+          AND audit_status = 2
+        ORDER BY create_time DESC
+    </select>
 </mapper>

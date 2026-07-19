@@ -94,6 +94,29 @@ public class GoodsController {
         return goodsService.getGoodsPage(request);
     }
 
+    /**
+     * 按店铺 ID 分页查询商品（店铺详情页，与 GET /goods/page?shopId= 等价）
+     */
+    @GetMapping("/shop/{shopId}")
+    @ApiOperationLog(description = "按店铺分页查询商品")
+    public Response<PageResult<GoodsListVO>> getGoodsPageByShopId(
+            @PathVariable("shopId") Long shopId,
+            @RequestParam(value = "status", required = false) Integer status,
+            @RequestParam(value = "auditStatus", required = false) Integer auditStatus,
+            @RequestParam(value = "pageNum", defaultValue = "1") Integer pageNum,
+            @RequestParam(value = "pageSize", defaultValue = "10") Integer pageSize) {
+        GoodsQueryRequest request = GoodsQueryRequest.builder()
+                .shopId(shopId)
+                .status(status)
+                .auditStatus(auditStatus)
+                .pageNum(pageNum)
+                .pageSize(pageSize)
+                .build();
+        log.info("==> 按店铺分页查询商品, shopId: {}, status: {}, auditStatus: {}",
+                shopId, status, auditStatus);
+        return goodsService.getGoodsPage(request);
+    }
+
     @SaCheckRole("merchant")
     @PostMapping("/applyOnShelf")
     @ApiOperationLog(description = "申请上架商品")

@@ -53,10 +53,16 @@ spring:
           min-idle: 5
           # 连接池最大阻塞等待时间（毫秒），-1 表示无限制
           max-wait: 3000
+# Elasticsearch 商品搜索：本地需先启动 ES(9200)，再改为 enabled: true
+goods:
+  elasticsearch:
+    enabled: false
+    rebuild-on-startup: false
+
 # MyBatis 开发环境专属配置
 mybatis:
   configuration:
     # 开发阶段打印 SQL 语句，方便调试
     log-impl: org.apache.ibatis.logging.stdout.StdOutImpl
   # 指定 Mapper XML 文件的位置
-  mapper-locations: classpath:mapper/*.xml
+  mapper-locations: classpath*:/mapper/**/*.xml

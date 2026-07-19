@@ -37,4 +37,9 @@ public interface GoodsMapper {
      * 按 ID 批量查询已上架商品（首页列表）
      */
     List<Goods> selectOnShelfByIds(@Param("goodsIds") List<Long> goodsIds);
+
+    /**
+     * 可搜索商品（已上架且审核通过，用于 ES 全量重建）
+     */
+    List<Goods> selectSearchableGoods();
 }

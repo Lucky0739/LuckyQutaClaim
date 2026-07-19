@@ -19,6 +19,12 @@ spring:
           enabled: false
   mvc:
     static-path-pattern: /static/**
+  elasticsearch:
+    uris: http://127.0.0.1:9200
+  data:
+    elasticsearch:
+      repositories:
+        enabled: false
 
 seata:
   enabled: true
@@ -51,10 +57,14 @@ rocketmq:
     retry-times-when-send-async-failed: 2
 
 sa-token:
-  ignore-paths: /user/login,/user/register,/user/send-verify-code,/goods/sku/lockStock,/goods/sku/deductStock,/goods/sku/releaseStock,/goods/home/**,/goods/page,/goods/detail/**,/goods/get/**
+  ignore-paths: /user/login,/user/register,/user/send-verify-code,/goods/sku/lockStock,/goods/sku/deductStock,/goods/sku/releaseStock,/goods/home/**,/goods/page,/goods/shop/**,/goods/detail/**,/goods/get/**,/goods/search/**
 
 # 首页商品排行权重：综合分 = collect-weight × 收藏数 + sales-weight × 已售数
 goods:
+  elasticsearch:
+    enabled: false
+    index-name: lucky_goods
+    rebuild-on-startup: false
   rank:
     collect-weight: 3
     sales-weight: 1
