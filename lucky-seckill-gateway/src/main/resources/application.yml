@@ -14,6 +14,19 @@ spring:
         file-extension: yml
         import-check:
           enabled: false
+    sentinel:
+      transport:
+        dashboard: 127.0.0.1:8858
+        port: 8720
+      eager: true
+      # 避免 Servlet Filter 与网关 gw-flow 规则冲突
+      filter:
+        enabled: false
+      scg:
+        fallback:
+          mode: response
+          response-status: 429
+          response-body: '{"success":false,"message":"请求过于频繁，请稍后重试","errorCode":"10002","data":null}'
     gateway:
       discovery:
         locator:
