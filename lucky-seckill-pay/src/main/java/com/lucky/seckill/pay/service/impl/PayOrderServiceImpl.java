@@ -177,44 +177,7 @@ public class PayOrderServiceImpl implements PayOrderService {
             throw new BizException(ResponseCodeEnum.PARAM_NOT_VALID, "订单不存在");
         }
 
-        Order order = orderResponse.getData();
-
-        if (order.getStatus() != OrderStatusEnum.PENDING_PAYMENT.getCode()) {
-            log.warn("==> 订单状态不是待支付，orderNo: {}, status: {}", orderNo, order.getStatus());
-            throw new BizException(ResponseCodeEnum.ORDER_STATUS_ERROR, "订单状态异常");
-        }
-
-        if (order.getExpireTime() != null && LocalDateTime.now().isAfter(order.getExpireTime())) {
-            log.warn("==> 订单已过期，orderNo: {}", orderNo);
-            orderFeignClient.updateOrderStatus(orderNo, OrderStatusEnum.EXPIRED.getCode());
-            throw new BizException(ResponseCodeEnum.ORDER_EXPIRED, "订单已过期");
-        }
-
-        Response<Boolean> statusResult = orderFeignClient.updateOrderStatus(orderNo, OrderStatusEnum.PAID.getCode());
-        if (statusResult == null || !statusResult.isSuccess() || !statusResult.getData()) {
-            log.error("==> 更新订单状态失败，orderNo: {}", orderNo);
-            throw new BizException(ResponseCodeEnum.SYSTEM_ERROR, "更新订单状态失败");
-        }
-
-        log.info("==> 支付回调处理成功，orderNo: {}", orderNo);
-
-        try {
-            Notify notify = Notify.builder()
-                    .id(IdUtil.getSnowflakeNextId())
-                    .sendUserId(5L)
-                    .receiveUserId(order.getUserId())
-                    .title("支付成功通知")
-                    .content("您的订单【" + order.getOrderNo() + "】已支付成功，共计 ¥" + order.getTotalAmount())
-                    .notifyType(NotifyTypeConstants.PAY_SUCCESS)
-                    .businessId(order.getId())
-                    .build();
-            notifyFeignClient.saveNotify(notify);
-            log.info("==> 发送支付成功通知成功，orderNo: {}", orderNo);
-        } catch (Exception e) {
-            log.warn("==> 发送支付成功通知失败，orderNo: {}", orderNo, e);
-        }
-
-        return Response.success(true);
+        return completePaySuccess(orderResponse.getData());
     }
 
     /**
@@ -236,9 +199,20 @@ public class PayOrderServiceImpl implements PayOrderService {
             throw new BizException(ResponseCodeEnum.PARAM_NOT_VALID, "订单不存在");
         }
 
-        Order order = orderResponse.getData();
+        return completePaySuccess(orderResponse.getData());
+    }
 
-        if (order.getStatus() != OrderStatusEnum.PENDING_PAYMENT.getCode()) {
+    /**
+     * 将待支付订单置为已支付。支付宝异步通知与前端回跳可能重复调用，已支付时幂等返回成功。
+     */
+    private Response<Boolean> completePaySuccess(Order order) {
+        String orderNo = order.getOrderNo();
+        if (OrderStatusEnum.PAID.getCode().equals(order.getStatus())) {
+            log.info("==> 订单已支付，忽略重复回调，orderNo: {}", orderNo);
+            return Response.success(true);
+        }
+
+        if (!OrderStatusEnum.PENDING_PAYMENT.getCode().equals(order.getStatus())) {
             log.warn("==> 订单状态不是待支付，orderNo: {}, status: {}", orderNo, order.getStatus());
             throw new BizException(ResponseCodeEnum.ORDER_STATUS_ERROR, "订单状态异常");
         }
@@ -250,29 +224,13 @@ public class PayOrderServiceImpl implements PayOrderService {
         }
 
         Response<Boolean> statusResult = orderFeignClient.updateOrderStatus(orderNo, OrderStatusEnum.PAID.getCode());
-        if (statusResult == null || !statusResult.isSuccess() || !statusResult.getData()) {
+        if (statusResult == null || !statusResult.isSuccess() || !Boolean.TRUE.equals(statusResult.getData())) {
             log.error("==> 更新订单状态失败，orderNo: {}", orderNo);
             throw new BizException(ResponseCodeEnum.SYSTEM_ERROR, "更新订单状态失败");
         }
 
         log.info("==> 支付回调处理成功，orderNo: {}", orderNo);
-
-        try {
-            Notify notify = Notify.builder()
-                    .id(IdUtil.getSnowflakeNextId())
-                    .sendUserId(5L)
-                    .receiveUserId(order.getUserId())
-                    .title("支付成功通知")
-                    .content("您的订单【" + order.getOrderNo() + "】已支付成功，共计 ¥" + order.getTotalAmount())
-                    .notifyType(NotifyTypeConstants.PAY_SUCCESS)
-                    .businessId(order.getId())
-                    .build();
-            notifyFeignClient.saveNotify(notify);
-            log.info("==> 发送支付成功通知成功，orderNo: {}", orderNo);
-        } catch (Exception e) {
-            log.warn("==> 发送支付成功通知失败，orderNo: {}", orderNo, e);
-        }
-
+        sendPaySuccessNotify(order);
         return Response.success(true);
     }
 
