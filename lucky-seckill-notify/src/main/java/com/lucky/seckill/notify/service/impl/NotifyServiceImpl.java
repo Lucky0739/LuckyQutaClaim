@@ -11,6 +11,7 @@ import com.lucky.seckill.notify.model.dto.NotifyQueryRequest;
 import com.lucky.seckill.notify.model.dto.NotifyTypeCountDTO;
 import com.lucky.seckill.notify.model.entity.Notify;
 import com.lucky.seckill.notify.model.vo.NotifyListVO;
+import com.lucky.seckill.notify.model.vo.NotifyMarkAllReadVO;
 import com.lucky.seckill.notify.model.vo.NotifyTypeSummaryVO;
 import com.lucky.seckill.notify.model.vo.NotifyUnreadStatVO;
 import com.lucky.seckill.notify.model.vo.NotifyVO;
@@ -121,7 +122,11 @@ public class NotifyServiceImpl implements NotifyService {
             throw new BizException(ResponseCodeEnum.SYSTEM_ERROR, "标记已读失败");
         }
 
-        notifyReadRedisService.addReadNotify(notify.getReceiveUserId(), notifyType, notify.getId());
+        Long redisUserId = StpUtil.isLogin() ? StpUtil.getLoginIdAsLong() : notify.getReceiveUserId();
+        notifyReadRedisService.addReadNotify(redisUserId, notifyType, notify.getId());
+        if (notify.getReceiveUserId() != null && !notify.getReceiveUserId().equals(redisUserId)) {
+            notifyReadRedisService.addReadNotify(notify.getReceiveUserId(), notifyType, notify.getId());
+        }
         log.info("==> 申请通知已标记为已读, notifyId: {}, notifyType: {}, businessId: {}",
                 notify.getId(), notifyType, businessId);
     }
@@ -240,18 +245,73 @@ public class NotifyServiceImpl implements NotifyService {
 
     @Override
     @Transactional(rollbackFor = Exception.class)
-    public void markAllNotifyRead(Integer notifyType) {
+    public NotifyMarkAllReadVO markAllNotifyRead(Integer notifyType) {
+        if (notifyType != null && !NotifyTypeEnum.isUserVisibleType(notifyType)) {
+            throw new BizException(ResponseCodeEnum.PARAM_NOT_VALID, "不支持将该类型消息全部标记已读");
+        }
+
         Long userId = getCurrentLoginUserId();
-        List<Notify> unreadList = notifyMapper.selectUserNotifyPage(userId, notifyType, 0, 0, 10000);
+        List<Notify> unreadList = notifyMapper.selectUserUnreadNotifyList(userId, notifyType);
+        if (unreadList.isEmpty()) {
+            log.info("==> 用户无未读消息需标记, userId: {}, notifyType: {}", userId, notifyType);
+            return NotifyMarkAllReadVO.builder().markedCount(0).build();
+        }
 
         LocalDateTime now = LocalDateTime.now();
-        notifyMapper.markAllReadByReceiveUserId(userId, notifyType, now, now);
+        int rows = notifyMapper.markAllReadByReceiveUserId(userId, notifyType, now, now);
+        syncReadNotifyToRedis(userId, unreadList);
 
-        for (Notify notify : unreadList) {
-            notifyReadRedisService.addReadNotify(userId, notify.getNotifyType(), notify.getId());
+        log.info("==> 用户消息全部标记已读, userId: {}, notifyType: {}, count: {}", userId, notifyType, rows);
+        return NotifyMarkAllReadVO.builder().markedCount(rows).build();
+    }
+
+    @Override
+    @Transactional(rollbackFor = Exception.class)
+    public NotifyMarkAllReadVO markAllAdminNotifyRead(Integer notifyType) {
+        if (!StpUtil.hasRole("admin")) {
+            throw new BizException(ResponseCodeEnum.USER_PERMISSION_DENIED, "仅管理员可操作");
         }
-        log.info("==> 用户消息全部标记已读, userId: {}, notifyType: {}, count: {}",
-                userId, notifyType, unreadList.size());
+        if (notifyType != null && !NotifyTypeEnum.isAdminApplyType(notifyType)) {
+            throw new BizException(ResponseCodeEnum.PARAM_NOT_VALID, "仅支持审核类消息全部标记已读");
+        }
+
+        Long adminId = getCurrentLoginUserId();
+        int totalMarked = 0;
+
+        if (notifyType != null) {
+            totalMarked = markAdminNotifyTypeRead(adminId, notifyType);
+        } else {
+            for (NotifyTypeEnum typeEnum : NotifyTypeEnum.adminApplyTypes()) {
+                totalMarked += markAdminNotifyTypeRead(adminId, typeEnum.getCode());
+            }
+        }
+
+        log.info("==> 管理员消息全部标记已读, adminId: {}, notifyType: {}, count: {}",
+                adminId, notifyType, totalMarked);
+        return NotifyMarkAllReadVO.builder().markedCount(totalMarked).build();
+    }
+
+    private int markAdminNotifyTypeRead(Long adminId, Integer notifyType) {
+        List<Notify> unreadList = notifyMapper.selectUnreadByNotifyType(notifyType);
+        if (unreadList.isEmpty()) {
+            return 0;
+        }
+        LocalDateTime now = LocalDateTime.now();
+        int rows = notifyMapper.markAllReadByNotifyType(notifyType, now, now);
+        syncReadNotifyToRedis(adminId, unreadList);
+        return rows;
+    }
+
+    private void syncReadNotifyToRedis(Long userId, List<Notify> notifyList) {
+        if (notifyList == null || notifyList.isEmpty()) {
+            return;
+        }
+        Map<Integer, List<Long>> idsByType = notifyList.stream()
+                .filter(notify -> notify.getId() != null && notify.getNotifyType() != null)
+                .collect(Collectors.groupingBy(
+                        Notify::getNotifyType,
+                        Collectors.mapping(Notify::getId, Collectors.toList())));
+        notifyReadRedisService.batchAddReadNotify(userId, idsByType);
     }
 
     private void validateAdminNotifyQueryRequest(NotifyQueryRequest request) {

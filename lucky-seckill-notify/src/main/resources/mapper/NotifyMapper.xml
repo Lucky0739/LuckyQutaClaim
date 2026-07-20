@@ -275,4 +275,38 @@
       </otherwise>
     </choose>
   </update>
+
+  <select id="selectUserUnreadNotifyList" resultMap="BaseResultMap">
+    select id, notify_type
+    from t_notify
+    where receive_user_id = #{receiveUserId,jdbcType=BIGINT}
+      and isDelete = 0
+      and is_read = 0
+    <choose>
+      <when test="notifyType != null">
+        and notify_type = #{notifyType,jdbcType=INTEGER}
+      </when>
+      <otherwise>
+        and notify_type != 1
+      </otherwise>
+    </choose>
+  </select>
+
+  <select id="selectUnreadByNotifyType" resultMap="BaseResultMap">
+    select id, notify_type, receive_user_id
+    from t_notify
+    where notify_type = #{notifyType,jdbcType=INTEGER}
+      and isDelete = 0
+      and is_read = 0
+  </select>
+
+  <update id="markAllReadByNotifyType">
+    update t_notify
+    set is_read = 1,
+        read_time = #{readTime,jdbcType=TIMESTAMP},
+        update_time = #{updateTime,jdbcType=TIMESTAMP}
+    where notify_type = #{notifyType,jdbcType=INTEGER}
+      and isDelete = 0
+      and is_read = 0
+  </update>
 </mapper>

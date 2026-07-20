@@ -79,4 +79,22 @@ public interface NotifyMapper {
                                    @Param("notifyType") Integer notifyType,
                                    @Param("readTime") java.time.LocalDateTime readTime,
                                    @Param("updateTime") java.time.LocalDateTime updateTime);
+
+    /**
+     * 查询用户未读消息（用于全部标记已读，仅返回 id 与类型）
+     */
+    List<Notify> selectUserUnreadNotifyList(@Param("receiveUserId") Long receiveUserId,
+                                            @Param("notifyType") Integer notifyType);
+
+    /**
+     * 查询指定类型下全部未读消息（管理员审核类，不按 receive_user_id 过滤）
+     */
+    List<Notify> selectUnreadByNotifyType(@Param("notifyType") Integer notifyType);
+
+    /**
+     * 将指定类型下全部未读消息标记为已读（管理员）
+     */
+    int markAllReadByNotifyType(@Param("notifyType") Integer notifyType,
+                                @Param("readTime") java.time.LocalDateTime readTime,
+                                @Param("updateTime") java.time.LocalDateTime updateTime);
 }

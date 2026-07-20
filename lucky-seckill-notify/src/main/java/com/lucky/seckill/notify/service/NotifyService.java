@@ -5,6 +5,7 @@ import com.lucky.seckill.common.model.entity.PageResult;
 import com.lucky.seckill.notify.model.dto.NotifyQueryRequest;
 import com.lucky.seckill.notify.model.entity.Notify;
 import com.lucky.seckill.notify.model.vo.NotifyListVO;
+import com.lucky.seckill.notify.model.vo.NotifyMarkAllReadVO;
 import com.lucky.seckill.notify.model.vo.NotifyTypeSummaryVO;
 import com.lucky.seckill.notify.model.vo.NotifyUnreadStatVO;
 import com.lucky.seckill.notify.model.vo.NotifyVO;
@@ -64,7 +65,12 @@ public interface NotifyService {
     List<NotifyTypeSummaryVO> getUserNotifyTypeSummary();
 
     /**
-     * 当前登录用户消息全部标记为已读
+     * 当前登录用户消息全部标记为已读（notifyType 为空则标记全部用户可见类型）
      */
-    void markAllNotifyRead(Integer notifyType);
+    NotifyMarkAllReadVO markAllNotifyRead(Integer notifyType);
+
+    /**
+     * 管理员将指定审核类消息全部标记为已读（notifyType 为空则标记全部管理员审核类型）
+     */
+    NotifyMarkAllReadVO markAllAdminNotifyRead(Integer notifyType);
 }

@@ -9,6 +9,7 @@ import com.lucky.seckill.common.utils.Response;
 import com.lucky.seckill.notify.model.dto.NotifyQueryRequest;
 import com.lucky.seckill.notify.model.entity.Notify;
 import com.lucky.seckill.notify.model.vo.NotifyListVO;
+import com.lucky.seckill.notify.model.vo.NotifyMarkAllReadVO;
 import com.lucky.seckill.notify.model.vo.NotifyTypeSummaryVO;
 import com.lucky.seckill.notify.model.vo.NotifyUnreadStatVO;
 import com.lucky.seckill.notify.model.vo.NotifyVO;
@@ -158,13 +159,40 @@ public class NotifyController {
     }
 
     /**
-     * 将当前登录用户消息全部标记为已读
+     * 将当前登录用户消息全部标记为已读（notifyType 不传则标记全部用户消息类型）
      */
     @SaCheckLogin
     @PutMapping("/user/read/all")
-    public Response<Void> markAllNotifyRead(@RequestParam(value = "notifyType", required = false) Integer notifyType) {
+    public Response<NotifyMarkAllReadVO> markAllNotifyRead(
+            @RequestParam(value = "notifyType", required = false) Integer notifyType) {
         log.info("==> 用户全部消息标记已读, notifyType: {}", notifyType);
-        notifyService.markAllNotifyRead(notifyType);
-        return Response.success();
+        return Response.success(notifyService.markAllNotifyRead(notifyType));
+    }
+
+    @SaCheckLogin
+    @PostMapping("/user/read/all")
+    public Response<NotifyMarkAllReadVO> markAllNotifyReadPost(
+            @RequestParam(value = "notifyType", required = false) Integer notifyType) {
+        return markAllNotifyRead(notifyType);
+    }
+
+    /**
+     * 管理员将审核类消息全部标记为已读（开店申请 notifyType=1、秒杀申请 notifyType=8 等）
+     */
+    @SaCheckLogin
+    @SaCheckRole("admin")
+    @PutMapping("/admin/read/all")
+    public Response<NotifyMarkAllReadVO> markAllAdminNotifyRead(
+            @RequestParam(value = "notifyType", required = false) Integer notifyType) {
+        log.info("==> 管理员全部消息标记已读, notifyType: {}", notifyType);
+        return Response.success(notifyService.markAllAdminNotifyRead(notifyType));
+    }
+
+    @SaCheckLogin
+    @SaCheckRole("admin")
+    @PostMapping("/admin/read/all")
+    public Response<NotifyMarkAllReadVO> markAllAdminNotifyReadPost(
+            @RequestParam(value = "notifyType", required = false) Integer notifyType) {
+        return markAllAdminNotifyRead(notifyType);
     }
 }
