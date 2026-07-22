@@ -1,9 +1,11 @@
 package com.lucky.seckill.activity.service.impl;
 
 import cn.hutool.core.util.IdUtil;
+import com.lucky.seckill.activity.model.entity.SeckillActivity;
 import com.lucky.seckill.activity.model.entity.SeckillGoods;
 import com.lucky.seckill.activity.service.SeckillRedisService;
 import com.lucky.seckill.common.constant.RedisKeyConstants;
+import com.lucky.seckill.common.utils.JsonUtils;
 import jakarta.annotation.PostConstruct;
 import jakarta.annotation.Resource;
 import lombok.extern.slf4j.Slf4j;
@@ -42,7 +44,7 @@ public class SeckillRedisServiceImpl implements SeckillRedisService {
     }
 
     @Override
-    public void warmUpActivityStock(Long activityId, List<SeckillGoods> goodsList) {
+    public void warmUpActivityStock(Long activityId, List<SeckillGoods> goodsList, SeckillActivity activity) {
         if (goodsList == null || goodsList.isEmpty()) {
             log.warn("==> 活动 {} 无秒杀商品，跳过预热", activityId);
             return;
@@ -63,10 +65,18 @@ public class SeckillRedisServiceImpl implements SeckillRedisService {
                 return;
             }
 
+            // 缓存活动信息，避免秒杀时查 MySQL
+            if (activity != null) {
+                cacheSeckillActivity(activity);
+            }
+
             for (SeckillGoods goods : goodsList) {
+                // 预热库存
                 String stockKey = RedisKeyConstants.seckillStockKey(
                         activityId, goods.getGoodsId(), goods.getSkuId());
                 stringRedisTemplate.opsForValue().set(stockKey, String.valueOf(goods.getSeckillStock()));
+                // 缓存商品信息，避免秒杀时查 MySQL
+                cacheSeckillGoods(goods);
                 log.info("==> 预热库存 activityId={}, goodsId={}, skuId={}, stock={}",
                         activityId, goods.getGoodsId(), goods.getSkuId(), goods.getSeckillStock());
             }
@@ -147,8 +157,58 @@ public class SeckillRedisServiceImpl implements SeckillRedisService {
         Boolean absent = stringRedisTemplate.opsForValue().setIfAbsent(
                 stockKey, String.valueOf(goods.getSeckillStock()));
         if (Boolean.TRUE.equals(absent)) {
+            // 新商品补充库存时，同步缓存商品信息
+            cacheSeckillGoods(goods);
             log.info("==> 补充预热库存 activityId={}, goodsId={}, skuId={}, stock={}",
                     activityId, goods.getGoodsId(), goods.getSkuId(), goods.getSeckillStock());
         }
+    }
+
+    // ==================== 商品/活动缓存 ====================
+
+    @Override
+    public void cacheSeckillGoods(SeckillGoods goods) {
+        if (goods == null || goods.getId() == null) {
+            return;
+        }
+        String key = RedisKeyConstants.seckillGoodsCacheKey(goods.getId());
+        stringRedisTemplate.opsForValue().set(key, JsonUtils.toJsonString(goods),
+                RedisKeyConstants.SECKILL_CACHE_TTL_MINUTES, TimeUnit.MINUTES);
+    }
+
+    @Override
+    public SeckillGoods getCachedSeckillGoods(Long seckillGoodsId) {
+        if (seckillGoodsId == null) {
+            return null;
+        }
+        String key = RedisKeyConstants.seckillGoodsCacheKey(seckillGoodsId);
+        String json = stringRedisTemplate.opsForValue().get(key);
+        if (json == null) {
+            return null;
+        }
+        return JsonUtils.parseObject(json, SeckillGoods.class);
+    }
+
+    @Override
+    public void cacheSeckillActivity(SeckillActivity activity) {
+        if (activity == null || activity.getId() == null) {
+            return;
+        }
+        String key = RedisKeyConstants.seckillActivityCacheKey(activity.getId());
+        stringRedisTemplate.opsForValue().set(key, JsonUtils.toJsonString(activity),
+                RedisKeyConstants.SECKILL_CACHE_TTL_MINUTES, TimeUnit.MINUTES);
+    }
+
+    @Override
+    public SeckillActivity getCachedSeckillActivity(Long activityId) {
+        if (activityId == null) {
+            return null;
+        }
+        String key = RedisKeyConstants.seckillActivityCacheKey(activityId);
+        String json = stringRedisTemplate.opsForValue().get(key);
+        if (json == null) {
+            return null;
+        }
+        return JsonUtils.parseObject(json, SeckillActivity.class);
     }
 }

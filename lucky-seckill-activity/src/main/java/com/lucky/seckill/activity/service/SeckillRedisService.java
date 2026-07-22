@@ -1,5 +1,6 @@
 package com.lucky.seckill.activity.service;
 
+import com.lucky.seckill.activity.model.entity.SeckillActivity;
 import com.lucky.seckill.activity.model.entity.SeckillGoods;
 
 import java.util.List;
@@ -7,9 +8,9 @@ import java.util.List;
 public interface SeckillRedisService {
 
     /**
-     * 预热活动库存到 Redis
+     * 预热活动库存到 Redis（同时缓存商品和活动信息）
      */
-    void warmUpActivityStock(Long activityId, List<SeckillGoods> goodsList);
+    void warmUpActivityStock(Long activityId, List<SeckillGoods> goodsList, SeckillActivity activity);
 
     /**
      * 是否已预热
@@ -37,4 +38,24 @@ public interface SeckillRedisService {
      * 活动已预热后，为审核新通过的秒杀商品补充 Redis 库存（不重复覆盖已有 key）
      */
     void supplementGoodsStock(Long activityId, SeckillGoods goods);
+
+    /**
+     * 缓存秒杀商品信息到 Redis
+     */
+    void cacheSeckillGoods(SeckillGoods goods);
+
+    /**
+     * 从 Redis 获取缓存的秒杀商品
+     */
+    SeckillGoods getCachedSeckillGoods(Long seckillGoodsId);
+
+    /**
+     * 缓存秒杀活动信息到 Redis
+     */
+    void cacheSeckillActivity(SeckillActivity activity);
+
+    /**
+     * 从 Redis 获取缓存的秒杀活动
+     */
+    SeckillActivity getCachedSeckillActivity(Long activityId);
 }

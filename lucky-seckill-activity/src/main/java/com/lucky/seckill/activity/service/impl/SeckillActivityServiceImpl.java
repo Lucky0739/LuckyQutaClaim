@@ -151,7 +151,7 @@ public class SeckillActivityServiceImpl implements SeckillActivityService {
             throw new BizException(ResponseCodeEnum.SECKILL_ACTIVITY_NO_GOODS);
         }
 
-        seckillRedisService.warmUpActivityStock(activity.getId(), goodsList);
+        seckillRedisService.warmUpActivityStock(activity.getId(), goodsList, activity);
         seckillActivityMapper.updateStatus(
                 activity.getId(),
                 SeckillActivityStatusEnum.IN_PROGRESS.getCode(),

@@ -5,11 +5,9 @@ import com.lucky.seckill.activity.enums.SeckillGoodsAuditStatusEnum;
 import com.lucky.seckill.activity.support.SeckillActivityPurchaseValidator;
 import com.lucky.seckill.activity.mapper.SeckillActivityMapper;
 import com.lucky.seckill.activity.mapper.SeckillGoodsMapper;
-import com.lucky.seckill.activity.mapper.SeckillOrderMapper;
 import com.lucky.seckill.activity.model.dto.SeckillRequest;
 import com.lucky.seckill.activity.model.entity.SeckillActivity;
 import com.lucky.seckill.activity.model.entity.SeckillGoods;
-import com.lucky.seckill.activity.model.entity.SeckillOrder;
 import com.lucky.seckill.activity.model.vo.SeckillResultVO;
 import com.lucky.seckill.activity.mq.SeckillOrderProducer;
 import com.lucky.seckill.activity.service.SeckillRedisService;
@@ -41,9 +39,6 @@ public class SeckillServiceImpl implements SeckillService {
     private SeckillGoodsMapper seckillGoodsMapper;
 
     @Resource
-    private SeckillOrderMapper seckillOrderMapper;
-
-    @Resource
     private SeckillRedisService seckillRedisService;
 
     @Resource
@@ -60,10 +55,18 @@ public class SeckillServiceImpl implements SeckillService {
         Long userId = StpUtil.getLoginIdAsLong();
         Long seckillGoodsId = request.getSeckillGoodsId();
 
-        SeckillGoods seckillGoods = seckillGoodsMapper.selectByPrimaryKey(seckillGoodsId);
+        // ========== 1. Redis 读商品缓存，miss 时降级 MySQL ==========
+        SeckillGoods seckillGoods = seckillRedisService.getCachedSeckillGoods(seckillGoodsId);
         if (seckillGoods == null) {
-            throw new BizException(ResponseCodeEnum.SECKILL_GOODS_NOT_EXIST);
+            seckillGoods = seckillGoodsMapper.selectByPrimaryKey(seckillGoodsId);
+            if (seckillGoods == null) {
+                throw new BizException(ResponseCodeEnum.SECKILL_GOODS_NOT_EXIST);
+            }
+            // 回填缓存
+            seckillRedisService.cacheSeckillGoods(seckillGoods);
         }
+
+        // ========== 2. 内存校验审核状态 ==========
         if (!SeckillGoodsAuditStatusEnum.APPROVED.getCode().equals(seckillGoods.getAuditStatus())) {
             throw new BizException(ResponseCodeEnum.SECKILL_GOODS_NOT_APPROVED);
         }
@@ -72,15 +75,20 @@ public class SeckillServiceImpl implements SeckillService {
         Long goodsId = seckillGoods.getGoodsId();
         Long skuId = seckillGoods.getSkuId();
 
-        SeckillActivity activity = seckillActivityMapper.selectByPrimaryKey(activityId);
-        seckillActivityPurchaseValidator.assertCanSeckillPurchase(activity);
-
-        SeckillOrder existOrder = seckillOrderMapper.selectByUserActivityGoodsSku(
-                userId, activityId, goodsId, skuId);
-        if (existOrder != null) {
-            throw new BizException(ResponseCodeEnum.SECKILL_REPEAT);
+        // ========== 3. Redis 读活动缓存，miss 时降级 MySQL ==========
+        SeckillActivity activity = seckillRedisService.getCachedSeckillActivity(activityId);
+        if (activity == null) {
+            activity = seckillActivityMapper.selectByPrimaryKey(activityId);
+            if (activity == null) {
+                throw new BizException(ResponseCodeEnum.SECKILL_ACTIVITY_NOT_EXIST);
+            }
+            seckillRedisService.cacheSeckillActivity(activity);
         }
 
+        // ========== 4. 内存校验活动时间/状态/预热 ==========
+        seckillActivityPurchaseValidator.assertCanSeckillPurchase(activity);
+
+        // ========== 5. Redis Lua 原子扣库存（内置限购检查，替代 MySQL 查重） ==========
         int limitNum = seckillGoods.getSeckillLimit() == null ? 1 : seckillGoods.getSeckillLimit();
         int deductResult = tryDeductStock(activityId, userId, goodsId, skuId, limitNum);
         if (deductResult == -1) {
@@ -93,6 +101,7 @@ public class SeckillServiceImpl implements SeckillService {
             throw new BizException(ResponseCodeEnum.STOCK_NOT_ENOUGH);
         }
 
+        // ========== 6. 发送 MQ 异步创建订单（MQ 消费端做最终 MySQL 幂等兜底） ==========
         String orderNo = generateOrderNo(userId);
         LocalDateTime expireTime = LocalDateTime.now().plusMinutes(15);
 
