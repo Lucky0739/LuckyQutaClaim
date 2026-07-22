@@ -32,6 +32,19 @@ public final class RedisKeyConstants {
     }
 
     /**
+     * 秒杀商品缓存：seckill:goods:cache:{seckillGoodsId}
+     */
+    public static final String SECKILL_GOODS_CACHE_KEY_PREFIX = "seckill:goods:cache:";
+
+    /**
+     * 秒杀活动缓存：seckill:activity:cache:{activityId}
+     */
+    public static final String SECKILL_ACTIVITY_CACHE_KEY_PREFIX = "seckill:activity:cache:";
+
+    /** 秒杀商品/活动缓存 TTL（分钟） */
+    public static final long SECKILL_CACHE_TTL_MINUTES = 120;
+
+    /**
      * 秒杀库存：seckill:stock:{activityId}:{goodsId}:{skuId}
      */
     public static final String SECKILL_STOCK_KEY_PREFIX = "seckill:stock:";
@@ -60,6 +73,14 @@ public final class RedisKeyConstants {
      * 秒杀回滚幂等标记：seckill:rollback:flag:{orderNo}
      */
     public static final String SECKILL_ROLLBACK_FLAG_KEY_PREFIX = "seckill:rollback:flag:";
+
+    public static String seckillGoodsCacheKey(Long seckillGoodsId) {
+        return SECKILL_GOODS_CACHE_KEY_PREFIX + seckillGoodsId;
+    }
+
+    public static String seckillActivityCacheKey(Long activityId) {
+        return SECKILL_ACTIVITY_CACHE_KEY_PREFIX + activityId;
+    }
 
     public static String seckillStockKey(Long activityId, Long goodsId, Long skuId) {
         return SECKILL_STOCK_KEY_PREFIX + activityId + ":" + goodsId + ":" + skuId;
