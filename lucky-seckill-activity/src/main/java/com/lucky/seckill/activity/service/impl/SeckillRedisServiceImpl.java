@@ -164,6 +164,25 @@ public class SeckillRedisServiceImpl implements SeckillRedisService {
         }
     }
 
+    // ==================== 预热重试计数 ====================
+
+    @Override
+    public int incrementWarmupRetryCount(Long activityId) {
+        String key = RedisKeyConstants.seckillWarmupRetryKey(activityId);
+        Long count = stringRedisTemplate.opsForValue().increment(key);
+        if (count != null && count == 1) {
+            // 首次初始化设置 TTL，避免残留 key
+            stringRedisTemplate.expire(key, RedisKeyConstants.SECKILL_WARMUP_RETRY_TTL_MINUTES, TimeUnit.MINUTES);
+        }
+        return count == null ? 0 : count.intValue();
+    }
+
+    @Override
+    public void clearWarmupRetryCount(Long activityId) {
+        String key = RedisKeyConstants.seckillWarmupRetryKey(activityId);
+        stringRedisTemplate.delete(key);
+    }
+
     // ==================== 商品/活动缓存 ====================
 
     @Override

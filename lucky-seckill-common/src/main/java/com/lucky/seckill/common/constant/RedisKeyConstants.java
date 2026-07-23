@@ -70,6 +70,17 @@ public final class RedisKeyConstants {
     public static final String SECKILL_WARMUP_LOCK_KEY_PREFIX = "seckill:warmup:lock:";
 
     /**
+     * 活动预热重试计数：seckill:warmup:retry:{activityId}
+     * <p>
+     * 每次预热失败 +1，超过上限后停止重试，预热成功后清除。
+     * TTL 10 分钟，覆盖合理重试窗口后可自动清理。
+     */
+    public static final String SECKILL_WARMUP_RETRY_KEY_PREFIX = "seckill:warmup:retry:";
+
+    /** 预热重试计数 TTL（分钟），超过此时间未成功则自动清除 */
+    public static final long SECKILL_WARMUP_RETRY_TTL_MINUTES = 10;
+
+    /**
      * 秒杀回滚幂等标记：seckill:rollback:flag:{orderNo}
      */
     public static final String SECKILL_ROLLBACK_FLAG_KEY_PREFIX = "seckill:rollback:flag:";
@@ -100,6 +111,10 @@ public final class RedisKeyConstants {
 
     public static String seckillWarmupLockKey(Long activityId) {
         return SECKILL_WARMUP_LOCK_KEY_PREFIX + activityId;
+    }
+
+    public static String seckillWarmupRetryKey(Long activityId) {
+        return SECKILL_WARMUP_RETRY_KEY_PREFIX + activityId;
     }
 
     public static String seckillRollbackFlagKey(String orderNo) {

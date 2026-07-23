@@ -140,14 +140,32 @@ public class SeckillServiceImpl implements SeckillService {
                 .build());
     }
 
+    /**
+     * 带重试的 Lua 扣库存。
+     * <p>
+     * 两种重试场景：
+     * <ul>
+     *   <li><b>业务层竞争</b>（result == -1）：锁被其他请求占用，短暂重试</li>
+     *   <li><b>基础设施异常</b>（Redis 超时/断开等）：Lua 脚本未能执行，同样重试</li>
+     * </ul>
+     * 3 次全部失败返回 -1，上游当作"系统繁忙"处理。
+     */
     private int tryDeductStock(Long activityId, Long userId, Long goodsId, Long skuId, int limitNum) {
         for (int i = 0; i < MAX_RETRY; i++) {
-            int result = seckillRedisService.deductStock(
-                    activityId, userId, goodsId, skuId, BUY_NUM, limitNum);
-            if (result != -1) {
-                return result;
+            try {
+                int result = seckillRedisService.deductStock(
+                        activityId, userId, goodsId, skuId, BUY_NUM, limitNum);
+                if (result != -1) {
+                    return result; // 拿到明确结果（成功、限购、库存不足）
+                }
+                // -1：锁竞争，等待几毫秒后重试
+            } catch (Exception e) {
+                log.warn("==> Lua扣库存脚本异常，第{}次重试, activityId={}, goodsId={}, skuId={}",
+                        i + 1, activityId, goodsId, skuId, e);
             }
         }
+        log.error("==> Lua扣库存重试{}次全部失败, activityId={}, goodsId={}, skuId={}",
+                MAX_RETRY, activityId, goodsId, skuId);
         return -1;
     }
 

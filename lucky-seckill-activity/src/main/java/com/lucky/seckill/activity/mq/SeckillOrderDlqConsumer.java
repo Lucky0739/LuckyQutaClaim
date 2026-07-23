@@ -64,6 +64,9 @@ public class SeckillOrderDlqConsumer implements MessageListenerConcurrently {
     /** 最大重试次数（从 0 开始计数，>5 即至少重试了 6 次） */
     private static final int MAX_DLQ_RETRY = 5;
 
+    /** 订单过期检查延迟级别：14 = 10m（RocketMQ 预设） */
+    private static final int EXPIRE_CHECK_DELAY_LEVEL = 14;
+
     @Resource
     private SeckillOrderProcessor seckillOrderProcessor;
 
@@ -127,6 +130,10 @@ public class SeckillOrderDlqConsumer implements MessageListenerConcurrently {
             // 重试成功 → 更新 Redis 状态为待支付(0)
             updateOrderStatus(message.getUserId(), message.getOrderNo(),
                     SeckillOrderStatusEnum.PENDING_PAYMENT.getCode());
+
+            // 发送延迟消息，到期检查订单是否过期
+            sendExpireCheckMessage(message.getOrderNo());
+
             log.info("==> 【死信队列】重试成功, orderNo={}, retryCount={}",
                     message.getOrderNo(), retryCount);
             return ConsumeResult.ACK;
@@ -277,6 +284,21 @@ public class SeckillOrderDlqConsumer implements MessageListenerConcurrently {
             case 4 -> 6;   // 2m
             default -> 7;  // 3m+
         };
+    }
+
+    /**
+     * 发送订单过期检查延迟消息（10 分钟后首次检查，替代定时任务扫表）。
+     */
+    private void sendExpireCheckMessage(String orderNo) {
+        try {
+            String destination = MqConstants.ORDER_EXPIRE_CHECK_TOPIC + ":"
+                    + MqConstants.ORDER_EXPIRE_CHECK_TAG;
+            Message<String> msg = MessageBuilder.withPayload(orderNo).build();
+            rocketMQTemplate.syncSend(destination, msg, 3000, EXPIRE_CHECK_DELAY_LEVEL);
+            log.info("==> 已发送过期检查延迟消息, orderNo={}, delayLevel=10m", orderNo);
+        } catch (Exception e) {
+            log.error("==> 发送过期检查延迟消息失败, orderNo={}", orderNo, e);
+        }
     }
 
     /**

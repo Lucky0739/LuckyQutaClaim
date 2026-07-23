@@ -40,6 +40,16 @@ public interface SeckillRedisService {
     void supplementGoodsStock(Long activityId, SeckillGoods goods);
 
     /**
+     * 递增预热重试次数并返回最新值（首次调用自动初始化，带 TTL）
+     */
+    int incrementWarmupRetryCount(Long activityId);
+
+    /**
+     * 清除预热重试计数（预热成功后调用）
+     */
+    void clearWarmupRetryCount(Long activityId);
+
+    /**
      * 缓存秒杀商品信息到 Redis
      */
     void cacheSeckillGoods(SeckillGoods goods);

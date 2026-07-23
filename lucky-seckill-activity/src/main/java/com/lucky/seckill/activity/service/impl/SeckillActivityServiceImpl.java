@@ -157,5 +157,7 @@ public class SeckillActivityServiceImpl implements SeckillActivityService {
                 SeckillActivityStatusEnum.IN_PROGRESS.getCode(),
                 now
         );
+        // 预热成功，清除重试计数
+        seckillRedisService.clearWarmupRetryCount(activity.getId());
     }
 }
