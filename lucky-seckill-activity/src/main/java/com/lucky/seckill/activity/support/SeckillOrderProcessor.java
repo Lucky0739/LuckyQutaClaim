@@ -7,15 +7,18 @@ import com.lucky.seckill.activity.mapper.SeckillOrderMapper;
 import com.lucky.seckill.activity.model.entity.SeckillGoods;
 import com.lucky.seckill.activity.model.entity.SeckillOrder;
 import com.lucky.seckill.activity.service.SeckillRedisService;
+import com.lucky.seckill.common.constant.RedisKeyConstants;
 import com.lucky.seckill.common.exception.NonRetryableException;
 import com.lucky.seckill.common.exception.RetryableException;
 import com.lucky.seckill.common.model.entity.SeckillOrderMessage;
 import jakarta.annotation.Resource;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.data.redis.core.StringRedisTemplate;
 import org.springframework.stereotype.Component;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.time.LocalDateTime;
+import java.util.concurrent.TimeUnit;
 
 /**
  * 秒杀订单创建处理器（主消费者与 DLQ 消费者共享逻辑）。
@@ -42,9 +45,21 @@ public class SeckillOrderProcessor {
     @Resource
     private SeckillRedisService seckillRedisService;
 
+    @Resource
+    private StringRedisTemplate stringRedisTemplate;
+
+    /** Redis 消费标记前缀，TTL 与订单状态 key 一致 */
+    private static final String ORDER_CONSUMED_PREFIX = "seckill:order:consumed:";
+
     /**
      * 创建秒杀订单，受事务保护。
      * <p>
+     * 幂等策略（Redis → MySQL 两级检查）：
+     * <ol>
+     *   <li>先查 Redis 消费标记 key，命中直接跳过</li>
+     *   <li>Redis miss → 查 MySQL orderNo 唯一索引，命中则回填 Redis 标记</li>
+     *   <li>都 miss → 执行创建，成功后写 Redis 消费标记</li>
+     * </ol>
      * 该方法可被重复调用（主消费者 / DLQ 消费者），通过 orderNo 幂等。
      *
      * @param message 秒杀订单消息
@@ -55,10 +70,9 @@ public class SeckillOrderProcessor {
     public void createOrder(SeckillOrderMessage message) {
         String orderNo = message.getOrderNo();
 
-        // ========== 1. 幂等检查：订单已存在则直接返回 ==========
-        SeckillOrder existOrder = seckillOrderMapper.selectByOrderNo(orderNo);
-        if (existOrder != null) {
-            log.warn("==> 秒杀订单已存在，幂等跳过, orderNo={}", orderNo);
+        // ========== 1. 幂等检查：Redis 消费标记 → MySQL 兜底 ==========
+        if (isOrderConsumed(message.getUserId(), orderNo)) {
+            log.warn("==> 秒杀订单已消费，幂等跳过, orderNo={}", orderNo);
             return;
         }
 
@@ -116,6 +130,9 @@ public class SeckillOrderProcessor {
             throw new RetryableException("订单插入失败: " + e.getMessage(), orderNo, e);
         }
 
+        // 订单落库成功 → 写 Redis 消费标记，后续重复消费直接命中跳过
+        markOrderConsumed(orderNo);
+
         log.info("==> 秒杀订单创建成功, orderNo={}, orderId={}", orderNo, order.getId());
     }
 
@@ -134,6 +151,50 @@ public class SeckillOrderProcessor {
             );
         } catch (Exception e) {
             log.error("==> 回滚 Redis 库存异常, orderNo={}", message.getOrderNo(), e);
+        }
+    }
+
+    // ==================== 消费幂等：Redis → MySQL 两级检查 ====================
+
+    /**
+     * 判断订单是否已被消费。
+     * <ol>
+     *   <li>Redis 消费标记命中 → 直接返回 true（热路径，O(1)）</li>
+     *   <li>Redis miss → MySQL 查 orderNo 唯一索引（兜底，防 Redis 丢失）</li>
+     *   <li>MySQL 命中 → 回填 Redis 标记，返回 true</li>
+     *   <li>都 miss → 返回 false，执行创建流程</li>
+     * </ol>
+     */
+    private boolean isOrderConsumed(Long userId, String orderNo) {
+        // 第一级：Redis 消费标记
+        String consumedKey = ORDER_CONSUMED_PREFIX + orderNo;
+        if ("1".equals(stringRedisTemplate.opsForValue().get(consumedKey))) {
+            return true;
+        }
+
+        // 第二级：MySQL 唯一索引兜底
+        if (seckillOrderMapper.selectByOrderNo(orderNo) != null) {
+            // MySQL 有但 Redis 没有 → 回填 Redis 标记（可能是 Redis 超时或重启导致丢失）
+            markOrderConsumed(orderNo);
+            return true;
+        }
+
+        return false;
+    }
+
+    /**
+     * 标记订单已被消费（写入 Redis，TTL 30 分钟）。
+     */
+    private void markOrderConsumed(String orderNo) {
+        try {
+            String consumedKey = ORDER_CONSUMED_PREFIX + orderNo;
+            stringRedisTemplate.opsForValue().set(
+                    consumedKey, "1",
+                    RedisKeyConstants.SECKILL_ORDER_STATUS_TTL_MINUTES,
+                    TimeUnit.MINUTES);
+        } catch (Exception e) {
+            // Redis 写入失败不影响主流程，下次靠 MySQL 兜底
+            log.warn("==> 写 Redis 消费标记失败, orderNo={}", orderNo, e);
         }
     }
 }
