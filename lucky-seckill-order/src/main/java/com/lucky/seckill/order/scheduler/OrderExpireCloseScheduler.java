@@ -7,8 +7,13 @@ import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Component;
 
 /**
- * 待支付订单超时自动关闭定时任务
+ * 待支付订单超时自动关闭定时任务（已废弃，改为 RocketMQ 延迟队列实现）。
+ * <p>
+ * 保留作为兜底方案：极端情况下如果延迟消息全部丢失，可重新启用此定时任务批量修复。
+ *
+ * @deprecated 已被 {@link com.lucky.seckill.order.mq.OrderExpireConsumer} 替代
  */
+@Deprecated
 @Component
 @Slf4j
 public class OrderExpireCloseScheduler {
@@ -16,7 +21,11 @@ public class OrderExpireCloseScheduler {
     @Resource
     private OrderService orderService;
 
-    @Scheduled(fixedDelay = 30000)
+    /**
+     * 定时扫表已禁用，改为 RocketMQ 延迟队列按单精准触发。
+     * 如需重新启用：取消下面注释并将 fixedDelay 调整回 30000。
+     */
+    // @Scheduled(fixedDelay = 30000)
     public void closeExpiredOrders() {
         try {
             orderService.closeExpiredOrders();

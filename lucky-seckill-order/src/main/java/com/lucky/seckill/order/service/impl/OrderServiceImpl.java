@@ -69,6 +69,9 @@ public class OrderServiceImpl implements OrderService {
     @Resource
     private OrderGlobalTransactionService orderGlobalTransactionService;
 
+    @Resource
+    private com.lucky.seckill.order.mq.OrderExpireConsumer orderExpireConsumer;
+
     /**
      * 创建订单（下单）
      */
@@ -176,6 +179,9 @@ public class OrderServiceImpl implements OrderService {
                 .build();
 
         orderGlobalTransactionService.lockStockAndInsertOrder(order, skuId, goodsNum);
+
+        // 发送延迟消息，到期检查订单是否过期（替代 OrderExpireCloseScheduler 定时扫表）
+        orderExpireConsumer.sendExpireCheckMessage(orderNo);
 
         log.info("==> 创建订单成功，orderId: {}, orderNo: {}", orderId, orderNo);
         return Response.success(orderId);

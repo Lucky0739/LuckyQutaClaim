@@ -20,4 +20,8 @@ public class MqConstants {
     /** 秒杀订单死信队列 */
     public static final String SECKILL_ORDER_DLQ_TOPIC = "seckill-order-dlq-topic";
     public static final String SECKILL_ORDER_DLQ_TAG = "seckill-order-dlq";
+
+    /** 订单过期检查（延迟队列，替代定时任务扫表） */
+    public static final String ORDER_EXPIRE_CHECK_TOPIC = "order-expire-check-topic";
+    public static final String ORDER_EXPIRE_CHECK_TAG = "order-expire-check";
 }

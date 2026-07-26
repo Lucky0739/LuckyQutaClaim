@@ -19,10 +19,13 @@ import com.lucky.seckill.activity.service.SeckillService;
 import com.lucky.seckill.common.aspect.ApiOperationLog;
 import com.lucky.seckill.common.model.entity.PageResult;
 import com.lucky.seckill.common.utils.Response;
+import cn.dev33.satoken.stp.StpUtil;
 import jakarta.annotation.Resource;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.http.MediaType;
 import org.springframework.validation.annotation.Validated;
 import org.springframework.web.bind.annotation.*;
+import org.springframework.web.servlet.mvc.method.annotation.SseEmitter;
 
 import java.util.List;
 
@@ -83,6 +86,14 @@ public class SeckillController {
     @ApiOperationLog(description = "查询秒杀订单异步处理结果（前端轮询）")
     public Response<SeckillResultVO> getSeckillResult(@RequestParam("orderNo") String orderNo) {
         return seckillService.getSeckillResult(orderNo);
+    }
+
+    @SaCheckRole("user")
+    @GetMapping(value = "/seckill/result/stream", produces = MediaType.TEXT_EVENT_STREAM_VALUE)
+    @ApiOperationLog(description = "SSE实时推送秒杀订单处理结果（替代前端轮询）")
+    public SseEmitter streamSeckillResult(@RequestParam("orderNo") String orderNo) {
+        Long userId = StpUtil.getLoginIdAsLong();
+        return seckillService.streamSeckillResult(orderNo, userId);
     }
 
     @SaCheckRole("merchant")

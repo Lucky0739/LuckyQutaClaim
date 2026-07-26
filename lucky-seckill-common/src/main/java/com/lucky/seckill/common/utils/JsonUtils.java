@@ -33,5 +33,17 @@ public class JsonUtils {
         return OBJECT_MAPPER.writeValueAsString(obj);
     }
 
+    /**
+     * 将 JSON 字符串解析为指定类型的对象
+     * @param json  JSON 字符串
+     * @param clazz 目标类型
+     * @param <T>   泛型
+     * @return 解析后的对象
+     */
+    @SneakyThrows
+    public static <T> T parseObject(String json, Class<T> clazz) {
+        return OBJECT_MAPPER.readValue(json, clazz);
+    }
+
 }
 
