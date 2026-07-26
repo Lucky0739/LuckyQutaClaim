@@ -3,6 +3,7 @@ package com.lucky.seckill.activity.service;
 import com.lucky.seckill.activity.model.dto.SeckillRequest;
 import com.lucky.seckill.activity.model.vo.SeckillResultVO;
 import com.lucky.seckill.common.utils.Response;
+import org.springframework.web.servlet.mvc.method.annotation.SseEmitter;
 
 public interface SeckillService {
 
@@ -18,4 +19,11 @@ public interface SeckillService {
      * Redis key 过期（超过30分钟）返回 null → 前端展示"订单创建超时"。
      */
     Response<SeckillResultVO> getSeckillResult(String orderNo);
+
+    /**
+     * SSE 实时推送秒杀订单处理结果（替代前端轮询）。
+     * <p>
+     * 服务端每 500ms 检查 Redis 状态，变更时主动推送，最长 60s 超时。
+     */
+    SseEmitter streamSeckillResult(String orderNo, Long userId);
 }

@@ -73,6 +73,9 @@ public class SeckillOrderConsumer implements MessageListenerConcurrently {
     @Resource
     private StringRedisTemplate stringRedisTemplate;
 
+    /** 主队列快速重试次数上限（超过后升级到 DLQ） */
+    private static final int MAX_MAIN_RETRY = 2;
+
     /** 订单过期检查延迟级别：14 = 10m（RocketMQ 预设） */
     private static final int EXPIRE_CHECK_DELAY_LEVEL = 14;
 
@@ -123,17 +126,65 @@ public class SeckillOrderConsumer implements MessageListenerConcurrently {
                     message.getOrderNo(), e.getMessage());
 
         } catch (RetryableException e) {
-            // ===== 瞬时失败 → 升级到 DLQ 延迟重试 =====
-            log.warn("==> 瞬时失败，升级到DLQ延迟重试, orderNo={}, reason={}",
-                    message.getOrderNo(), e.getMessage());
-            escalateToDlq(message);
+            // ===== 瞬时失败 → 主队列快速重试 → 耗尽后升级 DLQ =====
+            handleRetryableFailure(message, e.getMessage());
 
         } catch (Exception e) {
-            // ===== 未知异常 → 保守策略，升级到 DLQ =====
-            log.error("==> 订单创建失败(未知异常), orderNo={}",
-                    message.getOrderNo(), e);
+            // ===== 未知异常 → 保守策略，同可重试处理 =====
+            handleRetryableFailure(message, e.getMessage());
+        }
+    }
+
+    /**
+     * 可重试失败处理：先在主队列快速重试 2 次（10s、30s），
+     * 还失败再升级到 DLQ 长延迟重试。
+     */
+    private void handleRetryableFailure(SeckillOrderMessage message, String reason) {
+        int mainRetryCount = message.getRetryCount() == null ? 0 : message.getRetryCount();
+
+        if (mainRetryCount < MAX_MAIN_RETRY) {
+            log.warn("==> 主队列第{}次重试, orderNo={}, reason={}",
+                    mainRetryCount + 1, message.getOrderNo(), reason);
+            retryInMainQueue(message);
+        } else {
+            log.warn("==> 主队列重试耗尽，升级到DLQ, orderNo={}, retryCount={}, reason={}",
+                    message.getOrderNo(), mainRetryCount, reason);
             escalateToDlq(message);
         }
+    }
+
+    /**
+     * 主队列快速重试：递增重试次数，带回延迟重新投递到主队列。
+     */
+    private void retryInMainQueue(SeckillOrderMessage message) {
+        try {
+            int retryCount = message.getRetryCount() == null ? 0 : message.getRetryCount();
+            message.setRetryCount(retryCount + 1);
+
+            String destination = String.format("%s:%s",
+                    MqConstants.SECKILL_ORDER_TOPIC, MqConstants.SECKILL_ORDER_TAG);
+            int delayLevel = selectMainDelayLevel(message.getRetryCount());
+
+            Message<SeckillOrderMessage> msg = MessageBuilder.withPayload(message).build();
+            SendResult result = rocketMQTemplate.syncSend(destination, msg, 3000, delayLevel);
+
+            log.info("==> 主队列重试已投递, orderNo={}, retryCount={}, delayLevel={}, result={}",
+                    message.getOrderNo(), message.getRetryCount(), delayLevel, result);
+        } catch (Exception e) {
+            log.error("==> 主队列重试投递失败，降级到DLQ, orderNo={}", message.getOrderNo(), e);
+            escalateToDlq(message);
+        }
+    }
+
+    /**
+     * 主队列快速重试延迟级别（短退避）。
+     */
+    private int selectMainDelayLevel(int retryCount) {
+        return switch (retryCount) {
+            case 1 -> 3;   // 10s
+            case 2 -> 4;   // 30s
+            default -> 3;
+        };
     }
 
     /**

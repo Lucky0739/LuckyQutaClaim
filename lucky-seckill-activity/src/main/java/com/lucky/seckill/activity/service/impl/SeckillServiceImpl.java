@@ -22,7 +22,12 @@ import lombok.extern.slf4j.Slf4j;
 import org.springframework.data.redis.core.StringRedisTemplate;
 import org.springframework.stereotype.Service;
 
+import org.springframework.web.servlet.mvc.method.annotation.SseEmitter;
+
+import java.io.IOException;
 import java.time.LocalDateTime;
+import java.util.concurrent.Executors;
+import java.util.concurrent.ScheduledExecutorService;
 import java.util.concurrent.TimeUnit;
 
 @Service
@@ -217,5 +222,110 @@ public class SeckillServiceImpl implements SeckillService {
                 .status(status)
                 .message(message)
                 .build());
+    }
+
+    // ==================== SSE 实时推送秒杀结果 ====================
+
+    private static final long SSE_TIMEOUT_MS = 60_000L;
+    private static final long POLL_INTERVAL_MS = 500L;
+    private static final ScheduledExecutorService SSE_EXECUTOR =
+            Executors.newScheduledThreadPool(4, r -> {
+                Thread t = new Thread(r, "sse-seckill-result");
+                t.setDaemon(true);
+                return t;
+            });
+
+    @Override
+    public SseEmitter streamSeckillResult(String orderNo, Long userId) {
+        SseEmitter emitter = new SseEmitter(SSE_TIMEOUT_MS);
+        String redisKey = RedisKeyConstants.seckillOrderStatusKey(userId, orderNo);
+
+        // 定时检查 Redis 状态，变更时推送
+        SSE_EXECUTOR.execute(() -> {
+            try {
+                String lastStatus = null;
+                long deadline = System.currentTimeMillis() + SSE_TIMEOUT_MS;
+
+                while (System.currentTimeMillis() < deadline) {
+                    String statusStr = stringRedisTemplate.opsForValue().get(redisKey);
+
+                    // 状态变更或首次检查
+                    if (statusStr != null && !statusStr.equals(lastStatus)) {
+                        lastStatus = statusStr;
+                        int status = Integer.parseInt(statusStr);
+                        String message = resolveStatusMessage(status);
+
+                        SeckillResultVO vo = SeckillResultVO.builder()
+                                .orderNo(orderNo)
+                                .status(status)
+                                .message(message)
+                                .build();
+                        emitter.send(SseEmitter.event()
+                                .name("result")
+                                .data(vo));
+
+                        // 终态（成功或失败）→ 关闭连接
+                        if (status != RedisKeyConstants.ORDER_STATUS_PROCESSING) {
+                            emitter.complete();
+                            return;
+                        }
+                    }
+
+                    // key 不存在 → 可能 TTL 过期
+                    if (statusStr == null && lastStatus != null) {
+                        emitter.send(SseEmitter.event()
+                                .name("result")
+                                .data(SeckillResultVO.builder()
+                                        .orderNo(orderNo)
+                                        .status(null)
+                                        .message("订单结果已过期，请查看订单列表确认")
+                                        .build()));
+                        emitter.complete();
+                        return;
+                    }
+
+                    Thread.sleep(POLL_INTERVAL_MS);
+                }
+
+                // 超时：推送当前状态
+                String finalStatus = stringRedisTemplate.opsForValue().get(redisKey);
+                if (finalStatus != null) {
+                    int status = Integer.parseInt(finalStatus);
+                    emitter.send(SseEmitter.event()
+                            .name("result")
+                            .data(SeckillResultVO.builder()
+                                    .orderNo(orderNo)
+                                    .status(status)
+                                    .message(resolveStatusMessage(status))
+                                    .build()));
+                }
+                emitter.complete();
+
+            } catch (InterruptedException e) {
+                Thread.currentThread().interrupt();
+                emitter.complete();
+            } catch (IOException e) {
+                emitter.completeWithError(e);
+            } catch (Exception e) {
+                log.error("==> SSE推送秒杀结果异常, orderNo={}", orderNo, e);
+                emitter.completeWithError(e);
+            }
+        });
+
+        emitter.onTimeout(emitter::complete);
+        emitter.onError(ex -> {
+            log.warn("==> SSE连接异常, orderNo={}", orderNo, ex);
+        });
+
+        return emitter;
+    }
+
+    private String resolveStatusMessage(int status) {
+        return switch (status) {
+            case RedisKeyConstants.ORDER_STATUS_PROCESSING -> "订单创建中，请稍候...";
+            case 0 -> "订单创建成功，请尽快支付";
+            case RedisKeyConstants.ORDER_STATUS_FAILED -> "订单创建失败，商品已返还库存";
+            default -> "未知状态";
+        };
     }
 }
