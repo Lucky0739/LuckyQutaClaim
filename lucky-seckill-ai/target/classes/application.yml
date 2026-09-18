@@ -10,6 +10,9 @@ spring:
       chat:
         options:
           model: qwen3.7-max
+      embedding:
+        options:
+          model: text-embedding-v3
   cloud:
     nacos:
       discovery:
@@ -26,7 +29,7 @@ seata:
   enabled: true
   application-id: ${spring.application.name}
   tx-service-group: lucky_seckill_tx_group
-  enable-auto-data-source-proxy: true
+  enable-auto-data-source-proxy: false
   data-source-proxy-mode: AT
   service:
     vgroup-mapping:
@@ -36,6 +39,26 @@ seata:
 
 server:
   port: 8090
+
+lucky-seckill:
+  ai:
+    chat-memory:
+      # 滑动窗口：最多保留的消息条数（约 10 轮问答）
+      max-messages: 20
+      # Redis 会话记忆过期时间（小时）
+      expire-hours: 24
+    vector-store:
+      pgvector:
+        host: ${PGVECTOR_HOST:127.0.0.1}
+        port: ${PGVECTOR_PORT:5432}
+        database: ${PGVECTOR_DATABASE:seckill_mall_vectordb}
+        username: ${PGVECTOR_USERNAME:postgres}
+        password: ${PGVECTOR_PASSWORD:yang2004.}
+        table-name: ai_knowledge_base
+        dimensions: 1024
+        index-type: HNSW
+        distance-type: COSINE_DISTANCE
+
 logging:
   level:
     root: INFO

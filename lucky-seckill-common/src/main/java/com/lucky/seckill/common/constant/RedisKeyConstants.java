@@ -261,7 +261,16 @@ public final class RedisKeyConstants {
      */
     public static final String AI_CHAT_MEMORY_KEY_PREFIX = "ai:chat:memory:";
 
+    /**
+     * AI 客服会话摘要：ai:chat:summary:{chatId}
+     */
+    public static final String AI_CHAT_SUMMARY_KEY_PREFIX = "ai:chat:summary:";
+
     public static String aiChatMemoryKey(String chatId) {
         return AI_CHAT_MEMORY_KEY_PREFIX + chatId;
+    }
+
+    public static String aiChatSummaryKey(String chatId) {
+        return AI_CHAT_SUMMARY_KEY_PREFIX + chatId;
     }
 }

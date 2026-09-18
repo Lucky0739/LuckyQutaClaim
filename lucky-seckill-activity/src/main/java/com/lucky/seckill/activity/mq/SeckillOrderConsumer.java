@@ -160,14 +160,11 @@ public class SeckillOrderConsumer implements MessageListenerConcurrently {
         try {
             int retryCount = message.getRetryCount() == null ? 0 : message.getRetryCount();
             message.setRetryCount(retryCount + 1);
-
             String destination = String.format("%s:%s",
                     MqConstants.SECKILL_ORDER_TOPIC, MqConstants.SECKILL_ORDER_TAG);
             int delayLevel = selectMainDelayLevel(message.getRetryCount());
-
             Message<SeckillOrderMessage> msg = MessageBuilder.withPayload(message).build();
             SendResult result = rocketMQTemplate.syncSend(destination, msg, 3000, delayLevel);
-
             log.info("==> 主队列重试已投递, orderNo={}, retryCount={}, delayLevel={}, result={}",
                     message.getOrderNo(), message.getRetryCount(), delayLevel, result);
         } catch (Exception e) {

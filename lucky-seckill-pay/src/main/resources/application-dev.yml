@@ -1,8 +1,4 @@
 spring:
-  cloud:
-    nacos:
-      discovery:
-        ip: 127.0.0.1
   # 本地开发环境 MySQL 数据源配置
   datasource:
     # 连接地址：数据库名为 lucky_seckill
@@ -55,6 +51,9 @@ spring:
           max-wait: 3000
 
   cloud:
+    nacos:
+      discovery:
+        ip: 127.0.0.1
     openfeign:
       client:
         config:

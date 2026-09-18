@@ -10,6 +10,8 @@ import org.springframework.core.io.ClassPathResource;
 import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.stereotype.Service;
 
+import org.springframework.ai.transformer.splitter.TokenTextSplitter;
+
 import java.io.BufferedReader;
 import java.io.InputStreamReader;
 import java.nio.charset.StandardCharsets;
@@ -68,6 +70,10 @@ public class KnowledgeBaseService {
 
     private static final int DASHSCOPE_EMBEDDING_BATCH_LIMIT = 10;
 
+    /** TokenTextSplitter 兜底切块：最大 800 token，重叠 100 token，防长文档被稀释 */
+    private static final int CHUNK_MAX_TOKENS = 800;
+    private static final int CHUNK_OVERLAP_TOKENS = 100;
+
     private void loadAndIndexDocuments() {
         List<Document> documents = new ArrayList<>();
 
@@ -79,16 +85,29 @@ public class KnowledgeBaseService {
             return;
         }
 
-        for (int i = 0; i < documents.size(); i += DASHSCOPE_EMBEDDING_BATCH_LIMIT) {
-            int end = Math.min(i + DASHSCOPE_EMBEDDING_BATCH_LIMIT, documents.size());
-            List<Document> batch = documents.subList(i, end);
+        // 按标题切块后，再按 token 数兜底切分（防 5000 字长段落变单个 chunk）
+        // TokenTextSplitter(int chunkSize, int minChunkSizeChars, int minChunkLengthToEmbed,
+        //                   int maxNumChunks, boolean keepSeparator)
+        TokenTextSplitter splitter = new TokenTextSplitter(
+                CHUNK_MAX_TOKENS,        // 800 token
+                CHUNK_OVERLAP_TOKENS,    // 100 token 重叠
+                50,                       // 最小嵌入长度
+                10000,                    // 最大块数
+                true);                    // 保留分隔符
+        List<Document> finalChunks = splitter.apply(documents);
+        log.info("==> TokenTextSplitter 兜底切分：{} 个原始块 → {} 个最终块",
+                documents.size(), finalChunks.size());
+
+        for (int i = 0; i < finalChunks.size(); i += DASHSCOPE_EMBEDDING_BATCH_LIMIT) {
+            int end = Math.min(i + DASHSCOPE_EMBEDDING_BATCH_LIMIT, finalChunks.size());
+            List<Document> batch = finalChunks.subList(i, end);
             vectorStore.add(batch);
             log.info("==> 批次 {}/{} 写入完成 ({} 条)", (i / DASHSCOPE_EMBEDDING_BATCH_LIMIT) + 1,
-                    (documents.size() + DASHSCOPE_EMBEDDING_BATCH_LIMIT - 1) / DASHSCOPE_EMBEDDING_BATCH_LIMIT,
+                    (finalChunks.size() + DASHSCOPE_EMBEDDING_BATCH_LIMIT - 1) / DASHSCOPE_EMBEDDING_BATCH_LIMIT,
                     batch.size());
         }
 
-        chunkCount = documents.size();
+        chunkCount = finalChunks.size();
         log.info("==> RAG 知识库索引完成，共 {} 个文档块写入 pgvector", chunkCount);
     }
 

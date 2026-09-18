@@ -84,7 +84,27 @@ public class RedisChatMemoryRepository implements ChatMemoryRepository {
     public void deleteByConversationId(String conversationId) {
         if (StringUtils.hasText(conversationId)) {
             stringRedisTemplate.delete(RedisKeyConstants.aiChatMemoryKey(conversationId));
+            stringRedisTemplate.delete(RedisKeyConstants.aiChatSummaryKey(conversationId));
         }
+    }
+
+    // ==================== 摘要（长短期记忆分层） ====================
+
+    public String getSummary(String conversationId) {
+        if (!StringUtils.hasText(conversationId)) {
+            return null;
+        }
+        return stringRedisTemplate.opsForValue()
+                .get(RedisKeyConstants.aiChatSummaryKey(conversationId));
+    }
+
+    public void saveSummary(String conversationId, String summary) {
+        if (!StringUtils.hasText(conversationId) || !StringUtils.hasText(summary)) {
+            return;
+        }
+        stringRedisTemplate.opsForValue().set(
+                RedisKeyConstants.aiChatSummaryKey(conversationId),
+                summary, expireHours, TimeUnit.HOURS);
     }
 
     private List<ChatMemoryRecord> toRecords(List<Message> messages) {

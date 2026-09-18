@@ -110,6 +110,8 @@ public class AiChatMemoryConfig {
                 .distanceType(distanceType)
                 .indexType(indexType)
                 .initializeSchema(true)
+                // Spring AI 1.0.0 PgVectorStore 暂不支持 similarityThreshold；
+                // 相似度过滤升级 AI 依赖版本后可加，当前靠 Prompt 自检兜底
                 .build();
     }
 

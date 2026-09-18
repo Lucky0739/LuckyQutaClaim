@@ -5,6 +5,7 @@ import com.lucky.seckill.goods.model.dto.GoodsRankStatDTO;
 import com.lucky.seckill.goods.model.entity.Goods;
 import org.apache.ibatis.annotations.Param;
 
+import java.time.LocalDateTime;
 import java.util.List;
 
 public interface GoodsMapper {
@@ -18,15 +19,15 @@ public interface GoodsMapper {
 
     int updateStatus(@Param("id") Long id,
                      @Param("status") Integer status,
-                     @Param("updateTime") java.time.LocalDateTime updateTime);
+                     @Param("updateTime") LocalDateTime updateTime);
 
     int updateAuditStatus(@Param("id") Long id,
                           @Param("auditStatus") Integer auditStatus,
-                          @Param("updateTime") java.time.LocalDateTime updateTime);
+                          @Param("updateTime")LocalDateTime updateTime);
 
     int updateCollectNum(@Param("id") Long id,
                          @Param("collectNum") Integer collectNum,
-                         @Param("updateTime") java.time.LocalDateTime updateTime);
+                         @Param("updateTime") LocalDateTime updateTime);
 
     /**
      * 已上架且审核通过的商品排行统计（用于 ZSet 全量重建）

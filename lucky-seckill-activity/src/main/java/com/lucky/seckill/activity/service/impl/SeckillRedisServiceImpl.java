@@ -64,7 +64,6 @@ public class SeckillRedisServiceImpl implements SeckillRedisService {
                 log.info("==> 活动 {} 已预热，跳过", activityId);
                 return;
             }
-
             // 缓存活动信息，避免秒杀时查 MySQL
             if (activity != null) {
                 cacheSeckillActivity(activity);
