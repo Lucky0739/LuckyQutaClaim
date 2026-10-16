@@ -1,9 +1,0 @@
-spring:
-  cloud:
-    nacos:
-      discovery:
-        ip: 127.0.0.1
-
-logging:
-  level:
-    org.springframework.cloud.loadbalancer.core.RoundRobinLoadBalancer: ERROR
