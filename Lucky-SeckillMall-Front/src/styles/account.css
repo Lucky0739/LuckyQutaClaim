@@ -1,0 +1,1043 @@
+/* ========== 页面布局 ========== */
+.account-page {
+  padding: 16px 0 48px;
+  background: #f4f4f4;
+}
+
+.account-page-inner {
+  width: var(--layout-width);
+  max-width: 100%;
+  margin: 0 auto;
+}
+
+/* 面包屑 */
+.account-breadcrumb {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 6px;
+  margin-bottom: 12px;
+  font-size: 12px;
+  color: #999;
+  line-height: 1.5;
+}
+
+.account-breadcrumb a {
+  color: #666;
+  transition: color 0.2s;
+}
+
+.account-breadcrumb a:hover {
+  color: var(--accent);
+}
+
+.account-breadcrumb-sep {
+  color: #ccc;
+  user-select: none;
+}
+
+.account-breadcrumb-current {
+  color: #333;
+}
+
+.account-container {
+  display: flex;
+  flex-direction: row;
+  flex-wrap: nowrap;
+  align-items: stretch;
+  min-height: 520px;
+  background: #fff;
+  border: 1px solid #e5e5e5;
+  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.04);
+}
+
+/* ========== 左侧导航 ========== */
+.account-sidebar {
+  width: 180px;
+  flex: 0 0 180px;
+  background: #fafafa;
+  border-right: 1px solid #eee;
+}
+
+.account-sidebar-head {
+  padding: 16px 16px 8px;
+  font-size: 16px;
+  font-weight: 600;
+  color: #333;
+  letter-spacing: 0.5px;
+}
+
+.account-nav {
+  padding: 0 0 16px;
+}
+
+.nav-group {
+  margin-bottom: 0;
+}
+
+.nav-group-title {
+  margin: 0;
+  padding: 8px 16px 6px;
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--accent);
+  letter-spacing: 0.5px;
+}
+
+.nav-item {
+  display: block;
+  padding: 8px 16px 8px 24px;
+  font-size: 12px;
+  color: #666;
+  line-height: 1.6;
+  border-left: 3px solid transparent;
+  transition: color 0.2s, background 0.2s, border-color 0.2s;
+}
+
+.nav-item:hover {
+  color: var(--accent);
+  background: #fff5eb;
+}
+
+.nav-item--active,
+.nav-item.router-link-active {
+  color: var(--accent);
+  font-weight: 600;
+  background: #fff5eb;
+  border-left-color: var(--accent);
+}
+
+.nav-item--danger {
+  color: #cf1322;
+}
+
+.nav-item--danger:hover {
+  color: #cf1322;
+  background: #fff1f0;
+}
+
+.nav-item--danger.nav-item--active,
+.nav-item--danger.router-link-active {
+  color: #cf1322;
+  background: #fff1f0;
+  border-left-color: #cf1322;
+}
+
+/* ========== 右侧内容区 ========== */
+.account-content {
+  flex: 1 1 auto;
+  min-width: 0;
+  background: #fff;
+}
+
+/* Tab 样式（淘宝下划线激活） */
+.account-tabs {
+  display: flex;
+  gap: 0;
+  padding: 0 24px;
+  border-bottom: 1px solid #e5e5e5;
+  background: #fff;
+}
+
+.account-tab {
+  padding: 14px 20px;
+  font-size: 14px;
+  color: #666;
+  border: none;
+  background: none;
+  cursor: pointer;
+  position: relative;
+  transition: color 0.2s;
+}
+
+.account-tab:hover {
+  color: var(--accent);
+}
+
+.account-tab.active {
+  color: var(--accent);
+  font-weight: 600;
+}
+
+.account-tab.active::after {
+  content: '';
+  position: absolute;
+  bottom: -1px;
+  left: 20px;
+  right: 20px;
+  height: 2px;
+  background: var(--accent);
+}
+
+/* 内容区域 */
+.account-panel {
+  padding: 24px 32px 40px;
+}
+
+.account-panel-title {
+  margin: 0 0 16px;
+  font-size: 14px;
+  font-weight: 600;
+  color: #333;
+}
+
+/* 蓝色提示条 */
+.account-tip-box {
+  display: flex;
+  align-items: flex-start;
+  gap: 8px;
+  background: #e8f4fd;
+  border: 1px solid #b3d8f5;
+  padding: 10px 14px;
+  margin-bottom: 24px;
+  font-size: 12px;
+  color: #333;
+  line-height: 1.8;
+}
+
+.account-tip-box em {
+  font-style: normal;
+  color: var(--accent);
+  font-weight: 600;
+}
+
+.account-tip-icon {
+  flex-shrink: 0;
+  width: 16px;
+  height: 16px;
+  margin-top: 3px;
+  border-radius: 50%;
+  background: #1890ff;
+  position: relative;
+}
+
+.account-tip-icon::after {
+  content: 'i';
+  position: absolute;
+  inset: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 11px;
+  font-weight: 700;
+  font-style: italic;
+  color: #fff;
+  line-height: 1;
+}
+
+/* ========== 表单 ========== */
+.account-form {
+  max-width: 520px;
+}
+
+.account-form-row {
+  display: flex;
+  align-items: flex-start;
+  margin-bottom: 18px;
+}
+
+.account-form-label {
+  width: 100px;
+  flex-shrink: 0;
+  padding-top: 7px;
+  font-size: 12px;
+  color: #333;
+  text-align: right;
+  padding-right: 16px;
+  line-height: 1.5;
+}
+
+.account-form-field {
+  flex: 1;
+  min-width: 0;
+}
+
+.account-input {
+  width: 100%;
+  max-width: 280px;
+  height: 32px;
+  padding: 0 10px;
+  border: 1px solid #ccc;
+  font-size: 12px;
+  color: #333;
+  outline: none;
+  transition: border-color 0.2s;
+}
+
+.account-input:focus {
+  border-color: var(--accent);
+}
+
+.account-input--error {
+  border-color: #f5222d;
+}
+
+.account-input--error:focus {
+  border-color: #f5222d;
+}
+
+.form-field-error {
+  margin: 6px 0 0;
+  font-size: 12px;
+  color: #f5222d;
+}
+
+.address-region-row {
+  display: flex;
+  gap: 8px;
+}
+
+.address-region-item {
+  flex: 1;
+  min-width: 0;
+}
+
+/* Element Plus 级联选择器主题色 */
+.el-cascader-node.in-active-path,
+.el-cascader-node.is-active,
+.el-cascader-node.is-selectable.in-checked-path {
+  color: var(--accent);
+  font-weight: 600;
+}
+
+.el-checkbox__input.is-checked .el-checkbox__inner,
+.el-checkbox__input.is-indeterminate .el-checkbox__inner {
+  background-color: var(--accent);
+  border-color: var(--accent);
+}
+
+.account-input:disabled,
+.account-input[readonly] {
+  background: #f5f5f5;
+  color: #999;
+  cursor: not-allowed;
+}
+
+.account-tip {
+  margin-top: 6px;
+  font-size: 12px;
+  color: #999;
+  line-height: 1.6;
+}
+
+.account-actions {
+  margin-top: 24px;
+  padding-left: 116px;
+}
+
+.account-btn {
+  min-width: 100px;
+  height: 35px;
+  padding: 0 20px;
+  border: 1px solid #d9d9d9;
+  background: #fff;
+  font-size: 14px;
+  color: #666;
+  cursor: pointer;
+  transition: all 0.2s;
+  letter-spacing: 1px;
+}
+
+.account-btn:hover:not(:disabled) {
+  color: var(--accent);
+  border-color: var(--accent);
+}
+
+.account-btn:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
+.account-btn-primary {
+  border-color: var(--accent);
+  background: var(--brand-gradient);
+  color: #fff;
+  font-weight: 500;
+}
+
+.account-btn-primary:hover:not(:disabled) {
+  background: var(--brand-gradient);
+  border-color: var(--accent);
+  color: #fff;
+}
+
+/* 消息提示 */
+.account-msg {
+  margin: 0 0 16px;
+  padding: 10px 14px;
+  font-size: 12px;
+  line-height: 1.6;
+}
+
+.account-msg--error {
+  background: #fff2f0;
+  color: #f5222d;
+  border: 1px solid #ffccc7;
+}
+
+.account-msg--success {
+  background: #f6ffed;
+  color: #52c41a;
+  border: 1px solid #b7eb8f;
+}
+
+/* ========== 头像 ========== */
+.profile-avatar-trigger {
+  position: relative;
+  display: inline-block;
+  padding: 0;
+  border: none;
+  background: none;
+  cursor: pointer;
+  border-radius: 50%;
+  overflow: hidden;
+}
+
+.profile-avatar-img {
+  display: block;
+  width: 80px;
+  height: 80px;
+  border-radius: 50%;
+  object-fit: cover;
+  border: 2px solid #f0f0f0;
+}
+
+.profile-avatar-img--placeholder {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: var(--brand-gradient);
+  color: #fff;
+  font-size: 28px;
+  font-weight: 600;
+}
+
+.profile-avatar-mask {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: rgba(0, 0, 0, 0.45);
+  color: #fff;
+  font-size: 12px;
+  opacity: 0;
+  transition: opacity 0.2s;
+}
+
+.profile-avatar-trigger:hover .profile-avatar-mask {
+  opacity: 1;
+}
+
+.avatar-upload {
+  display: flex;
+  align-items: center;
+  gap: 20px;
+}
+
+.avatar-preview {
+  display: block;
+  width: 180px;
+  height: 180px;
+  border-radius: 4px;
+  object-fit: cover;
+  border: 1px solid #e5e5e5;
+  background: #fafafa;
+}
+
+.avatar-preview--placeholder {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 180px;
+  height: 180px;
+  border-radius: 4px;
+  background: var(--brand-gradient);
+  color: #fff;
+  font-size: 56px;
+  font-weight: 600;
+  border: 1px solid #e5e5e5;
+}
+
+.avatar-upload-btn {
+  position: relative;
+  overflow: hidden;
+  display: inline-block;
+}
+
+.avatar-upload-btn input {
+  position: absolute;
+  inset: 0;
+  opacity: 0;
+  cursor: pointer;
+}
+
+/* 性别单选 */
+.gender-options {
+  display: flex;
+  gap: 24px;
+  padding-top: 6px;
+}
+
+.gender-option {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 12px;
+  color: #333;
+  cursor: pointer;
+}
+
+.gender-option input[type='radio'] {
+  accent-color: var(--accent);
+}
+
+/* ========== 收货地址 ========== */
+.address-page-tab {
+  cursor: default;
+}
+
+.address-panel {
+  padding-top: 20px;
+}
+
+.address-toolbar {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  margin-bottom: 20px;
+  padding-bottom: 16px;
+  border-bottom: 1px dashed #e5e5e5;
+}
+
+.address-add-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  height: 32px;
+  padding: 0 16px;
+  border: 1px solid var(--accent);
+  background: #fff;
+  font-size: 12px;
+  color: var(--accent);
+  cursor: pointer;
+  transition: all 0.2s;
+}
+
+.address-add-btn:hover {
+  background: #fff5eb;
+}
+
+.address-add-icon {
+  font-size: 18px;
+  font-weight: 300;
+  line-height: 1;
+}
+
+.address-toolbar-tip {
+  margin: 0;
+  font-size: 12px;
+  color: #999;
+}
+
+.address-loading {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  padding: 80px 0;
+  font-size: 12px;
+  color: #999;
+}
+
+.address-loading-dot {
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: var(--accent);
+  animation: address-pulse 1s ease-in-out infinite;
+}
+
+@keyframes address-pulse {
+  0%,
+  100% {
+    opacity: 0.3;
+    transform: scale(0.8);
+  }
+
+  50% {
+    opacity: 1;
+    transform: scale(1);
+  }
+}
+
+.address-list {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.address-item {
+  position: relative;
+  border: 1px solid #e5e5e5;
+  transition: border-color 0.2s, box-shadow 0.2s;
+}
+
+.address-item:hover {
+  border-color: #ffd6bf;
+  box-shadow: 0 2px 8px rgba(255, 80, 0, 0.08);
+}
+
+.address-item--default {
+  border-color: #ffd6bf;
+  background: #fffaf7;
+}
+
+.address-item--default::before {
+  content: '';
+  position: absolute;
+  left: 0;
+  top: 0;
+  bottom: 0;
+  width: 3px;
+  background: var(--accent);
+}
+
+.address-item-body {
+  padding: 16px 20px 12px;
+}
+
+.address-item-head {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 8px 16px;
+  margin-bottom: 8px;
+}
+
+.address-receiver {
+  font-size: 14px;
+  font-weight: 600;
+  color: #333;
+}
+
+.address-mobile {
+  font-size: 12px;
+  color: #666;
+}
+
+.address-default-tag {
+  padding: 0 6px;
+  border: 1px solid var(--accent);
+  background: #fff;
+  color: var(--accent);
+  font-size: 12px;
+  line-height: 18px;
+}
+
+.address-detail {
+  margin: 0;
+  font-size: 12px;
+  color: #666;
+  line-height: 1.8;
+}
+
+.address-item-footer {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 10px 20px;
+  border-top: 1px solid #f0f0f0;
+  background: #fafafa;
+}
+
+.address-item--default .address-item-footer {
+  background: #fff5f0;
+  border-top-color: #ffe8dc;
+}
+
+.address-item-default {
+  display: flex;
+  align-items: center;
+}
+
+.address-default-label {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 0;
+  border: none;
+  background: none;
+  font-size: 12px;
+  color: #666;
+  cursor: pointer;
+  transition: color 0.2s;
+}
+
+.address-default-label:hover {
+  color: var(--accent);
+}
+
+.address-default-label--active {
+  color: var(--accent);
+  cursor: default;
+}
+
+.address-radio {
+  display: inline-block;
+  width: 14px;
+  height: 14px;
+  border: 1px solid #ccc;
+  border-radius: 50%;
+  background: #fff;
+  position: relative;
+  flex-shrink: 0;
+}
+
+.address-radio--checked {
+  border-color: var(--accent);
+}
+
+.address-radio--checked::after {
+  content: '';
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  width: 6px;
+  height: 6px;
+  margin: -3px 0 0 -3px;
+  border-radius: 50%;
+  background: var(--accent);
+}
+
+.address-item-actions {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.address-action {
+  padding: 0;
+  border: none;
+  background: none;
+  font-size: 12px;
+  color: #666;
+  cursor: pointer;
+  transition: color 0.2s;
+}
+
+.address-action:hover {
+  color: var(--accent);
+}
+
+.address-action:disabled {
+  color: #bbb;
+  cursor: not-allowed;
+}
+
+.address-action-divider {
+  font-size: 12px;
+  color: #ddd;
+  user-select: none;
+}
+
+/* 空状态 */
+.address-empty {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  padding: 72px 0 56px;
+  text-align: center;
+}
+
+.address-empty-icon {
+  width: 64px;
+  height: 64px;
+  margin-bottom: 16px;
+  background: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64' fill='none'%3E%3Cpath d='M32 8c-8.8 0-16 7.2-16 16 0 12 16 28 16 28s16-16 16-28c0-8.8-7.2-16-16-16z' stroke='%23ddd' stroke-width='2' fill='%23f5f5f5'/%3E%3Ccircle cx='32' cy='24' r='6' fill='%23ddd'/%3E%3C/svg%3E") center / contain no-repeat;
+}
+
+.address-empty-icon--warn {
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64' fill='none'%3E%3Ccircle cx='32' cy='32' r='28' stroke='%23faad14' stroke-width='2' fill='%23fffbe6'/%3E%3Cpath d='M32 20v18M32 44v2' stroke='%23faad14' stroke-width='3' stroke-linecap='round'/%3E%3C/svg%3E");
+}
+
+.address-empty-text {
+  margin: 0 0 20px;
+  font-size: 12px;
+  color: #999;
+}
+
+/* 新增成功 Toast */
+.address-success-toast {
+  position: fixed;
+  top: 80px;
+  left: 50%;
+  z-index: 1200;
+  transform: translateX(-50%);
+  min-width: 200px;
+  padding: 12px 24px;
+  background: rgba(0, 0, 0, 0.75);
+  color: #fff;
+  font-size: 14px;
+  text-align: center;
+  border-radius: 4px;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+  pointer-events: none;
+}
+
+.address-toast-fade-enter-active,
+.address-toast-fade-leave-active {
+  transition: opacity 0.3s ease, transform 0.3s ease;
+}
+
+.address-toast-fade-enter-from,
+.address-toast-fade-leave-to {
+  opacity: 0;
+  transform: translateX(-50%) translateY(-12px);
+}
+
+/* ========== 地址弹窗 ========== */
+.address-modal-mask {
+  position: fixed;
+  inset: 0;
+  z-index: 1000;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: rgba(0, 0, 0, 0.45);
+  padding: 20px;
+}
+
+.address-modal {
+  display: flex;
+  flex-direction: column;
+  width: 100%;
+  max-width: 560px;
+  max-height: calc(100vh - 40px);
+  background: #fff;
+  overflow: hidden;
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.15);
+}
+
+.address-modal-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 14px 20px;
+  border-bottom: 1px solid #f0f0f0;
+  background: #fafafa;
+}
+
+.address-modal-title {
+  margin: 0;
+  font-size: 16px;
+  font-weight: 600;
+  color: #333;
+}
+
+.address-modal-close {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 28px;
+  height: 28px;
+  padding: 0;
+  border: none;
+  background: none;
+  font-size: 22px;
+  line-height: 1;
+  color: #999;
+  cursor: pointer;
+  transition: all 0.2s;
+}
+
+.address-modal-close:hover {
+  color: #333;
+  background: #eee;
+}
+
+.address-modal-body {
+  flex: 1;
+  overflow-y: auto;
+  padding: 20px 24px 8px;
+}
+
+.address-modal-body .account-form-row {
+  margin-bottom: 16px;
+}
+
+.address-modal-body .account-form-label {
+  width: 90px;
+}
+
+.address-required {
+  color: var(--accent);
+  margin-right: 2px;
+}
+
+.account-textarea {
+  width: 100%;
+  min-height: 72px;
+  padding: 8px 10px;
+  border: 1px solid #ccc;
+  font-size: 12px;
+  color: #333;
+  line-height: 1.5;
+  resize: vertical;
+  outline: none;
+  transition: border-color 0.2s;
+  font-family: inherit;
+}
+
+.account-textarea:focus {
+  border-color: var(--accent);
+}
+
+.account-textarea.account-input--error {
+  border-color: #f5222d;
+}
+
+.address-modal-footer {
+  display: flex;
+  justify-content: center;
+  gap: 12px;
+  padding: 16px 24px 20px;
+  border-top: 1px solid #f0f0f0;
+  background: #fafafa;
+}
+
+.address-delete-dialog {
+  width: 100%;
+  max-width: 440px;
+  background: #fff;
+  overflow: hidden;
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.15);
+}
+
+.address-delete-body {
+  padding: 20px 24px 8px;
+}
+
+.address-delete-tip {
+  margin: 0 0 16px;
+  font-size: 12px;
+  color: #666;
+  line-height: 1.6;
+}
+
+.address-delete-preview {
+  padding: 14px 16px;
+  background: #fafafa;
+  border: 1px solid #f0f0f0;
+}
+
+.address-delete-preview .address-detail {
+  margin-bottom: 0;
+}
+
+.account-btn-danger {
+  border-color: #ff4d4f;
+  background: #ff4d4f;
+  color: #fff;
+}
+
+.account-btn-danger:hover:not(:disabled) {
+  border-color: #ff7875;
+  background: #ff7875;
+  color: #fff;
+}
+
+.address-checkbox-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 12px;
+  color: #666;
+  cursor: pointer;
+}
+
+.address-checkbox-row input[type='checkbox'] {
+  accent-color: var(--accent);
+}
+
+/* ========== 响应式 ========== */
+@media (max-width: 768px) {
+  .account-page {
+    padding: 12px 0 32px;
+  }
+
+  .account-page-inner {
+    padding: 0 10px;
+  }
+
+  .account-container {
+    flex-direction: column;
+    min-height: auto;
+  }
+
+  .account-sidebar {
+    width: 100%;
+    flex: none;
+    border-right: none;
+    border-bottom: 1px solid #eee;
+  }
+
+  .account-sidebar-head {
+    padding-bottom: 4px;
+  }
+
+  .account-nav {
+    display: flex;
+    padding: 0 8px 8px;
+  }
+
+  .nav-group {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 4px;
+    width: 100%;
+  }
+
+  .nav-group-title {
+    width: 100%;
+    padding: 8px 8px 4px;
+  }
+
+  .nav-item {
+    padding: 6px 12px;
+    border-left: none;
+    border-radius: 4px;
+  }
+
+  .nav-item--active,
+  .nav-item.router-link-active {
+    border-left: none;
+  }
+
+  .account-tabs {
+    padding: 0 16px;
+  }
+
+  .account-panel {
+    padding: 20px 16px 28px;
+  }
+
+  .account-form-row {
+    flex-direction: column;
+  }
+
+  .account-form-label {
+    width: auto;
+    text-align: left;
+    padding: 0 0 8px;
+  }
+
+  .account-actions {
+    padding-left: 0;
+  }
+
+  .account-input {
+    max-width: 100%;
+  }
+}
