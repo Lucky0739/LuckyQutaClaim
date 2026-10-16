@@ -1,6 +1,7 @@
 package com.lucky.seckill.shop.controller;
 
 import cn.dev33.satoken.annotation.SaCheckLogin;
+import cn.dev33.satoken.annotation.SaIgnore;
 import com.lucky.seckill.common.aspect.ApiOperationLog;
 import com.lucky.seckill.common.model.entity.PageResult;
 import com.lucky.seckill.common.model.file.UploadPictureResult;
@@ -62,6 +63,7 @@ public class ShopController {
     /**
      * 分页查询店铺列表（公开访问）
      */
+    @SaIgnore
     @PostMapping("/list")
     @ApiOperationLog(description = "分页查询店铺列表")
     public Response<PageResult<ShopListVO>> getShopList(@RequestBody(required = false) ShopApplyQueryRequest queryRequest) {
@@ -99,6 +101,7 @@ public class ShopController {
     /**
      * 根据店铺ID查询店铺信息（公开访问）
      */
+    @SaIgnore
     @GetMapping("/{shopId}")
     @ApiOperationLog(description = "根据店铺ID查询店铺信息")
     public Response<ShopListVO> getShopById(@PathVariable("shopId") Long shopId) {
@@ -109,6 +112,7 @@ public class ShopController {
     /**
      * 按店铺ID查询店铺商品列表（公开访问）
      */
+    @SaIgnore
     @GetMapping("/{shopId}/goods")
     @ApiOperationLog(description = "按店铺ID查询商品列表")
     public Response<PageResult<GoodsListVO>> getShopGoods(@PathVariable("shopId") Long shopId,
