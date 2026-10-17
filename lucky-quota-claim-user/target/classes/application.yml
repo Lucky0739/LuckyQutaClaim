@@ -1,0 +1,79 @@
+spring:
+  application:
+    name: lucky-quota-claim-user
+  profiles:
+    active: dev
+  config:
+    import:
+      - optional:nacos:lucky-seckill-dev.yml
+  cloud:
+    nacos:
+      discovery:
+        server-addr: 127.0.0.1:8848
+        namespace: public
+        ip: 127.0.0.1
+      config:
+        server-addr: 127.0.0.1:8848
+        namespace: public
+        file-extension: yml
+  servlet:
+    multipart:
+      max-file-size: 20MB
+      max-request-size: 20MB
+
+server:
+  port: 8081
+
+seata:
+  enabled: true
+  application-id: ${spring.application.name}
+  tx-service-group: lucky_seckill_tx_group
+  enable-auto-data-source-proxy: true
+  data-source-proxy-mode: AT
+  service:
+    vgroup-mapping:
+      lucky_seckill_tx_group: default
+    grouplist:
+      default: 127.0.0.1:8091
+
+management:
+  endpoints:
+    web:
+      exposure:
+        include: '*'
+
+# sa-token权限认证配置
+sa-token:
+  token-name: Authorization
+  token-prefix: Bearer
+  is-read-header: true
+  is-read-cookie: false
+  ignore-paths: /user/login,/user/register,/user/code/send,/captcha/**,/test/**,/kb/ask,/kb/stream
+
+kb:
+  python:
+    base-url: http://127.0.0.1:8000
+  minio:
+    endpoint: http://127.0.0.1:9000
+    access-key: lucky
+    secret-key: yang2004
+    bucket: seckill-kb
+
+rocketmq:
+  name-server: 127.0.0.1:9876
+  producer:
+    group: merchant-apply-producer
+    send-message-timeout: 3000
+
+captcha:
+  prefix: captcha
+  expire:
+    default: 1000000
+    WORD_IMAGE_CLICK: 2000000
+  secondary:
+    enabled: true
+    expire: 120000
+    keyPrefix: "captcha:secondary"
+  init-default-resource: true
+  local-cache-enabled: true
+  local-cache-size: 20

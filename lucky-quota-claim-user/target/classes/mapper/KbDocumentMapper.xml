@@ -1,0 +1,64 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.lucky.quota.user.kb.mapper.KbDocumentMapper">
+    <resultMap id="BaseResultMap" type="com.lucky.quota.user.kb.model.KbDocument">
+        <id column="id" property="id"/>
+        <result column="document_name" property="documentName"/>
+        <result column="original_file_name" property="originalFileName"/>
+        <result column="file_type" property="fileType"/>
+        <result column="file_size" property="fileSize"/>
+        <result column="object_name" property="objectName"/>
+        <result column="knowledge_scope_code" property="knowledgeScopeCode"/>
+        <result column="business_category" property="businessCategory"/>
+        <result column="parse_status" property="parseStatus"/>
+        <result column="index_status" property="indexStatus"/>
+        <result column="parse_error_msg" property="parseErrorMsg"/>
+        <result column="chunk_count" property="chunkCount"/>
+        <result column="create_time" property="createTime"/>
+        <result column="edit_time" property="editTime"/>
+        <result column="status" property="status"/>
+    </resultMap>
+
+    <insert id="insert" parameterType="com.lucky.quota.user.kb.model.KbDocument">
+        INSERT INTO kb_document (
+            id, document_name, original_file_name, file_type, file_size, object_name,
+            knowledge_scope_code, business_category, parse_status, index_status,
+            chunk_count, create_time, edit_time, status
+        ) VALUES (
+            #{id}, #{documentName}, #{originalFileName}, #{fileType}, #{fileSize}, #{objectName},
+            #{knowledgeScopeCode}, #{businessCategory}, #{parseStatus}, #{indexStatus},
+            #{chunkCount}, #{createTime}, #{editTime}, #{status}
+        )
+    </insert>
+
+    <update id="updateStatus" parameterType="com.lucky.quota.user.kb.model.KbDocument">
+        UPDATE kb_document
+        SET parse_status = #{parseStatus},
+            index_status = #{indexStatus},
+            parse_error_msg = #{parseErrorMsg},
+            chunk_count = #{chunkCount},
+            edit_time = NOW()
+        WHERE id = #{id}
+    </update>
+
+    <select id="selectById" resultMap="BaseResultMap">
+        SELECT *
+        FROM kb_document
+        WHERE id = #{id}
+          AND status = 1
+    </select>
+
+    <select id="selectAllDocuments" resultMap="BaseResultMap">
+        SELECT *
+        FROM kb_document
+        WHERE status = 1
+        ORDER BY create_time DESC
+    </select>
+
+    <update id="deleteById">
+        UPDATE kb_document
+        SET status = 0,
+            edit_time = NOW()
+        WHERE id = #{id}
+    </update>
+</mapper>

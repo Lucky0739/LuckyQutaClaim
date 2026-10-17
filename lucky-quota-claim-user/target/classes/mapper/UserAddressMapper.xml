@@ -1,0 +1,106 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<!--suppress ALL -->
+<mapper namespace="com.lucky.quota.user.mapper.UserAddressMapper">
+    <resultMap id="BaseResultMap" type="com.lucky.quota.user.model.entity.UserAddress">
+        <id column="id" jdbcType="BIGINT" property="id"/>
+        <result column="user_id" jdbcType="BIGINT" property="userId"/>
+        <result column="receiver" jdbcType="VARCHAR" property="receiver"/>
+        <result column="mobile" jdbcType="VARCHAR" property="mobile"/>
+        <result column="province" jdbcType="VARCHAR" property="province"/>
+        <result column="city" jdbcType="VARCHAR" property="city"/>
+        <result column="area" jdbcType="VARCHAR" property="area"/>
+        <result column="detail_address" jdbcType="VARCHAR" property="detailAddress"/>
+        <result column="is_default" jdbcType="INTEGER" property="isDefault"/>
+        <result column="create_time" jdbcType="TIMESTAMP" property="createTime"/>
+        <result column="update_time" jdbcType="TIMESTAMP" property="updateTime"/>
+        <result column="isDelete" jdbcType="INTEGER" property="isDelete"/>
+    </resultMap>
+
+    <sql id="Base_Column_List">
+        id, user_id, receiver, mobile, province, city, area, detail_address, is_default, create_time, update_time, isDelete
+    </sql>
+
+    <insert id="insertSelective" parameterType="com.lucky.quota.user.model.entity.UserAddress">
+        insert into t_user_address
+        <trim prefix="(" suffix=")" suffixOverrides=",">
+            <if test="id != null">id,</if>
+            <if test="userId != null">user_id,</if>
+            <if test="receiver != null">receiver,</if>
+            <if test="mobile != null">mobile,</if>
+            <if test="province != null">province,</if>
+            <if test="city != null">city,</if>
+            <if test="area != null">area,</if>
+            <if test="detailAddress != null">detail_address,</if>
+            <if test="isDefault != null">is_default,</if>
+            <if test="createTime != null">create_time,</if>
+            <if test="updateTime != null">update_time,</if>
+            <if test="isDelete != null">isDelete,</if>
+        </trim>
+        <trim prefix="values (" suffix=")" suffixOverrides=",">
+            <if test="id != null">#{id,jdbcType=BIGINT},</if>
+            <if test="userId != null">#{userId,jdbcType=BIGINT},</if>
+            <if test="receiver != null">#{receiver,jdbcType=VARCHAR},</if>
+            <if test="mobile != null">#{mobile,jdbcType=VARCHAR},</if>
+            <if test="province != null">#{province,jdbcType=VARCHAR},</if>
+            <if test="city != null">#{city,jdbcType=VARCHAR},</if>
+            <if test="area != null">#{area,jdbcType=VARCHAR},</if>
+            <if test="detailAddress != null">#{detailAddress,jdbcType=VARCHAR},</if>
+            <if test="isDefault != null">#{isDefault,jdbcType=INTEGER},</if>
+            <if test="createTime != null">#{createTime,jdbcType=TIMESTAMP},</if>
+            <if test="updateTime != null">#{updateTime,jdbcType=TIMESTAMP},</if>
+            <if test="isDelete != null">#{isDelete,jdbcType=INTEGER},</if>
+        </trim>
+    </insert>
+
+    <update id="cancelDefaultByUserId">
+        update t_user_address
+        set is_default = 0, update_time = NOW()
+        where user_id = #{userId}
+        and is_default = 1
+        and isDelete = 0
+    </update>
+
+    <update id="updateByPrimaryKeySelective" parameterType="com.lucky.quota.user.model.entity.UserAddress">
+        update t_user_address
+        <set>
+            <if test="receiver != null">receiver = #{receiver,jdbcType=VARCHAR},</if>
+            <if test="mobile != null">mobile = #{mobile,jdbcType=VARCHAR},</if>
+            <if test="province != null">province = #{province,jdbcType=VARCHAR},</if>
+            <if test="city != null">city = #{city,jdbcType=VARCHAR},</if>
+            <if test="area != null">area = #{area,jdbcType=VARCHAR},</if>
+            <if test="detailAddress != null">detail_address = #{detailAddress,jdbcType=VARCHAR},</if>
+            <if test="isDefault != null">is_default = #{isDefault,jdbcType=INTEGER},</if>
+            <if test="updateTime != null">update_time = #{updateTime,jdbcType=TIMESTAMP},</if>
+        </set>
+        where id = #{id,jdbcType=BIGINT}
+        and isDelete = 0
+    </update>
+
+    <select id="selectByIdAndUserId" resultMap="BaseResultMap">
+        select
+        <include refid="Base_Column_List" />
+        from t_user_address
+        where id = #{id,jdbcType=BIGINT}
+        and user_id = #{userId,jdbcType=BIGINT}
+        and isDelete = 0
+        limit 1
+    </select>
+
+    <update id="deleteByIdAndUserId">
+        update t_user_address
+        set isDelete = 1, update_time = NOW()
+        where id = #{id,jdbcType=BIGINT}
+        and user_id = #{userId,jdbcType=BIGINT}
+        and isDelete = 0
+    </update>
+
+    <select id="selectListByUserId" resultMap="BaseResultMap">
+        select
+        <include refid="Base_Column_List" />
+        from t_user_address
+        where user_id = #{userId,jdbcType=BIGINT}
+        and isDelete = 0
+        order by is_default desc, create_time desc
+    </select>
+</mapper>

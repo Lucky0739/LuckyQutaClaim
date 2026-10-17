@@ -1,0 +1,40 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<!--suppress ALL -->
+<mapper namespace="com.lucky.quota.user.mapper.UserBalanceMapper">
+    <resultMap id="BaseResultMap" type="com.lucky.quota.user.model.entity.UserBalance">
+        <id column="id" jdbcType="BIGINT" property="id"/>
+        <result column="user_id" jdbcType="BIGINT" property="userId"/>
+        <result column="balance" jdbcType="DECIMAL" property="balance"/>
+        <result column="create_time" jdbcType="TIMESTAMP" property="createTime"/>
+        <result column="update_time" jdbcType="TIMESTAMP" property="updateTime"/>
+    </resultMap>
+
+    <sql id="Base_Column_List">
+        id, user_id, balance, create_time, update_time
+    </sql>
+
+    <select id="selectByUserId" resultMap="BaseResultMap">
+        select
+        <include refid="Base_Column_List"/>
+        from t_user_balance
+        where user_id = #{userId,jdbcType=BIGINT}
+        limit 1
+    </select>
+
+    <insert id="recharge">
+        insert into t_user_balance (user_id, balance)
+        values (#{userId,jdbcType=BIGINT}, #{amount,jdbcType=DECIMAL})
+        on duplicate key update
+            balance = balance + values(balance),
+            update_time = NOW()
+    </insert>
+
+    <update id="deduct">
+        update t_user_balance
+        set balance = balance - #{amount,jdbcType=DECIMAL},
+            update_time = NOW()
+        where user_id = #{userId,jdbcType=BIGINT}
+        and balance &gt;= #{amount,jdbcType=DECIMAL}
+    </update>
+</mapper>
