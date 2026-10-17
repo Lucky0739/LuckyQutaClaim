@@ -1,0 +1,139 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<!--suppress ALL -->
+<mapper namespace="com.lucky.quota.goods.mapper.GoodsSkuMapper">
+    <resultMap id="BaseResultMap" type="com.lucky.quota.goods.model.entity.GoodsSku">
+        <id column="id" property="id" jdbcType="BIGINT"/>
+        <result column="goods_id" property="goodsId" jdbcType="BIGINT"/>
+        <result column="sku_spec_name" property="skuSpecName" jdbcType="VARCHAR"/>
+        <result column="sku_img" property="skuImg" jdbcType="VARCHAR"/>
+        <result column="market_price" property="marketPrice" jdbcType="DECIMAL"/>
+        <result column="sale_price" property="salePrice" jdbcType="DECIMAL"/>
+        <result column="stock_num" property="stockNum" jdbcType="INTEGER"/>
+        <result column="sales_num" property="salesNum" jdbcType="INTEGER"/>
+        <result column="status" property="status" jdbcType="TINYINT"/>
+        <result column="isDelete" property="isDelete" jdbcType="TINYINT"/>
+        <result column="create_time" property="createTime" jdbcType="TIMESTAMP"/>
+        <result column="update_time" property="updateTime" jdbcType="TIMESTAMP"/>
+    </resultMap>
+
+    <sql id="Base_Column_List">
+        id, goods_id, sku_spec_name, sku_img, market_price, sale_price, stock_num, sales_num, status, isDelete,
+        create_time, update_time
+    </sql>
+    <insert id="insertSelective" parameterType="com.lucky.quota.goods.model.entity.GoodsSku">
+        INSERT INTO t_goods_sku
+        <trim prefix="(" suffix=")" suffixOverrides=",">
+            <if test="id != null">id,</if>
+            <if test="goodsId != null">goods_id,</if>
+            <if test="skuSpecName != null">sku_spec_name,</if>
+            <if test="skuImg != null">sku_img,</if>
+            <if test="marketPrice != null">market_price,</if>
+            <if test="salePrice != null">sale_price,</if>
+            <if test="stockNum != null">stock_num,</if>
+            <if test="salesNum != null">sales_num,</if>
+            <if test="status != null">status,</if>
+            <if test="isDelete != null">isDelete,</if>
+            <if test="createTime != null">create_time,</if>
+            <if test="updateTime != null">update_time,</if>
+        </trim>
+        <trim prefix="VALUES (" suffix=")" suffixOverrides=",">
+            <if test="id != null">#{id,jdbcType=BIGINT},</if>
+            <if test="goodsId != null">#{goodsId,jdbcType=BIGINT},</if>
+            <if test="skuSpecName != null">#{skuSpecName,jdbcType=VARCHAR},</if>
+            <if test="skuImg != null">#{skuImg,jdbcType=VARCHAR},</if>
+            <if test="marketPrice != null">#{marketPrice,jdbcType=DECIMAL},</if>
+            <if test="salePrice != null">#{salePrice,jdbcType=DECIMAL},</if>
+            <if test="stockNum != null">#{stockNum,jdbcType=INTEGER},</if>
+            <if test="salesNum != null">#{salesNum,jdbcType=INTEGER},</if>
+            <if test="status != null">#{status,jdbcType=TINYINT},</if>
+            <if test="isDelete != null">#{isDelete,jdbcType=TINYINT},</if>
+            <if test="createTime != null">#{createTime,jdbcType=TIMESTAMP},</if>
+            <if test="updateTime != null">#{updateTime,jdbcType=TIMESTAMP},</if>
+        </trim>
+    </insert>
+
+    <select id="selectByGoodsId" parameterType="java.lang.Long" resultMap="BaseResultMap">
+        SELECT
+        <include refid="Base_Column_List"/>
+        FROM t_goods_sku
+        WHERE goods_id = #{goodsId,jdbcType=BIGINT}
+        AND isDelete = 0
+        ORDER BY id ASC
+    </select>
+
+    <select id="selectById" parameterType="java.lang.Long" resultMap="BaseResultMap">
+        SELECT
+        <include refid="Base_Column_List"/>
+        FROM t_goods_sku
+        WHERE id = #{id,jdbcType=BIGINT}
+        AND isDelete = 0
+    </select>
+
+    <!-- 预占库存：校验库存是否充足（行锁保证并发安全，确认领取后再真正扣减） -->
+    <update id="lockStock">
+        UPDATE t_goods_sku
+        SET update_time = NOW()
+        WHERE id = #{skuId}
+          AND isDelete = 0
+          AND stock_num >= #{buyGoodsNum}
+    </update>
+
+    <!-- 确认领取后扣减库存：同时增加已售数量并减少库存数量 -->
+    <update id="deductStock">
+        UPDATE t_goods_sku
+        SET sales_num = sales_num + #{stockNum},
+            stock_num = stock_num - #{stockNum},
+            update_time = NOW()
+        WHERE id = #{skuId}
+          AND isDelete = 0
+          AND stock_num >= #{stockNum}
+    </update>
+
+    <!-- 释放预占的库存（保留接口，当前下单不再预扣库存，无需回加 stock_num） -->
+    <update id="releaseStock">
+        UPDATE t_goods_sku
+        SET update_time = NOW()
+        WHERE id = #{skuId}
+          AND isDelete = 0
+    </update>
+
+    <!-- 增加已售数量 -->
+    <update id="increaseSalesNum">
+        UPDATE t_goods_sku
+        SET sales_num = sales_num + #{salesNum},
+            update_time = NOW()
+        WHERE id = #{skuId}
+          AND isDelete = 0
+    </update>
+
+    <select id="sumSalesNumByGoodsId" resultType="java.lang.Integer">
+        SELECT IFNULL(SUM(sales_num), 0)
+        FROM t_goods_sku
+        WHERE goods_id = #{goodsId}
+          AND isDelete = 0
+    </select>
+
+    <update id="updateByPrimaryKeySelective" parameterType="com.lucky.quota.goods.model.entity.GoodsSku">
+        UPDATE t_goods_sku
+        <set>
+            <if test="skuSpecName != null">sku_spec_name = #{skuSpecName,jdbcType=VARCHAR},</if>
+            <if test="skuImg != null">sku_img = #{skuImg,jdbcType=VARCHAR},</if>
+            <if test="marketPrice != null">market_price = #{marketPrice,jdbcType=DECIMAL},</if>
+            <if test="salePrice != null">sale_price = #{salePrice,jdbcType=DECIMAL},</if>
+            <if test="stockNum != null">stock_num = #{stockNum,jdbcType=INTEGER},</if>
+            <if test="status != null">status = #{status,jdbcType=TINYINT},</if>
+            <if test="isDelete != null">isDelete = #{isDelete,jdbcType=TINYINT},</if>
+            <if test="updateTime != null">update_time = #{updateTime,jdbcType=TIMESTAMP},</if>
+        </set>
+        WHERE id = #{id,jdbcType=BIGINT} AND isDelete = 0
+    </update>
+
+    <update id="softDeleteById">
+        UPDATE t_goods_sku
+        SET isDelete = 1,
+            update_time = #{updateTime,jdbcType=TIMESTAMP}
+        WHERE id = #{id,jdbcType=BIGINT}
+          AND isDelete = 0
+    </update>
+</mapper>

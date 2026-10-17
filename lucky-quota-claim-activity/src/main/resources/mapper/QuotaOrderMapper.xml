@@ -1,0 +1,77 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.lucky.quota.activity.mapper.QuotaOrderMapper">
+
+    <resultMap id="BaseResultMap" type="com.lucky.quota.activity.model.entity.QuotaOrder">
+        <id column="id" property="id" jdbcType="BIGINT"/>
+        <result column="user_id" property="userId" jdbcType="BIGINT"/>
+        <result column="activity_id" property="activityId" jdbcType="BIGINT"/>
+        <result column="goods_id" property="goodsId" jdbcType="BIGINT"/>
+        <result column="sku_id" property="skuId" jdbcType="BIGINT"/>
+        <result column="order_no" property="orderNo" jdbcType="VARCHAR"/>
+        <result column="seckill_price" property="seckillPrice" jdbcType="DECIMAL"/>
+        <result column="goods_name" property="goodsName" jdbcType="VARCHAR"/>
+        <result column="goods_img" property="goodsImg" jdbcType="VARCHAR"/>
+        <result column="status" property="status" jdbcType="TINYINT"/>
+        <result column="expire_time" property="expireTime" jdbcType="TIMESTAMP"/>
+        <result column="create_time" property="createTime" jdbcType="TIMESTAMP"/>
+        <result column="update_time" property="updateTime" jdbcType="TIMESTAMP"/>
+    </resultMap>
+
+    <sql id="Base_Column_List">
+        id, user_id, activity_id, goods_id, sku_id, order_no, seckill_price,
+        goods_name, goods_img, status, expire_time, create_time, update_time
+    </sql>
+
+    <insert id="insertSelective" parameterType="com.lucky.quota.activity.model.entity.QuotaOrder">
+        INSERT INTO t_seckill_order
+        <trim prefix="(" suffix=")" suffixOverrides=",">
+            <if test="id != null">id,</if>
+            <if test="userId != null">user_id,</if>
+            <if test="activityId != null">activity_id,</if>
+            <if test="goodsId != null">goods_id,</if>
+            <if test="skuId != null">sku_id,</if>
+            <if test="orderNo != null">order_no,</if>
+            <if test="seckillPrice != null">seckill_price,</if>
+            <if test="goodsName != null">goods_name,</if>
+            <if test="goodsImg != null">goods_img,</if>
+            <if test="status != null">status,</if>
+            <if test="expireTime != null">expire_time,</if>
+            <if test="createTime != null">create_time,</if>
+            <if test="updateTime != null">update_time,</if>
+        </trim>
+        VALUES
+        <trim prefix="(" suffix=")" suffixOverrides=",">
+            <if test="id != null">#{id,jdbcType=BIGINT},</if>
+            <if test="userId != null">#{userId,jdbcType=BIGINT},</if>
+            <if test="activityId != null">#{activityId,jdbcType=BIGINT},</if>
+            <if test="goodsId != null">#{goodsId,jdbcType=BIGINT},</if>
+            <if test="skuId != null">#{skuId,jdbcType=BIGINT},</if>
+            <if test="orderNo != null">#{orderNo,jdbcType=VARCHAR},</if>
+            <if test="seckillPrice != null">#{seckillPrice,jdbcType=DECIMAL},</if>
+            <if test="goodsName != null">#{goodsName,jdbcType=VARCHAR},</if>
+            <if test="goodsImg != null">#{goodsImg,jdbcType=VARCHAR},</if>
+            <if test="status != null">#{status,jdbcType=TINYINT},</if>
+            <if test="expireTime != null">#{expireTime,jdbcType=TIMESTAMP},</if>
+            <if test="createTime != null">#{createTime,jdbcType=TIMESTAMP},</if>
+            <if test="updateTime != null">#{updateTime,jdbcType=TIMESTAMP},</if>
+        </trim>
+    </insert>
+
+    <select id="selectByOrderNo" resultMap="BaseResultMap">
+        SELECT <include refid="Base_Column_List"/>
+        FROM t_seckill_order
+        WHERE order_no = #{orderNo}
+        LIMIT 1
+    </select>
+
+    <select id="selectByUserActivityGoodsSku" resultMap="BaseResultMap">
+        SELECT <include refid="Base_Column_List"/>
+        FROM t_seckill_order
+        WHERE user_id = #{userId}
+          AND activity_id = #{activityId}
+          AND goods_id = #{goodsId}
+          AND sku_id = #{skuId}
+        LIMIT 1
+    </select>
+</mapper>

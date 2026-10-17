@@ -1,0 +1,139 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.lucky.quota.activity.mapper.QuotaFailedOrderMapper">
+
+    <resultMap id="BaseResultMap" type="com.lucky.quota.activity.model.entity.QuotaFailedOrder">
+        <id column="id" property="id" jdbcType="BIGINT"/>
+        <result column="user_id" property="userId" jdbcType="BIGINT"/>
+        <result column="activity_id" property="activityId" jdbcType="BIGINT"/>
+        <result column="goods_id" property="goodsId" jdbcType="BIGINT"/>
+        <result column="sku_id" property="skuId" jdbcType="BIGINT"/>
+        <result column="seckill_goods_id" property="seckillGoodsId" jdbcType="BIGINT"/>
+        <result column="order_no" property="orderNo" jdbcType="VARCHAR"/>
+        <result column="seckill_price" property="seckillPrice" jdbcType="DECIMAL"/>
+        <result column="goods_name" property="goodsName" jdbcType="VARCHAR"/>
+        <result column="goods_img" property="goodsImg" jdbcType="VARCHAR"/>
+        <result column="buy_num" property="buyNum" jdbcType="INTEGER"/>
+        <result column="message_json" property="messageJson" jdbcType="LONGVARCHAR"/>
+        <result column="last_error" property="lastError" jdbcType="VARCHAR"/>
+        <result column="retry_count" property="retryCount" jdbcType="INTEGER"/>
+        <result column="handle_status" property="handleStatus" jdbcType="TINYINT"/>
+        <result column="handle_remark" property="handleRemark" jdbcType="VARCHAR"/>
+        <result column="handled_by" property="handledBy" jdbcType="VARCHAR"/>
+        <result column="handled_time" property="handledTime" jdbcType="TIMESTAMP"/>
+        <result column="create_time" property="createTime" jdbcType="TIMESTAMP"/>
+        <result column="update_time" property="updateTime" jdbcType="TIMESTAMP"/>
+    </resultMap>
+
+    <sql id="Base_Column_List">
+        id, user_id, activity_id, goods_id, sku_id, seckill_goods_id, order_no,
+        seckill_price, goods_name, goods_img, buy_num, message_json, last_error,
+        retry_count, handle_status, handle_remark, handled_by, handled_time,
+        create_time, update_time
+    </sql>
+
+    <insert id="insertSelective" parameterType="com.lucky.quota.activity.model.entity.QuotaFailedOrder"
+            useGeneratedKeys="true" keyProperty="id">
+        INSERT INTO t_seckill_failed_order
+        <trim prefix="(" suffix=")" suffixOverrides=",">
+            <if test="userId != null">user_id,</if>
+            <if test="activityId != null">activity_id,</if>
+            <if test="goodsId != null">goods_id,</if>
+            <if test="skuId != null">sku_id,</if>
+            <if test="seckillGoodsId != null">seckill_goods_id,</if>
+            <if test="orderNo != null">order_no,</if>
+            <if test="seckillPrice != null">seckill_price,</if>
+            <if test="goodsName != null">goods_name,</if>
+            <if test="goodsImg != null">goods_img,</if>
+            <if test="buyNum != null">buy_num,</if>
+            <if test="messageJson != null">message_json,</if>
+            <if test="lastError != null">last_error,</if>
+            <if test="retryCount != null">retry_count,</if>
+            <if test="handleStatus != null">handle_status,</if>
+            <if test="handleRemark != null">handle_remark,</if>
+            <if test="handledBy != null">handled_by,</if>
+            <if test="handledTime != null">handled_time,</if>
+            <if test="createTime != null">create_time,</if>
+            <if test="updateTime != null">update_time,</if>
+        </trim>
+        VALUES
+        <trim prefix="(" suffix=")" suffixOverrides=",">
+            <if test="userId != null">#{userId,jdbcType=BIGINT},</if>
+            <if test="activityId != null">#{activityId,jdbcType=BIGINT},</if>
+            <if test="goodsId != null">#{goodsId,jdbcType=BIGINT},</if>
+            <if test="skuId != null">#{skuId,jdbcType=BIGINT},</if>
+            <if test="seckillGoodsId != null">#{seckillGoodsId,jdbcType=BIGINT},</if>
+            <if test="orderNo != null">#{orderNo,jdbcType=VARCHAR},</if>
+            <if test="seckillPrice != null">#{seckillPrice,jdbcType=DECIMAL},</if>
+            <if test="goodsName != null">#{goodsName,jdbcType=VARCHAR},</if>
+            <if test="goodsImg != null">#{goodsImg,jdbcType=VARCHAR},</if>
+            <if test="buyNum != null">#{buyNum,jdbcType=INTEGER},</if>
+            <if test="messageJson != null">#{messageJson,jdbcType=LONGVARCHAR},</if>
+            <if test="lastError != null">#{lastError,jdbcType=VARCHAR},</if>
+            <if test="retryCount != null">#{retryCount,jdbcType=INTEGER},</if>
+            <if test="handleStatus != null">#{handleStatus,jdbcType=TINYINT},</if>
+            <if test="handleRemark != null">#{handleRemark,jdbcType=VARCHAR},</if>
+            <if test="handledBy != null">#{handledBy,jdbcType=VARCHAR},</if>
+            <if test="handledTime != null">#{handledTime,jdbcType=TIMESTAMP},</if>
+            <if test="createTime != null">#{createTime,jdbcType=TIMESTAMP},</if>
+            <if test="updateTime != null">#{updateTime,jdbcType=TIMESTAMP},</if>
+        </trim>
+    </insert>
+
+    <select id="selectByOrderNo" resultMap="BaseResultMap">
+        SELECT <include refid="Base_Column_List"/>
+        FROM t_seckill_failed_order
+        WHERE order_no = #{orderNo}
+        LIMIT 1
+    </select>
+
+    <select id="selectByPrimaryKey" resultMap="BaseResultMap">
+        SELECT <include refid="Base_Column_List"/>
+        FROM t_seckill_failed_order
+        WHERE id = #{id}
+    </select>
+
+    <select id="selectPendingPage" resultMap="BaseResultMap">
+        SELECT <include refid="Base_Column_List"/>
+        FROM t_seckill_failed_order
+        <where>
+            <if test="handleStatus != null">
+                AND handle_status = #{handleStatus}
+            </if>
+        </where>
+        ORDER BY create_time DESC
+        LIMIT #{offset}, #{limit}
+    </select>
+
+    <select id="countPending" resultType="long">
+        SELECT COUNT(1)
+        FROM t_seckill_failed_order
+        <where>
+            <if test="handleStatus != null">
+                AND handle_status = #{handleStatus}
+            </if>
+        </where>
+    </select>
+
+    <update id="updateHandleStatus">
+        UPDATE t_seckill_failed_order
+        SET handle_status = #{handleStatus},
+            handle_remark = #{handleRemark},
+            handled_by    = #{handledBy},
+            handled_time  = NOW(),
+            update_time   = NOW()
+        WHERE id = #{id}
+    </update>
+
+    <update id="updateHandleStatusByOrderNo">
+        UPDATE t_seckill_failed_order
+        SET handle_status = #{handleStatus},
+            handle_remark = #{handleRemark},
+            handled_by    = #{handledBy},
+            handled_time  = NOW(),
+            update_time   = NOW()
+        WHERE order_no = #{orderNo}
+          AND handle_status = 0
+    </update>
+
+</mapper>

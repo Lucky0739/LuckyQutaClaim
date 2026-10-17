@@ -1,0 +1,95 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<!--suppress ALL -->
+<mapper namespace="com.lucky.quota.shop.mapper.ShopCollectMapper">
+
+    <resultMap id="BaseResultMap" type="com.lucky.quota.shop.model.entity.ShopCollect">
+        <id column="id" property="id" jdbcType="BIGINT"/>
+        <result column="user_id" property="userId" jdbcType="BIGINT"/>
+        <result column="shop_id" property="shopId" jdbcType="BIGINT"/>
+        <result column="is_delete" property="isDelete" jdbcType="TINYINT"/>
+        <result column="create_time" property="createTime" jdbcType="TIMESTAMP"/>
+        <result column="update_time" property="updateTime" jdbcType="TIMESTAMP"/>
+    </resultMap>
+
+    <resultMap id="ShopCollectVOResultMap" type="com.lucky.quota.shop.model.vo.ShopCollectVO">
+        <id column="id" property="id" jdbcType="BIGINT"/>
+        <result column="shop_id" property="shopId" jdbcType="BIGINT"/>
+        <result column="shop_name" property="shopName" jdbcType="VARCHAR"/>
+        <result column="shop_avatar" property="shopAvatar" jdbcType="VARCHAR"/>
+        <result column="shop_desc" property="shopDesc" jdbcType="VARCHAR"/>
+        <result column="collect_num" property="collectNum" jdbcType="INTEGER"/>
+        <result column="create_time" property="createTime" jdbcType="TIMESTAMP"/>
+    </resultMap>
+
+    <insert id="insertSelective" parameterType="com.lucky.quota.shop.model.entity.ShopCollect">
+        INSERT INTO t_user_shop_collect
+        <trim prefix="(" suffix=")" suffixOverrides=",">
+            <if test="id != null">id,</if>
+            <if test="userId != null">user_id,</if>
+            <if test="shopId != null">shop_id,</if>
+            <if test="isDelete != null">is_delete,</if>
+            <if test="createTime != null">create_time,</if>
+            <if test="updateTime != null">update_time,</if>
+        </trim>
+        <trim prefix="VALUES (" suffix=")" suffixOverrides=",">
+            <if test="id != null">#{id,jdbcType=BIGINT},</if>
+            <if test="userId != null">#{userId,jdbcType=BIGINT},</if>
+            <if test="shopId != null">#{shopId,jdbcType=BIGINT},</if>
+            <if test="isDelete != null">#{isDelete,jdbcType=TINYINT},</if>
+            <if test="createTime != null">#{createTime,jdbcType=TIMESTAMP},</if>
+            <if test="updateTime != null">#{updateTime,jdbcType=TIMESTAMP},</if>
+        </trim>
+    </insert>
+
+    <select id="selectByUserIdAndShopId" resultMap="BaseResultMap">
+        SELECT id, user_id, shop_id, is_delete, create_time, update_time
+        FROM t_user_shop_collect
+        WHERE user_id = #{userId,jdbcType=BIGINT}
+          AND shop_id = #{shopId,jdbcType=BIGINT}
+          AND is_delete = 0
+        LIMIT 1
+    </select>
+
+    <select id="selectByUserIdAndShopIdIgnoreDelete" resultMap="BaseResultMap">
+        SELECT id, user_id, shop_id, is_delete, create_time, update_time
+        FROM t_user_shop_collect
+        WHERE user_id = #{userId,jdbcType=BIGINT}
+          AND shop_id = #{shopId,jdbcType=BIGINT}
+        LIMIT 1
+    </select>
+
+    <update id="restoreByUserIdAndShopId">
+        UPDATE t_user_shop_collect
+        SET is_delete = 0,
+            update_time = NOW()
+        WHERE user_id = #{userId,jdbcType=BIGINT}
+          AND shop_id = #{shopId,jdbcType=BIGINT}
+          AND is_delete = 1
+    </update>
+
+    <update id="softDeleteByUserIdAndShopId">
+        UPDATE t_user_shop_collect
+        SET is_delete = 1,
+            update_time = NOW()
+        WHERE user_id = #{userId,jdbcType=BIGINT}
+          AND shop_id = #{shopId,jdbcType=BIGINT}
+          AND is_delete = 0
+    </update>
+
+    <select id="selectCollectVOListByUserId" resultMap="ShopCollectVOResultMap">
+        SELECT
+            c.id,
+            c.shop_id,
+            s.shop_name,
+            s.shop_avatar,
+            s.shop_desc,
+            s.collect_num,
+            c.create_time
+        FROM t_user_shop_collect c
+        INNER JOIN t_shop s ON c.shop_id = s.id
+        WHERE c.user_id = #{userId,jdbcType=BIGINT}
+          AND c.is_delete = 0
+        ORDER BY c.create_time DESC
+    </select>
+</mapper>

@@ -1,0 +1,113 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.lucky.quota.goods.mapper.GoodsCategoryMapper">
+    <resultMap id="BaseResultMap" type="com.lucky.quota.goods.model.entity.GoodsCategory">
+        <id column="id" property="id" jdbcType="BIGINT"/>
+        <result column="category_name" property="categoryName" jdbcType="VARCHAR"/>
+        <result column="parent_id" property="parentId" jdbcType="BIGINT"/>
+        <result column="sort" property="sort" jdbcType="INTEGER"/>
+        <result column="status" property="status" jdbcType="TINYINT"/>
+        <result column="isDelete" property="isDelete" jdbcType="TINYINT"/>
+        <result column="create_time" property="createTime" jdbcType="TIMESTAMP"/>
+        <result column="update_time" property="updateTime" jdbcType="TIMESTAMP"/>
+    </resultMap>
+
+    <sql id="Base_Column_List">
+        id, category_name, parent_id, sort, status, isDelete, create_time, update_time
+    </sql>
+
+    <insert id="insertSelective" parameterType="com.lucky.quota.goods.model.entity.GoodsCategory">
+        INSERT INTO t_goods_category
+        <trim prefix="(" suffix=")" suffixOverrides=",">
+            <if test="categoryName != null">category_name,</if>
+            <if test="parentId != null">parent_id,</if>
+            <if test="sort != null">sort,</if>
+            <if test="status != null">status,</if>
+            <if test="isDelete != null">isDelete,</if>
+            <if test="createTime != null">create_time,</if>
+            <if test="updateTime != null">update_time,</if>
+        </trim>
+        <trim prefix="VALUES (" suffix=")" suffixOverrides=",">
+            <if test="categoryName != null">#{categoryName},</if>
+            <if test="parentId != null">#{parentId},</if>
+            <if test="sort != null">#{sort},</if>
+            <if test="status != null">#{status},</if>
+            <if test="isDelete != null">#{isDelete},</if>
+            <if test="createTime != null">#{createTime},</if>
+            <if test="updateTime != null">#{updateTime},</if>
+        </trim>
+    </insert>
+
+    <select id="selectByPrimaryKey" parameterType="java.lang.Long" resultMap="BaseResultMap">
+        SELECT
+        <include refid="Base_Column_List"/>
+        FROM t_goods_category
+        WHERE id = #{id} AND isDelete = 0
+    </select>
+
+    <update id="updateByPrimaryKeySelective" parameterType="com.lucky.quota.goods.model.entity.GoodsCategory">
+        UPDATE t_goods_category
+        <set>
+            <if test="categoryName != null">category_name = #{categoryName},</if>
+            <if test="parentId != null">parent_id = #{parentId},</if>
+            <if test="sort != null">sort = #{sort},</if>
+            <if test="status != null">status = #{status},</if>
+            <if test="isDelete != null">isDelete = #{isDelete},</if>
+            <if test="updateTime != null">update_time = #{updateTime},</if>
+        </set>
+        WHERE id = #{id}
+    </update>
+
+    <delete id="deleteByPrimaryKey" parameterType="java.lang.Long">
+        DELETE FROM t_goods_category WHERE id = #{id}
+    </delete>
+
+    <select id="selectAllCategory" resultMap="BaseResultMap">
+        SELECT
+        <include refid="Base_Column_List"/>
+        FROM t_goods_category
+        WHERE isDelete = 0
+        ORDER BY sort ASC, create_time DESC
+    </select>
+
+    <select id="selectParentCategories" resultMap="BaseResultMap">
+        SELECT
+        <include refid="Base_Column_List"/>
+        FROM t_goods_category
+        WHERE parent_id = 0 AND isDelete = 0 AND status = 1
+        ORDER BY sort ASC, create_time DESC
+    </select>
+
+    <select id="selectByParentId" parameterType="java.lang.Long" resultMap="BaseResultMap">
+        SELECT
+        <include refid="Base_Column_List"/>
+        FROM t_goods_category
+        WHERE parent_id = #{parentId} AND isDelete = 0
+        ORDER BY sort ASC, create_time DESC
+    </select>
+
+    <select id="selectIdsByParentId" resultType="java.lang.Long">
+        SELECT id
+        FROM t_goods_category
+        WHERE parent_id = #{parentId,jdbcType=BIGINT}
+          AND isDelete = 0
+    </select>
+
+    <update id="updateStatus" parameterType="map">
+        UPDATE t_goods_category
+        SET status = #{status}, update_time = #{updateTime}
+        WHERE id = #{id}
+    </update>
+
+    <update id="updateSort" parameterType="map">
+        UPDATE t_goods_category
+        SET sort = #{sort}, update_time = #{updateTime}
+        WHERE id = #{id}
+    </update>
+
+    <select id="countByCategoryName" parameterType="map" resultType="java.lang.Integer">
+        SELECT COUNT(*)
+        FROM t_goods_category
+        WHERE category_name = #{categoryName} AND parent_id = #{parentId} AND isDelete = 0
+    </select>
+</mapper>

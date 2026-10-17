@@ -1,0 +1,46 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<!--suppress ALL -->
+<mapper namespace="com.lucky.quota.goods.mapper.GoodsImgMapper">
+    <resultMap id="BaseResultMap" type="com.lucky.quota.goods.model.entity.GoodsImg">
+        <id column="id" property="id" jdbcType="BIGINT"/>
+        <result column="goods_id" property="goodsId" jdbcType="BIGINT"/>
+        <result column="img_url" property="imgUrl" jdbcType="VARCHAR"/>
+        <result column="sort" property="sort" jdbcType="INTEGER"/>
+        <result column="create_time" property="createTime" jdbcType="TIMESTAMP"/>
+    </resultMap>
+
+    <sql id="Base_Column_List">
+        id, goods_id, img_url, sort, create_time
+    </sql>
+
+    <insert id="insertSelective" parameterType="com.lucky.quota.goods.model.entity.GoodsImg">
+        INSERT INTO t_goods_img
+        <trim prefix="(" suffix=")" suffixOverrides=",">
+            <if test="id != null">id,</if>
+            <if test="goodsId != null">goods_id,</if>
+            <if test="imgUrl != null">img_url,</if>
+            <if test="sort != null">sort,</if>
+            <if test="createTime != null">create_time,</if>
+        </trim>
+        <trim prefix="VALUES (" suffix=")" suffixOverrides=",">
+            <if test="id != null">#{id,jdbcType=BIGINT},</if>
+            <if test="goodsId != null">#{goodsId,jdbcType=BIGINT},</if>
+            <if test="imgUrl != null">#{imgUrl,jdbcType=VARCHAR},</if>
+            <if test="sort != null">#{sort,jdbcType=INTEGER},</if>
+            <if test="createTime != null">#{createTime,jdbcType=TIMESTAMP},</if>
+        </trim>
+    </insert>
+
+    <select id="selectByGoodsId" parameterType="java.lang.Long" resultMap="BaseResultMap">
+        SELECT
+        <include refid="Base_Column_List"/>
+        FROM t_goods_img
+        WHERE goods_id = #{goodsId,jdbcType=BIGINT}
+        ORDER BY sort ASC
+    </select>
+
+    <delete id="deleteByGoodsId" parameterType="java.lang.Long">
+        DELETE FROM t_goods_img WHERE goods_id = #{goodsId,jdbcType=BIGINT}
+    </delete>
+</mapper>
