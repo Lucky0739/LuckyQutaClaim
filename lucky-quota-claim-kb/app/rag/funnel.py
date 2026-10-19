@@ -59,7 +59,7 @@ class ShadowFunnelComparison:
             "wouldChangeRetrieval": primary_ids != shadow_ids,
         }
 
-
+# 入口
 class KnowledgeFunnel:
     def __init__(self, domain_top_k: int = 2, topic_top_k: int = 3):
         self.domain_top_k = domain_top_k
@@ -78,6 +78,8 @@ class KnowledgeFunnel:
             return FunnelOutcome(document_ids=[], domains=[], topics=[], layers=[])
 
         tokens = tokenize(question)
+
+        # ===== 第 1 层：领域 =====
         domain_scores = _score_domains(pool, tokens)
         domain_top_k = max(self.domain_top_k, 3) if shadow else self.domain_top_k
         selected_domains = _top_keys(domain_scores, domain_top_k, min_score=0 if shadow else 1)
@@ -90,12 +92,16 @@ class KnowledgeFunnel:
             for item in pool
             if (item.knowledge_scope_code or "default") in selected_domains
         ]
+
+        # ===== 第 2 层：主题 =====
         topic_scores = _score_topics(domain_pool, tokens)
         topic_top_k = max(self.topic_top_k, 5) if shadow else self.topic_top_k
         selected_topics = _top_keys(topic_scores, topic_top_k, min_score=0 if shadow else 1)
         if not selected_topics:
             selected_topics = sorted({item.business_category or "general" for item in domain_pool})
 
+
+        # ===== 第 3 层：文档 =====
         document_ids = [
             item.document_id
             for item in domain_pool
@@ -121,6 +127,7 @@ class KnowledgeFunnel:
             ],
         )
 
+    #  打分与选择工具
     def compare_shadow(
         self,
         question: str,
@@ -143,7 +150,7 @@ class KnowledgeFunnel:
         allowed = set(requested_document_ids)
         return [item for item in catalog if item.document_id in allowed]
 
-
+#  歧义检测
 def ambiguous_domains(domain_scores: dict[str, int]) -> list[str]:
     """并列最高分且 ≥ 1 的领域视为歧义。"""
     if not domain_scores:
