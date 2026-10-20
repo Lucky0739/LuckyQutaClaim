@@ -127,7 +127,7 @@ class KnowledgeFunnel:
             ],
         )
 
-    #  打分与选择工具
+    # 影子漏斗
     def compare_shadow(
         self,
         question: str,
