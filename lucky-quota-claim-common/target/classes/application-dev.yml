@@ -5,8 +5,8 @@ spring:
         ip: 127.0.0.1
   # 本地开发环境 MySQL 数据源配置
   datasource:
-    # 连接地址：数据库名为 lucky_seckill（1.1 小节中创建的）
-    url: jdbc:mysql://localhost:3306/seckill_mall?useUnicode=true&characterEncoding=utf-8&serverTimezone=Asia/Shanghai&allowPublicKeyRetrieval=true&useSSL=false
+    # 连接地址：数据库名为 lucky-quta-claim
+    url: jdbc:mysql://localhost:3306/lucky-quta-claim?useUnicode=true&characterEncoding=utf-8&serverTimezone=Asia/Shanghai&allowPublicKeyRetrieval=true&useSSL=false
     # 数据库用户名
     username: root
     # 数据库密码

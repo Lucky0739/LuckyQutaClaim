@@ -7,7 +7,6 @@ import java.io.Serializable;
 
 /**
  * @author: Lucky
- * @url: www.quanxiaoha.com
  * @date: 2023-08-11 19:50
  * @description: 响应参数工具类
  **/

@@ -40,7 +40,8 @@ public class JacksonConfig {
         objectMapper.configure(SerializationFeature.FAIL_ON_EMPTY_BEANS, false);
         objectMapper.configure(SerializationFeature.WRITE_DATES_AS_TIMESTAMPS, false);
 
-        // 与 DATE_TIME_PATTERN 一致，同时兼容 yyyy-M-d 与 yyyy-MM-dd
+        // 接口侧用空格分隔；RocketMQ 默认 Jackson 写出 ISO-8601（带 T 和小数秒）。
+        // 两种都要能读，否则申领消息反序列化失败会被直接丢掉，数据库库存不会扣。
         DateTimeFormatter dateTimeFormatter = new DateTimeFormatterBuilder()
                 .appendValue(ChronoField.YEAR, 4)
                 .appendLiteral('-')
@@ -48,12 +49,21 @@ public class JacksonConfig {
                 .appendLiteral('-')
                 .appendValue(ChronoField.DAY_OF_MONTH)
                 .optionalStart()
+                .optionalStart()
+                .appendLiteral('T')
+                .optionalEnd()
+                .optionalStart()
                 .appendLiteral(' ')
+                .optionalEnd()
                 .appendPattern("HH:mm:ss")
+                .optionalStart()
+                .appendFraction(ChronoField.NANO_OF_SECOND, 1, 9, true)
+                .optionalEnd()
                 .optionalEnd()
                 .parseDefaulting(ChronoField.HOUR_OF_DAY, 0)
                 .parseDefaulting(ChronoField.MINUTE_OF_HOUR, 0)
                 .parseDefaulting(ChronoField.SECOND_OF_MINUTE, 0)
+                .parseDefaulting(ChronoField.NANO_OF_SECOND, 0)
                 .toFormatter();
 
         JavaTimeModule javaTimeModule = new JavaTimeModule();
