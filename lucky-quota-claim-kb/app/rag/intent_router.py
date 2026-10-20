@@ -30,14 +30,14 @@ class IntentRouter:
                 executor=ExecutorType.CLARIFICATION,
                 confidence=0.95,
                 reason="问题过短",
-                missing_info=["请补充想了解的业务，例如开店、下单、秒杀或支付"],
+                missing_info=["请补充想了解的业务，例如发放单位申请、物资上架或限量申领"],
             )
         if normalized in {"它", "这个", "那个", "怎么办", "呢？", "呢"}:
             return IntentDecision(
                 executor=ExecutorType.CLARIFICATION,
                 confidence=0.9,
                 reason="指代不明",
-                missing_info=["请说明具体对象，例如哪笔订单、哪个商品或哪项活动"],
+                missing_info=["请说明具体对象，例如哪个发放单位、哪件物资或哪场限量申领"],
             )
         chitchat_markers = ("你是谁", "你是什么", "你好", "介绍一下你自己", "你能做什么", "在吗")
         if any(marker in normalized for marker in chitchat_markers):
