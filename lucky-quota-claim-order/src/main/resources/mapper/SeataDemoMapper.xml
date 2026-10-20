@@ -1,0 +1,23 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.lucky.quota.order.mapper.SeataDemoMapper">
+
+    <select id="selectAllAccounts" resultType="com.lucky.quota.order.model.entity.SeataDemoAccount">
+        SELECT id, name, balance
+        FROM seata_demo_account
+        ORDER BY id
+    </select>
+
+    <update id="deductBalance">
+        UPDATE seata_demo_account
+        SET balance = balance - #{amount}
+        WHERE id = #{accountId}
+          AND balance >= #{amount}
+    </update>
+
+    <insert id="insertTxLog">
+        INSERT INTO seata_demo_tx_log (id, from_account_id, to_account_id, amount, remark, create_time)
+        VALUES (#{id}, #{fromAccountId}, #{toAccountId}, #{amount}, #{remark}, #{createTime})
+    </insert>
+
+</mapper>

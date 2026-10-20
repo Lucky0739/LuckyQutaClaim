@@ -1,0 +1,88 @@
+spring:
+  main:
+    allow-bean-definition-overriding: true
+  application:
+    # 申领单服务
+    name: lucky-quota-claim-order
+  profiles:
+    active: dev
+  config:
+    import:
+      - optional:nacos:lucky-seckill-dev.yml
+  cloud:
+    nacos:
+      discovery:
+        server-addr: 127.0.0.1:8848
+        metadata:
+          preserved.heart.beat.interval: 5000
+          preserved.heart.beat.timeout: 15000
+          preserved.ip.delete.timeout: 30000
+      config:
+        server-addr: 127.0.0.1:8848
+        file-extension: yml
+        import-check:
+          enabled: false
+    loadbalancer:
+      ribbon:
+        enabled: false
+      eager-load:
+        clients:
+          - lucky-quota-claim-goods
+          - lucky-quota-claim-user
+      cache:
+        enabled: true
+        ttl: 5s
+        capacity: 256
+
+server:
+  port: 8084
+  forward-headers-strategy: framework
+
+rocketmq:
+  name-server: 127.0.0.1:9876
+  producer:
+    group: order-producer-group
+    send-message-timeout: 3000
+    retry-times-when-send-failed: 2
+    retry-times-when-send-async-failed: 2
+
+seata:
+  enabled: true
+  application-id: ${spring.application.name}
+  tx-service-group: lucky_seckill_tx_group
+  enable-auto-data-source-proxy: true
+  data-source-proxy-mode: AT
+  service:
+    vgroup-mapping:
+      lucky_seckill_tx_group: default
+    grouplist:
+      default: 127.0.0.1:8091
+
+mybatis-plus:
+  mapper-locations: classpath*:/mapper/**/*.xml
+  configuration:
+    map-underscore-to-camel-case: true
+    log-impl: org.apache.ibatis.logging.stdout.StdOutImpl
+  global-config:
+    db-config:
+      id-type: auto
+
+management:
+  endpoints:
+    web:
+      exposure:
+        include: '*'
+
+# Feign 客户端配置
+feign:
+  client:
+    config:
+      default:
+        connectTimeout: 3000
+        readTimeout: 5000
+  httpclient:
+    hc5:
+      enabled: true
+
+sa-token:
+  ignore-paths: /user/login,/user/register,/user/send-verify-code,/order/**,/goods/**,/notify/**,/actuator/**

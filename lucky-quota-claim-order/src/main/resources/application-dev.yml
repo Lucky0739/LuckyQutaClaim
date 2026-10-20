@@ -1,0 +1,95 @@
+cos:
+  client:
+    secret-id: local-dev-placeholder
+    secret-key: local-dev-placeholder
+    region: ap-guangzhou
+    bucket-name: local-dev-bucket
+    host: http://127.0.0.1/local-dev
+
+spring:
+  # 本地开发环境 MySQL 数据源配置
+  datasource:
+    # 连接地址：数据库名为 lucky-quta-claim
+    url: jdbc:mysql://localhost:3306/lucky-quta-claim?useUnicode=true&characterEncoding=utf-8&serverTimezone=Asia/Shanghai&allowPublicKeyRetrieval=true&useSSL=false
+    # 数据库用户名
+    username: root
+    # 数据库密码
+    password: yang2004
+    # 数据库驱动类名
+    driver-class-name: com.mysql.cj.jdbc.Driver
+    # HikariCP 连接池配置
+    hikari:
+      # 连接池名称
+      pool-name: QuotaHikariPool
+      # 最小空闲连接数
+      minimum-idle: 10
+      # 最大连接数
+      maximum-pool-size: 50
+      # 空闲连接超时时间（毫秒）
+      idle-timeout: 300000
+      # 连接最大存活时间（毫秒）
+      max-lifetime: 900000
+      # 获取连接超时时间（毫秒）
+      connection-timeout: 30000
+      # 连接测试语句
+      connection-test-query: SELECT 1
+
+  data:
+    redis:
+      # Redis 服务器地址
+      host: 127.0.0.1
+      # Redis 服务器端口
+      port: 6380
+      # Redis 密码（默认为空，如果设置了密码请填写）
+      password: yang2004
+      # 使用的数据库索引（默认 0）
+      database: 0
+      # 连接超时时间（毫秒）
+      timeout: 5000
+      # Lettuce 连接池配置（提升连接复用效率）
+      lettuce:
+        pool:
+          # 连接池最大连接数
+          max-active: 20
+          # 连接池最大空闲连接数
+          max-idle: 10
+          # 连接池最小空闲连接数
+          min-idle: 5
+          # 连接池最大阻塞等待时间（毫秒），-1 表示无限制
+          max-wait: 3000
+
+  cloud:
+    nacos:
+      discovery:
+        ip: 127.0.0.1
+    openfeign:
+      client:
+        config:
+          orderFeignClient:
+            url: http://127.0.0.1:8084
+          goodsFeignClient:
+            url: http://127.0.0.1:8082
+          notifyCenterFeignClient:
+            url: http://127.0.0.1:8089
+
+# MyBatis-Plus 开发环境专属配置（联表 SQL 仍在 mapper XML）
+mybatis-plus:
+  configuration:
+    # 开发阶段打印 SQL 语句，方便调试
+    log-impl: org.apache.ibatis.logging.stdout.StdOutImpl
+    map-underscore-to-camel-case: true
+  mapper-locations: classpath*:/mapper/**/*.xml
+  global-config:
+    db-config:
+      id-type: auto
+
+# Feign 客户端配置
+feign:
+  client:
+    config:
+      default:
+        connectTimeout: 3000
+        readTimeout: 5000
+  httpclient:
+    hc5:
+      enabled: true
