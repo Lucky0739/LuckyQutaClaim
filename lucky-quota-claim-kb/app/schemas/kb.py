@@ -59,3 +59,5 @@ class AskResponse(CamelModel):
     funnel: dict = Field(default_factory=dict)
     shadow_funnel: dict = Field(default_factory=dict)
     references: list[KnowledgeReference] = Field(default_factory=list)
+    tool_name: str = ""
+    tool_payload: dict = Field(default_factory=dict)

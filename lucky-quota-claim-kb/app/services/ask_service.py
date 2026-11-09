@@ -9,19 +9,26 @@ from app.core.sse import sse_event
 from app.rag.embedder import embed_query
 from app.rag.funnel import KnowledgeFunnel, ambiguous_domains
 from app.rag.intent_router import ExecutorType, IntentRouter
+from app.rag.tool_router import ToolDecision, ToolRouter, ToolType
 from app.rag.vector_store import StoredChunk, VectorStore
+from app.tools import formatter as tool_formatter
+from app.tools import java_client as tool_java_client
 from app.schemas import AskRequest, AskResponse, KnowledgeReference
 
 logger = logging.getLogger(__name__)
 
 NO_EVIDENCE = "未找到相关说明。请换个说法，或请管理员先上传相关知识文档。"
 OUT_OF_SCOPE_ANSWER = (
-    "这个问题和当前知识库无关。\n"
-    "请换一个与平台业务相关的问题，例如申请发放单位、物资上架或限量申领。"
+    "这个问题与当前知识库（限量物资申领相关业务）无关。\n"
+    "我不会用库内文档拼凑或自行编造答案。\n"
+    "请换一个与平台业务相关的问题，例如发放单位申请、物资上架或限量申领规则。"
 )
 CHITCHAT_ANSWER = (
-    "我是限量物资申领的知识库客服。\n"
-    "可以回答发放单位申请、物资上架、限量申领和申领单相关问题，具体规则以已上传的知识文档为准。"
+    "我是限量物资申领的智能客服。\n"
+    "可查知识库规则，也可用工具：\n"
+    "· 物资查询（如「搜索口罩」）\n"
+    "· 申领导购（如「怎么限量申领」）\n"
+    "具体政策以已上传文档为准。"
 )
 EMPTY_LIBRARY_ANSWER = "知识库还没有文档。请管理员在「知识库」中上传后再提问。"
 ANSWER_LEAD = "根据知识库，相关说明如下："
@@ -34,7 +41,8 @@ DOMAIN_LABELS = {
     "pay": "支付余额",
     "notify": "消息通知",
 }
-MIN_VECTOR_SCORE = 0.12
+# 低于此分数的命中不展示，避免弱相关片段被当成答案
+MIN_VECTOR_SCORE = 0.28
 TOTAL_MAX_CHARS = 1200
 CHUNK_MAX_CHARS = 500
 # 命中子块后，向前后取父块上下文窗口
@@ -82,6 +90,10 @@ class KnowledgeAskService:
             ]
             if isinstance(events.get("references"), dict)
             else [],
+            tool_name=str((events.get("tool") or {}).get("name") or "")
+            if isinstance(events.get("tool"), dict)
+            else "",
+            tool_payload=events.get("tool") if isinstance(events.get("tool"), dict) else {},
         )
 
     def iter_sse(self, request: AskRequest) -> Iterator[str]:
@@ -105,6 +117,15 @@ class KnowledgeAskService:
             answer = "这个问题信息不够，请先补充：\n" + "\n".join(f"{index}. {q}" for index, q in enumerate(questions, start=1))
             yield from _stream_text(answer)
             yield sse_event("done", {})
+            return
+        if decision.executor == ExecutorType.OUT_OF_SCOPE:
+            yield from _stream_text(OUT_OF_SCOPE_ANSWER)
+            yield sse_event("done", {})
+            return
+
+        tool_decision = ToolRouter.route(request.question)
+        if tool_decision.tool is not None:
+            yield from self._run_tool(tool_decision)
             return
 
         # 和向量检索衔接
@@ -147,29 +168,30 @@ class KnowledgeAskService:
             yield sse_event("done", {})
             return
 
-        #  # 用漏斗选出的 document_ids 过滤向量检索
+        if primary.unrelated:
+            yield sse_event(
+                "route",
+                {
+                    "executor": ExecutorType.OUT_OF_SCOPE.value,
+                    "confidence": 0.9,
+                    "reason": "漏斗判定与业务领域无关键词关联，跳过检索",
+                    "missingInfo": ["请重新输入与知识库相关的问题"],
+                },
+            )
+            yield from _stream_text(OUT_OF_SCOPE_ANSWER)
+            yield sse_event("done", {})
+            return
+
+        # 用漏斗选出的 document_ids 过滤向量检索
         yield sse_event("status", {"stage": "retrieving"})
-        search_doc_ids = [] if primary.unrelated else primary.document_ids
         hits = self.store.search(
-            embed_query(request.question), search_doc_ids, top_k=RETRIEVAL_TOP_K
+            embed_query(request.question), primary.document_ids, top_k=RETRIEVAL_TOP_K
         )
         hits = [hit for hit in hits if hit.score >= MIN_VECTOR_SCORE]
         # 同一个父块可能命中多个子块，只保留得分最高的一个，避免答案重复
         hits = _dedupe_by_parent(hits)
         if not hits:
-            if primary.unrelated:
-                yield sse_event(
-                    "route",
-                    {
-                        "executor": ExecutorType.OUT_OF_SCOPE.value,
-                        "confidence": 0.9,
-                        "reason": "问题与知识库文档无有效关联",
-                        "missingInfo": ["请重新输入与知识库相关的问题"],
-                    },
-                )
-                yield from _stream_text(OUT_OF_SCOPE_ANSWER)
-            else:
-                yield from _stream_text(NO_EVIDENCE)
+            yield from _stream_text(NO_EVIDENCE)
             yield sse_event("done", {})
             return
 
@@ -192,6 +214,32 @@ class KnowledgeAskService:
                 ]
             },
         )
+        yield sse_event("done", {})
+
+    def _run_tool(self, decision: ToolDecision) -> Iterator[str]:
+        yield sse_event("status", {"stage": "tool"})
+        tool_name = decision.tool.value if decision.tool else ""
+        yield sse_event(
+            "route",
+            {
+                "executor": "tool",
+                "tool": tool_name,
+                "confidence": decision.confidence,
+                "reason": decision.reason,
+                "missingInfo": [],
+            },
+        )
+        if decision.tool == ToolType.GOODS_SEARCH:
+            raw = tool_java_client.goods_search(decision.keyword) or {}
+            answer, payload = tool_formatter.format_goods_search(raw)
+        elif decision.tool == ToolType.SHOPPING_GUIDE:
+            raw = tool_java_client.shopping_guide() or {}
+            answer, payload = tool_formatter.format_shopping_guide(raw)
+        else:
+            answer, payload = "暂不支持该工具。", {"name": tool_name}
+        yield sse_event("tool", payload)
+        yield sse_event("status", {"stage": "generating"})
+        yield from _stream_text(answer)
         yield sse_event("done", {})
 
 

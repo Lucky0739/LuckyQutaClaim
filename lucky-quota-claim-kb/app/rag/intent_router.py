@@ -46,6 +46,36 @@ class IntentRouter:
                 confidence=0.92,
                 reason="日常对话/身份介绍，无需检索知识库",
             )
+        off_topic_markers = (
+            "天气",
+            "气温",
+            "下雨",
+            "下雪",
+            "降雪",
+            "台风",
+            "预报",
+            "湿度",
+            "股票",
+            "基金",
+            "彩票",
+            "足球",
+            "篮球赛",
+            "明星",
+            "八卦",
+            "讲个笑话",
+            "成语接龙",
+            "翻译一下",
+            "写一首诗",
+            "写代码",
+            "java面试",
+            "python教程",
+        )
+        if any(marker in normalized for marker in off_topic_markers):
+            return IntentDecision(
+                executor=ExecutorType.OUT_OF_SCOPE,
+                confidence=0.93,
+                reason="问题明显不在知识库业务范围内",
+            )
         return IntentDecision(
             executor=ExecutorType.KB,
             confidence=0.7,

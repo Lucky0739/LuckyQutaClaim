@@ -6,6 +6,7 @@ from threading import Lock
 from pymilvus import DataType, MilvusClient
 
 from app.core.config import settings
+from app.ingestion.chunker import ChildChunk
 from app.schemas import DocumentCatalogItem
 
 _OUTPUT_FIELDS = [
@@ -14,7 +15,12 @@ _OUTPUT_FIELDS = [
     "knowledge_scope_code",
     "business_category",
     "chunk_index",
+    "parent_id",
+    "parent_index",
+    "child_start",
+    "heading_path",
     "content",
+    "parent_content",
 ]
 
 # 多个 VectorStore 实例共享同一个集合，建集合阶段需要串行化
@@ -30,6 +36,11 @@ class StoredChunk:
     chunk_index: int
     content: str
     score: float
+    parent_id: str = ""
+    parent_index: int = 0
+    child_start: int = 0
+    heading_path: str = ""
+    parent_content: str = ""
 
 
 class VectorStore:
@@ -42,33 +53,44 @@ class VectorStore:
         document_name: str,
         knowledge_scope_code: str,
         business_category: str,
-        chunks: list[str],
+        children: list[ChildChunk],
         embeddings: list[list[float]],
     ) -> int:
+        """写入子块；父块内容随子块冗余存储，命中后无需二次查询即可还原上下文。
+
+        单集合方案以少量存储冗余换取检索链路简单、无跨集合关联失败。父块内容
+        只在子块行里重复，单行大小仍远低于 Milvus 限制。
+        """
         client, name = self._ensure_collection()
         self.delete_document(document_id)
         rows = [
             {
                 "document_id": int(document_id),
-                "chunk_index": index,
+                "chunk_index": int(child.chunk_index),
+                "parent_id": (child.parent_id or "")[:128],
+                "parent_index": int(child.parent_index),
+                "child_start": int(child.start),
+                "heading_path": (child.heading_path or "")[:500],
                 "document_name": (document_name or "")[:255],
                 "knowledge_scope_code": (knowledge_scope_code or "default")[:64],
                 "business_category": (business_category or "general")[:128],
-                "content": content[:8000],
+                "content": child.content[:2000],
+                "parent_content": (child.parent_content or "")[:8000],
                 "embedding": embedding,
             }
-            for index, (content, embedding) in enumerate(zip(chunks, embeddings, strict=True))
+            for child, embedding in zip(children, embeddings, strict=True)
         ]
         if rows:
             client.insert(collection_name=name, data=rows)
             client.flush(collection_name=name)
-        return len(chunks)
+        return len(children)
 
     def delete_document(self, document_id: int) -> None:
         client, name = self._ensure_collection()
         client.delete(collection_name=name, filter=f"document_id == {int(document_id)}")
         client.flush(collection_name=name)
 
+    # 目录从 Milvus 构建
     def catalog(self) -> list[DocumentCatalogItem]:
         client, name = self._ensure_collection()
         rows = client.query(
@@ -103,7 +125,7 @@ class VectorStore:
         self,
         query_embedding: list[float],
         document_ids: list[int],
-        top_k: int = 4,
+        top_k: int = 8,
     ) -> list[StoredChunk]:
         client, name = self._ensure_collection()
         condition = ""
@@ -131,6 +153,11 @@ class VectorStore:
                     chunk_index=int(entity.get("chunk_index") or 0),
                     content=str(entity.get("content") or ""),
                     score=float(hit["distance"] or 0),
+                    parent_id=str(entity.get("parent_id") or ""),
+                    parent_index=int(entity.get("parent_index") or 0),
+                    child_start=int(entity.get("child_start") or 0),
+                    heading_path=str(entity.get("heading_path") or ""),
+                    parent_content=str(entity.get("parent_content") or ""),
                 )
             )
         return result
@@ -162,10 +189,22 @@ class VectorStore:
                 )
                 schema.add_field(field_name="document_id", datatype=DataType.INT64)
                 schema.add_field(field_name="chunk_index", datatype=DataType.INT64)
+                schema.add_field(field_name="parent_index", datatype=DataType.INT64)
+                schema.add_field(field_name="child_start", datatype=DataType.INT64)
+                schema.add_field(
+                    field_name="parent_id",
+                    datatype=DataType.VARCHAR,
+                    max_length=128,
+                )
+                schema.add_field(
+                    field_name="heading_path",
+                    datatype=DataType.VARCHAR,
+                    max_length=2048,
+                )
                 schema.add_field(
                     field_name="document_name",
                     datatype=DataType.VARCHAR,
-                    max_length=255,
+                    max_length=1024,
                 )
                 schema.add_field(
                     field_name="knowledge_scope_code",
@@ -181,6 +220,11 @@ class VectorStore:
                     field_name="content",
                     datatype=DataType.VARCHAR,
                     max_length=8192,
+                )
+                schema.add_field(
+                    field_name="parent_content",
+                    datatype=DataType.VARCHAR,
+                    max_length=32768,
                 )
                 schema.add_field(
                     field_name="embedding",
