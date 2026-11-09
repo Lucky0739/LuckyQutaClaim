@@ -7,10 +7,9 @@ import com.lucky.quota.common.exception.BizException;
 import com.lucky.quota.user.kb.dto.KbDocumentVO;
 import com.lucky.quota.user.kb.dto.KbReindexItemVO;
 import com.lucky.quota.user.kb.dto.KbReindexResultVO;
-import com.lucky.quota.user.kb.dto.PythonIndexRequest;
-import com.lucky.quota.user.kb.dto.PythonIndexResponse;
 import com.lucky.quota.user.kb.mapper.KbDocumentMapper;
 import com.lucky.quota.user.kb.model.KbDocument;
+import com.lucky.quota.user.kb.service.KnowledgeDocumentOfflineIndexService;
 import com.lucky.quota.user.kb.storage.DocumentStorageService;
 import jakarta.annotation.Resource;
 import lombok.extern.slf4j.Slf4j;
@@ -47,6 +46,8 @@ public class KnowledgeDocumentService {
     private DocumentStorageService documentStorageService;
     @Resource
     private KnowledgePythonClient knowledgePythonClient;
+    @Resource
+    private KnowledgeDocumentOfflineIndexService offlineIndexService;
 
     /**
      * 重建任务是否正在执行，避免并发触发导致重复写入向量
@@ -73,39 +74,17 @@ public class KnowledgeDocumentService {
                 .objectName(objectName)
                 .knowledgeScopeCode(StrUtil.blankToDefault(knowledgeScopeCode, "default"))
                 .businessCategory(StrUtil.blankToDefault(businessCategory, "general"))
-                .parseStatus(PROCESSING)
-                .indexStatus(PROCESSING)
+                .parseStatus(PENDING)
+                .indexStatus(PENDING)
                 .chunkCount(0)
                 .createTime(LocalDateTime.now())
                 .editTime(LocalDateTime.now())
                 .status(1)
                 .build();
         kbDocumentMapper.insert(document);
-        try {
-            PythonIndexResponse indexed = knowledgePythonClient.index(PythonIndexRequest.builder()
-                    .documentId(documentId)
-                    .documentName(document.getDocumentName())
-                    .knowledgeScopeCode(document.getKnowledgeScopeCode())
-                    .businessCategory(document.getBusinessCategory())
-                    .bucketName(documentStorageService.bucket())
-                    .objectName(objectName)
-                    .fileType(fileType)
-                    .build());
-            document.setParseStatus(SUCCESS);
-            document.setIndexStatus(SUCCESS);
-            document.setChunkCount(indexed.getChunkCount() == null ? 0 : indexed.getChunkCount());
-            document.setParseErrorMsg(null);
-            kbDocumentMapper.updateStatus(document);
-        } catch (Exception ex) {
-            log.error("知识库索引失败 documentId={}", documentId, ex);
-            document.setParseStatus(FAILED);
-            document.setIndexStatus(FAILED);
-            document.setParseErrorMsg(StrUtil.maxLength(ex.getMessage(), 500));
-            kbDocumentMapper.updateStatus(document);
-            throw ex instanceof BizException biz ? biz
-                    : new BizException(ResponseCodeEnum.SYSTEM_ERROR, "文档已上传，但清洗/向量化失败");
-        }
-        return KbDocumentVO.from(kbDocumentMapper.selectById(documentId));
+        offlineIndexService.submit(documentId);
+        log.info("知识库文档已上传并进入离线索引队列 documentId={}", documentId);
+        return KbDocumentVO.from(document);
     }
 
     public List<KbDocumentVO> list() {
@@ -158,41 +137,28 @@ public class KnowledgeDocumentService {
                     continue;
                 }
 
-                document.setParseStatus(PROCESSING);
-                document.setIndexStatus(PROCESSING);
+                document.setParseStatus(PENDING);
+                document.setIndexStatus(PENDING);
+                document.setParseErrorMsg(null);
                 kbDocumentMapper.updateStatus(document);
+                offlineIndexService.runOfflineIndex(document.getId());
 
-                try {
-                    PythonIndexResponse indexed = knowledgePythonClient.index(PythonIndexRequest.builder()
-                            .documentId(document.getId())
-                            .documentName(document.getDocumentName())
-                            .knowledgeScopeCode(document.getKnowledgeScopeCode())
-                            .businessCategory(document.getBusinessCategory())
-                            .bucketName(documentStorageService.bucket())
-                            .objectName(document.getObjectName())
-                            .fileType(document.getFileType())
-                            .build());
-
-                    int chunkCount = indexed.getChunkCount() == null ? 0 : indexed.getChunkCount();
-                    document.setParseStatus(SUCCESS);
-                    document.setIndexStatus(SUCCESS);
-                    document.setParseErrorMsg(null);
-                    document.setChunkCount(chunkCount);
-                    kbDocumentMapper.updateStatus(document);
+                KbDocument after = kbDocumentMapper.selectById(document.getId());
+                if (after == null) {
+                    skippedCount++;
+                    continue;
+                }
+                if (after.getIndexStatus() != null && after.getIndexStatus() == SUCCESS) {
                     successCount++;
                     items.add(KbReindexItemVO.builder()
-                            .documentId(String.valueOf(document.getId()))
-                            .documentName(document.getDocumentName())
+                            .documentId(String.valueOf(after.getId()))
+                            .documentName(after.getDocumentName())
                             .success(true)
-                            .chunkCount(chunkCount)
+                            .chunkCount(after.getChunkCount())
                             .build());
-                } catch (Exception ex) {
-                    log.error("知识库向量重建失败 documentId={}", document.getId(), ex);
-                    String message = ex instanceof BizException biz ? biz.getErrorMessage() : ex.getMessage();
-                    markReindexFailed(document, StrUtil.maxLength(StrUtil.blankToDefault(message, "未知错误"), 500));
-                    kbDocumentMapper.updateStatus(document);
+                } else {
                     failedCount++;
-                    items.add(failedReindexItem(document));
+                    items.add(failedReindexItem(after));
                 }
             }
 

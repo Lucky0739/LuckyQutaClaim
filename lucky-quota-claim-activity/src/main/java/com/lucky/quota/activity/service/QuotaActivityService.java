@@ -1,5 +1,6 @@
 package com.lucky.quota.activity.service;
 
+import com.lucky.quota.activity.model.dto.QuotaActivityCreateRequest;
 import com.lucky.quota.activity.model.vo.QuotaActivityVO;
 import com.lucky.quota.activity.model.vo.QuotaGoodsVO;
 import com.lucky.quota.common.utils.Response;
@@ -7,6 +8,11 @@ import com.lucky.quota.common.utils.Response;
 import java.util.List;
 
 public interface QuotaActivityService {
+
+    /**
+     * 管理员创建限量场次（初始为未开始，供商家申请投放）
+     */
+    Response<QuotaActivityVO> createActivity(QuotaActivityCreateRequest request);
 
     Response<List<QuotaActivityVO>> listActivities();
 

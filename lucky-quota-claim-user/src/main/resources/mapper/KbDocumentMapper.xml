@@ -61,4 +61,30 @@
             edit_time = NOW()
         WHERE id = #{id}
     </update>
+
+    <select id="selectPendingForOfflineIndex" resultType="long">
+        SELECT id
+        FROM kb_document
+        WHERE status = 1
+          AND (
+            index_status = 1
+            OR (index_status = 2 AND edit_time &lt; DATE_SUB(NOW(), INTERVAL 30 MINUTE))
+          )
+        ORDER BY create_time ASC
+        LIMIT #{limit}
+    </select>
+
+    <update id="claimForOfflineIndex">
+        UPDATE kb_document
+        SET index_status = 2,
+            parse_status = 2,
+            parse_error_msg = NULL,
+            edit_time = NOW()
+        WHERE id = #{id}
+          AND status = 1
+          AND (
+            index_status = 1
+            OR (index_status = 2 AND edit_time &lt; DATE_SUB(NOW(), INTERVAL 30 MINUTE))
+          )
+    </update>
 </mapper>

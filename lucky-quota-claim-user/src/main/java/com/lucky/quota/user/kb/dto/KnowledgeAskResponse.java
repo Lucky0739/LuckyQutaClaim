@@ -19,4 +19,7 @@ public class KnowledgeAskResponse {
     private Map<String, Object> funnel = new HashMap<>();
     private Map<String, Object> shadowFunnel = new HashMap<>();
     private List<KnowledgeReferenceVO> references = new ArrayList<>();
+    /** tool 执行器名称：goods_search / shopping_guide */
+    private String toolName;
+    private Map<String, Object> toolPayload = new HashMap<>();
 }

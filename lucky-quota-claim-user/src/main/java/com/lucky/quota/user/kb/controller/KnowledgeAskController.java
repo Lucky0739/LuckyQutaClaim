@@ -43,10 +43,11 @@ public class KnowledgeAskController {
                 knowledgePythonClient.stream(request, emitter);
                 emitter.complete();
             } catch (Exception ex) {
-                log.warn("kb stream failed: {}", ex.getMessage());
+                String detail = resolveErrorMessage(ex);
+                log.warn("kb stream failed: {}", detail, ex);
                 try {
                     emitter.send(SseEmitter.event().name("error").data(
-                            "{\"message\":\"" + escape(ex.getMessage()) + "\"}"));
+                            "{\"message\":\"" + escape(detail) + "\"}"));
                     emitter.complete();
                 } catch (Exception ignored) {
                     emitter.completeWithError(ex);
@@ -56,8 +57,20 @@ public class KnowledgeAskController {
         return emitter;
     }
 
+    private static String resolveErrorMessage(Exception ex) {
+        if (ex instanceof com.lucky.quota.common.exception.BizException biz) {
+            if (biz.getErrorMessage() != null && !biz.getErrorMessage().isBlank()) {
+                return biz.getErrorMessage();
+            }
+        }
+        if (ex.getMessage() != null && !ex.getMessage().isBlank()) {
+            return ex.getMessage();
+        }
+        return "知识库暂时不可用，请确认 Python 知识库服务已启动（端口 8000）";
+    }
+
     private static String escape(String message) {
-        if (message == null) {
+        if (message == null || message.isBlank()) {
             return "知识库暂时不可用";
         }
         return message.replace("\\", "\\\\").replace("\"", "\\\"");

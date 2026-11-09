@@ -37,6 +37,14 @@
           AND end_time &gt; #{now}
     </select>
 
+    <select id="selectInProgress" resultMap="BaseResultMap">
+        SELECT <include refid="Base_Column_List"/>
+        FROM t_seckill_activity
+        WHERE status = 1
+          AND begin_time &lt;= #{now}
+          AND end_time &gt; #{now}
+    </select>
+
     <select id="selectNeedEnd" resultMap="BaseResultMap">
         SELECT <include refid="Base_Column_List"/>
         FROM t_seckill_activity

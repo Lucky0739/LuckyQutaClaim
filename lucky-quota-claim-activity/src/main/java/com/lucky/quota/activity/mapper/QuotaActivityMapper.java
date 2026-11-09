@@ -15,6 +15,9 @@ public interface QuotaActivityMapper extends BaseMapper<QuotaActivity> {
 
     List<QuotaActivity> selectNeedWarmUp(@Param("now") LocalDateTime now);
 
+    /** 进行中且仍在时间窗内的场次，用于 Redis 预热丢失后的补预热 */
+    List<QuotaActivity> selectInProgress(@Param("now") LocalDateTime now);
+
     List<QuotaActivity> selectNeedEnd(@Param("now") LocalDateTime now);
 
     int updateStatus(@Param("id") Long id,

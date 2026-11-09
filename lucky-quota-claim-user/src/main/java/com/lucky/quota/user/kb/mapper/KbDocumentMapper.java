@@ -16,4 +16,10 @@ public interface KbDocumentMapper extends BaseMapper<KbDocument> {
     List<KbDocument> selectAllDocuments();
 
     int deleteById(Long id);
+
+    /** 待离线索引：排队中或处理中超时（默认 30 分钟） */
+    List<Long> selectPendingForOfflineIndex(int limit);
+
+    /** 抢占离线索引任务，返回影响行数 */
+    int claimForOfflineIndex(Long id);
 }

@@ -3,6 +3,7 @@ package com.lucky.quota.activity.service.impl;
 import com.lucky.quota.activity.enums.QuotaActivityStatusEnum;
 import com.lucky.quota.activity.mapper.QuotaActivityMapper;
 import com.lucky.quota.activity.mapper.QuotaGoodsMapper;
+import com.lucky.quota.activity.model.dto.QuotaActivityCreateRequest;
 import com.lucky.quota.activity.model.entity.QuotaActivity;
 import com.lucky.quota.activity.model.entity.QuotaGoods;
 import com.lucky.quota.activity.model.vo.QuotaActivityVO;
@@ -17,6 +18,7 @@ import jakarta.annotation.Resource;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import org.springframework.util.StringUtils;
 
 import java.time.LocalDateTime;
 import java.util.List;
@@ -37,6 +39,41 @@ public class QuotaActivityServiceImpl implements QuotaActivityService {
 
     @Resource
     private QuotaActivityPurchaseValidator seckillActivityPurchaseValidator;
+
+    @Override
+    @Transactional(rollbackFor = Exception.class)
+    public Response<QuotaActivityVO> createActivity(QuotaActivityCreateRequest request) {
+        String activityName = request.getActivityName() != null ? request.getActivityName().trim() : "";
+        if (!StringUtils.hasText(activityName)) {
+            throw new BizException(ResponseCodeEnum.PARAM_NOT_VALID, "场次名称不能为空");
+        }
+        LocalDateTime beginTime = request.getBeginTime();
+        LocalDateTime endTime = request.getEndTime();
+        if (beginTime == null || endTime == null) {
+            throw new BizException(ResponseCodeEnum.PARAM_NOT_VALID, "开始时间与结束时间不能为空");
+        }
+        if (!endTime.isAfter(beginTime)) {
+            throw new BizException(ResponseCodeEnum.PARAM_NOT_VALID, "结束时间必须晚于开始时间");
+        }
+        LocalDateTime now = LocalDateTime.now();
+        String description = request.getDescription() != null ? request.getDescription().trim() : null;
+        if (description != null && description.isEmpty()) {
+            description = null;
+        }
+
+        QuotaActivity activity = QuotaActivity.builder()
+                .activityName(activityName)
+                .beginTime(beginTime)
+                .endTime(endTime)
+                .status(QuotaActivityStatusEnum.NOT_STARTED.getCode())
+                .description(description)
+                .createTime(now)
+                .updateTime(now)
+                .build();
+        seckillActivityMapper.insert(activity);
+        log.info("==> 创建限量场次, activityId={}, activityName={}", activity.getId(), activityName);
+        return Response.success(QuotaActivityVO.fromEntity(activity));
+    }
 
     @Override
     public Response<List<QuotaActivityVO>> listActivities() {
@@ -118,11 +155,16 @@ public class QuotaActivityServiceImpl implements QuotaActivityService {
             return Response.success(true);
         }
 
+        LocalDateTime now = LocalDateTime.now();
         seckillActivityMapper.updateStatus(
                 activityId,
                 QuotaActivityStatusEnum.ENDED.getCode(),
-                LocalDateTime.now()
+                now
         );
+        QuotaActivity refreshed = seckillActivityMapper.selectByPrimaryKey(activityId);
+        if (refreshed != null) {
+            seckillRedisService.cacheQuotaActivity(refreshed);
+        }
         log.info("==> 手动结束限量场次, activityId={}, activityName={}", activityId, activity.getActivityName());
         return Response.success(true);
     }
@@ -151,12 +193,17 @@ public class QuotaActivityServiceImpl implements QuotaActivityService {
             throw new BizException(ResponseCodeEnum.QUOTA_ACTIVITY_NO_GOODS);
         }
 
-        seckillRedisService.warmUpActivityStock(activity.getId(), goodsList, activity);
+        // 先写库存 key；活动缓存必须在 status 更新后再写，否则会长时间缓存「未开始」导致无法申领
+        seckillRedisService.warmUpActivityStock(activity.getId(), goodsList, null);
         seckillActivityMapper.updateStatus(
                 activity.getId(),
                 QuotaActivityStatusEnum.IN_PROGRESS.getCode(),
                 now
         );
+        QuotaActivity refreshed = seckillActivityMapper.selectByPrimaryKey(activity.getId());
+        if (refreshed != null) {
+            seckillRedisService.cacheQuotaActivity(refreshed);
+        }
         // 预热成功，清除重试计数
         seckillRedisService.clearWarmupRetryCount(activity.getId());
     }
