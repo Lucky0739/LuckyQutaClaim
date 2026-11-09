@@ -60,7 +60,6 @@ public enum ResponseCodeEnum implements BaseExceptionInterface {
     ORDER_STATUS_ERROR("50001", "申领单状态异常"),
     ORDER_EXPIRED("50002", "申领已过期"),
     ORDER_NOT_EXIST("50003", "申领单不存在"),
-    SEATA_DEMO_ROLLBACK("50004", "已回滚"),
 
     // ----------- 限量申领模块异常状态码 -----------
     QUOTA_ACTIVITY_NOT_EXIST("60001", "限量场次不存在"),

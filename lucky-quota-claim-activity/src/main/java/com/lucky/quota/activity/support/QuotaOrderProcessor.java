@@ -12,12 +12,13 @@ import com.lucky.quota.common.exception.NonRetryableException;
 import com.lucky.quota.common.exception.RetryableException;
 import com.lucky.quota.common.model.entity.QuotaOrderMessage;
 import com.lucky.quota.common.utils.Response;
-import com.lucky.quota.goods.feign.GoodsFeignClient;
+import com.lucky.quota.goods.service.GoodsService;
 import jakarta.annotation.Resource;
 import lombok.extern.slf4j.Slf4j;
-import org.apache.seata.spring.annotation.GlobalTransactional;
+import org.springframework.dao.DuplicateKeyException;
 import org.springframework.data.redis.core.StringRedisTemplate;
 import org.springframework.stereotype.Component;
+import org.springframework.transaction.annotation.Transactional;
 
 import java.time.LocalDateTime;
 import java.util.concurrent.TimeUnit;
@@ -25,12 +26,10 @@ import java.util.concurrent.TimeUnit;
 /**
  * 限量申领单创建处理器（主消费者与 DLQ 消费者共享逻辑）。
  * <p>
- * <b>事务边界（Seata AT 全局事务）</b>：
- * 限量申领库存扣减发生在 activity 本地库（t_seckill_goods.seckill_stock），
- * 物资总库存扣减走 Feign 调 goods 服务（t_goods_sku.stock_num）——两者是独立的库。
- * {@link GlobalTransactional} 把它们包成一个全局事务，任一环节失败整体回滚：
- * 本地分支靠 undo_log 反向补偿，goods 分支由那边的 undo_log 补偿。
- * 这样解决的是「限量申领卖出的货没占用物资总库存」导致的超卖问题。
+ * <b>事务边界</b>：
+ * 限量名额 {@code t_seckill_goods.seckill_stock} 和物资库存 {@code t_goods_sku.stock_num}
+ * 现在在同一个库、同一个进程里。用本地事务一起扣，避免再开 Seata 全局事务：
+ * 全局事务要先连 Seata（8091），连不上时 begin 会超时，消息被重试丢掉，数据库库存一直不变。
  * <p>
  * 异常分级策略：
  * <ul>
@@ -56,12 +55,15 @@ public class QuotaOrderProcessor {
     @Resource
     private QuotaRedisService seckillRedisService;
 
-    /** 物资服务：扣减 t_goods_sku 的总库存，与限量申领库存保持同步 */
+    /** 同一进程内扣减 t_goods_sku.stock_num，与限量名额保持同步 */
     @Resource
-    private GoodsFeignClient goodsFeignClient;
+    private GoodsService goodsService;
 
     @Resource
     private StringRedisTemplate stringRedisTemplate;
+
+    @Resource
+    private QuotaOrderMirrorService quotaOrderMirrorService;
 
     /** Redis 消费标记前缀，TTL 与申领状态 key 一致 */
     private static final String ORDER_CONSUMED_PREFIX = "seckill:order:consumed:";
@@ -81,13 +83,14 @@ public class QuotaOrderProcessor {
      * @throws NonRetryableException 不可恢复的错误（限量物资不存在、物资总库存不足），消费者应直接 ACK
      * @throws RetryableException    可恢复的错误（乐观锁冲突、Feign 瞬时故障等），消费者应投递 DLQ
      */
-    @GlobalTransactional(name = "seckill-order-create", rollbackFor = Exception.class)
+    @Transactional(rollbackFor = Exception.class)
     public void createOrder(QuotaOrderMessage message) {
         String orderNo = message.getOrderNo();
 
         // ========== 1. 幂等检查：Redis 消费标记 → MySQL 兜底 ==========
         if (isOrderConsumed(message.getUserId(), orderNo)) {
             log.warn("==> 限量申领单已消费，幂等跳过, orderNo={}", orderNo);
+            quotaOrderMirrorService.mirrorToOrderService(message);
             return;
         }
 
@@ -101,7 +104,12 @@ public class QuotaOrderProcessor {
                     "限量物资不存在, seckillGoodsId=" + message.getSeckillGoodsId(), orderNo);
         }
 
-        // ========== 3. 乐观锁扣减 DB 库存 → 冲突时可重试 ==========
+        // ========== 3. 本场次同一用户+SKU 仅能一单（uk_user_sku），先于扣库存检查 ==========
+        if (resolveExistingQuotaSlot(message, orderNo)) {
+            return;
+        }
+
+        // ========== 4. 乐观锁扣减 DB 库存 → 冲突时可重试 ==========
         int deductRows = seckillGoodsMapper.deductStock(
                 seckillGoods.getId(),
                 message.getBuyNum(),
@@ -117,10 +125,10 @@ public class QuotaOrderProcessor {
                     "乐观锁冲突, orderNo=" + orderNo + ", seckillGoodsId=" + seckillGoods.getId(), orderNo);
         }
 
-        // ========== 4. 扣减物资总库存（跨服务，纳入全局事务） ==========
+        // ========== 5. 扣减物资总库存（同一进程、同一事务） ==========
         deductGoodsStock(message);
 
-        // ========== 5. 创建申领单 ==========
+        // ========== 6. 创建申领单 ==========
         LocalDateTime now = LocalDateTime.now();
         QuotaOrder order = QuotaOrder.builder()
                 .id(IdUtil.getSnowflakeNextId())
@@ -141,11 +149,17 @@ public class QuotaOrderProcessor {
 
         try {
             seckillOrderMapper.insertSelective(order);
+        } catch (DuplicateKeyException e) {
+            log.warn("==> 申领单插入触发唯一约束, orderNo={}, reason={}", orderNo, e.getMessage());
+            if (resolveDuplicateQuotaOrder(message, orderNo)) {
+                return;
+            }
+            throw new NonRetryableException("本场次该规格已有申领单", orderNo);
         } catch (Exception e) {
             // insert 失败通常是 DB 连接问题，交给 DLQ 重试。
             // 这里刻意不回滚 Redis 库存：重试成功的那次不会再扣一次 Redis，
             // 若此处回滚，Redis 库存会比 DB 多，后续请求能过 Lua 闸门却建不了单。
-            // 全局事务回滚会把本地的 seckill_stock 和 goods 的总库存一并撤销，
+            // 本地事务回滚会把 seckill_stock 和物资库存一并撤销，
             // 重试时重新扣减，Redis 与 DB 始终对齐。
             log.error("==> 申领单插入失败，等待 DLQ 重试（不回滚 Redis 库存）, orderNo={}", orderNo, e);
             throw new RetryableException("申领单插入失败: " + e.getMessage(), orderNo, e);
@@ -154,7 +168,57 @@ public class QuotaOrderProcessor {
         // 申领单落库成功 → 写 Redis 消费标记，后续重复消费直接命中跳过
         markOrderConsumed(orderNo);
 
+        quotaOrderMirrorService.mirrorToOrderService(message);
+
         log.info("==> 限量申领单创建成功, orderNo={}, orderId={}", orderNo, order.getId());
+    }
+
+    /**
+     * @return true 表示幂等完成，调用方应直接 return
+     */
+    private boolean resolveExistingQuotaSlot(QuotaOrderMessage message, String orderNo) {
+        QuotaOrder existing = findUserQuotaOrder(message);
+        if (existing == null) {
+            return false;
+        }
+        if (orderNo.equals(existing.getOrderNo())) {
+            markOrderConsumed(orderNo);
+            quotaOrderMirrorService.mirrorToOrderService(message);
+            log.info("==> 申领单已存在（同单号），幂等完成, orderNo={}", orderNo);
+            return true;
+        }
+        log.error("==> 用户本场次该SKU已有申领单, existingOrderNo={}, newOrderNo={}, userId={}",
+                existing.getOrderNo(), orderNo, message.getUserId());
+        rollbackRedisStock(message);
+        throw new NonRetryableException(
+                "本场次该规格已有申领单: " + existing.getOrderNo(),
+                orderNo);
+    }
+
+    /**
+     * 插入撞唯一索引后的兜底；扣库存已发生，冲突时需回滚 Redis 并走不可重试。
+     *
+     * @return true 表示同单号幂等完成
+     */
+    private boolean resolveDuplicateQuotaOrder(QuotaOrderMessage message, String orderNo) {
+        QuotaOrder existing = findUserQuotaOrder(message);
+        if (existing != null && orderNo.equals(existing.getOrderNo())) {
+            markOrderConsumed(orderNo);
+            quotaOrderMirrorService.mirrorToOrderService(message);
+            log.info("==> 唯一约束冲突但单号一致，幂等完成, orderNo={}", orderNo);
+            return true;
+        }
+        rollbackRedisStock(message);
+        String existNo = existing != null ? existing.getOrderNo() : "unknown";
+        throw new NonRetryableException("本场次该规格已有申领单: " + existNo, orderNo);
+    }
+
+    private QuotaOrder findUserQuotaOrder(QuotaOrderMessage message) {
+        return seckillOrderMapper.selectByUserActivityGoodsSku(
+                message.getUserId(),
+                message.getActivityId(),
+                message.getGoodsId(),
+                message.getSkuId());
     }
 
     /**
@@ -176,25 +240,21 @@ public class QuotaOrderProcessor {
     }
 
     /**
-     * 扣减物资总库存（远程调用 goods 服务）。
+     * 扣减物资总库存（同一进程、同一事务）。
      * <p>
-     * 限量申领库存 {@code t_seckill_goods.seckill_stock} 和物资总库存 {@code t_goods_sku.stock_num}
-     * 是两套独立数据。不做这一步的话，限量申领卖出的货不会占用物资库存，
-     * 同一个 SKU 同时在正常售卖时就会超卖。
+     * 限量名额 {@code t_seckill_goods.seckill_stock} 和物资库存 {@code t_goods_sku.stock_num}
+     * 是两套数据。不做这一步的话，限量申领不会占用物资库存。
      * <p>
-     * 本方法运行在外层全局事务内，goods 侧会注册成一个分支事务——
-     * 后续申领单落库失败时，全局回滚会连同这边的扣减一起撤销。
+     * 本方法运行在外层本地事务内，扣减失败会连同限量名额一起回滚。
      *
-     * @throws RetryableException    Feign 瞬时故障（网络超时等），消息进 DLQ 重试
+     * @throws RetryableException    瞬时故障，消息进 DLQ 重试
      * @throws NonRetryableException 物资总库存不足，重试也不会成功，回滚 Redis 库存后直接 ACK
      */
     private void deductGoodsStock(QuotaOrderMessage message) {
         Response<Boolean> result;
         try {
-            result = goodsFeignClient.deductStock(message.getSkuId(), message.getBuyNum());
+            result = goodsService.deductStock(message.getSkuId(), message.getBuyNum());
         } catch (Exception e) {
-            // 超时等瞬时故障：不确定 goods 那边扣没扣，但全局事务回滚会把它撤销，
-            // 所以这里可以放心重试，不需要额外补偿。
             log.warn("==> 扣减物资总库存异常，等待 DLQ 重试, orderNo={}, skuId={}",
                     message.getOrderNo(), message.getSkuId(), e);
             throw new RetryableException("扣减物资库存异常: " + e.getMessage(), message.getOrderNo(), e);

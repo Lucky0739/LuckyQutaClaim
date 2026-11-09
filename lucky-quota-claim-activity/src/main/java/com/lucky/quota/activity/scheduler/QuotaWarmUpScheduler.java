@@ -39,7 +39,29 @@ public class QuotaWarmUpScheduler {
     public void scanActivityStatus() {
         LocalDateTime now = LocalDateTime.now();
         warmUpStartedActivities(now);
+        recoverLostWarmup(now);
         endExpiredActivities(now);
+    }
+
+    /**
+     * 场次已是进行中，但 Redis 预热标记或库存 key 丢失时重新预热。
+     * 只扫 status=0 的话，Redis 重启后进行中的场次会一直报「库存预热中」，数据库库存不会再扣。
+     */
+    private void recoverLostWarmup(LocalDateTime now) {
+        List<QuotaActivity> activities = seckillActivityMapper.selectInProgress(now);
+        for (QuotaActivity activity : activities) {
+            if (seckillRedisService.isWarmedUp(activity.getId())) {
+                continue;
+            }
+            try {
+                seckillActivityService.startActivity(activity.getId());
+                log.info("==> 定时任务：进行中场次 Redis 预热丢失，已重新预热, activityId={}, activityName={}",
+                        activity.getId(), activity.getActivityName());
+            } catch (Exception e) {
+                log.error("==> 定时任务：进行中场次补预热失败, activityId={}, activityName={}",
+                        activity.getId(), activity.getActivityName(), e);
+            }
+        }
     }
 
     private void warmUpStartedActivities(LocalDateTime now) {

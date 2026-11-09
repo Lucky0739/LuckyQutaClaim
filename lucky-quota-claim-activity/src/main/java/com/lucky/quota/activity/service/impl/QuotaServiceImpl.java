@@ -1,10 +1,14 @@
 package com.lucky.quota.activity.service.impl;
 
 import cn.dev33.satoken.stp.StpUtil;
+import com.lucky.quota.activity.enums.QuotaActivityStatusEnum;
 import com.lucky.quota.activity.enums.QuotaGoodsAuditStatusEnum;
+import com.lucky.quota.activity.enums.QuotaOrderStatusEnum;
 import com.lucky.quota.activity.support.QuotaActivityPurchaseValidator;
 import com.lucky.quota.activity.mapper.QuotaActivityMapper;
 import com.lucky.quota.activity.mapper.QuotaGoodsMapper;
+import com.lucky.quota.activity.mapper.QuotaOrderMapper;
+import com.lucky.quota.activity.model.entity.QuotaOrder;
 import com.lucky.quota.activity.model.dto.QuotaRequest;
 import com.lucky.quota.activity.model.entity.QuotaActivity;
 import com.lucky.quota.activity.model.entity.QuotaGoods;
@@ -12,6 +16,7 @@ import com.lucky.quota.activity.model.vo.QuotaResultVO;
 import com.lucky.quota.activity.mq.QuotaOrderProducer;
 import com.lucky.quota.activity.service.QuotaRedisService;
 import com.lucky.quota.activity.service.QuotaService;
+import com.lucky.quota.activity.support.QuotaOrderMirrorService;
 import com.lucky.quota.common.constant.RedisKeyConstants;
 import com.lucky.quota.common.enums.ResponseCodeEnum;
 import com.lucky.quota.common.exception.BizException;
@@ -26,6 +31,7 @@ import org.springframework.web.servlet.mvc.method.annotation.SseEmitter;
 
 import java.io.IOException;
 import java.time.LocalDateTime;
+import java.util.Objects;
 import java.util.concurrent.Executors;
 import java.util.concurrent.ScheduledExecutorService;
 import java.util.concurrent.TimeUnit;
@@ -44,6 +50,9 @@ public class QuotaServiceImpl implements QuotaService {
     private QuotaGoodsMapper seckillGoodsMapper;
 
     @Resource
+    private QuotaOrderMapper quotaOrderMapper;
+
+    @Resource
     private QuotaRedisService seckillRedisService;
 
     @Resource
@@ -54,6 +63,9 @@ public class QuotaServiceImpl implements QuotaService {
 
     @Resource
     private StringRedisTemplate stringRedisTemplate;
+
+    @Resource
+    private QuotaOrderMirrorService quotaOrderMirrorService;
 
     @Override
     public Response<QuotaResultVO> doQuota(QuotaRequest request) {
@@ -80,18 +92,22 @@ public class QuotaServiceImpl implements QuotaService {
         Long goodsId = seckillGoods.getGoodsId();
         Long skuId = seckillGoods.getSkuId();
 
-        // ========== 3. Redis 读活动缓存，miss 时降级 MySQL ==========
-        QuotaActivity activity = seckillRedisService.getCachedQuotaActivity(activityId);
+        // ========== 3. 活动信息：Redis 优先，但与库内 status 不一致时以 MySQL 为准（避免预热时旧缓存） ==========
+        QuotaActivity activity = loadActivityForQuota(activityId);
         if (activity == null) {
-            activity = seckillActivityMapper.selectByPrimaryKey(activityId);
-            if (activity == null) {
-                throw new BizException(ResponseCodeEnum.QUOTA_ACTIVITY_NOT_EXIST);
-            }
-            seckillRedisService.cacheQuotaActivity(activity);
+            throw new BizException(ResponseCodeEnum.QUOTA_ACTIVITY_NOT_EXIST);
         }
 
         // ========== 4. 内存校验活动时间/状态/预热 ==========
         seckillActivityPurchaseValidator.assertCanQuotaPurchase(activity);
+
+        QuotaOrder existingOrder = quotaOrderMapper.selectByUserActivityGoodsSku(
+                userId, activityId, goodsId, skuId);
+        if (existingOrder != null
+                && QuotaOrderStatusEnum.PENDING_PAYMENT.getCode().equals(existingOrder.getStatus())) {
+            throw new BizException(ResponseCodeEnum.QUOTA_LIMIT_EXCEEDED,
+                    "本场次该规格已有待支付申领单，单号: " + existingOrder.getOrderNo());
+        }
 
         // ========== 5. Redis Lua 原子扣库存（内置限购检查，替代 MySQL 查重） ==========
         int limitNum = seckillGoods.getSeckillLimit() == null ? 1 : seckillGoods.getSeckillLimit();
@@ -210,6 +226,14 @@ public class QuotaServiceImpl implements QuotaService {
         }
 
         int status = Integer.parseInt(statusStr);
+        if (status == RedisKeyConstants.ORDER_STATUS_PROCESSING
+                || status == QuotaOrderStatusEnum.PENDING_PAYMENT.getCode()) {
+            try {
+                quotaOrderMirrorService.mirrorFromSeckillOrder(orderNo);
+            } catch (Exception e) {
+                log.warn("==> 轮询时补镜像 t_order 失败, orderNo={}", orderNo, e);
+            }
+        }
         String message = switch (status) {
             case RedisKeyConstants.ORDER_STATUS_PROCESSING -> "申领单创建中，请稍候...";
             case 0 -> "申领成功，请尽快确认领取";
@@ -327,5 +351,27 @@ public class QuotaServiceImpl implements QuotaService {
             case RedisKeyConstants.ORDER_STATUS_FAILED -> "申领单创建失败，限量名额已返还";
             default -> "未知状态";
         };
+    }
+
+    private QuotaActivity loadActivityForQuota(Long activityId) {
+        QuotaActivity cached = seckillRedisService.getCachedQuotaActivity(activityId);
+        QuotaActivity fromDb = seckillActivityMapper.selectByPrimaryKey(activityId);
+        if (fromDb == null) {
+            return null;
+        }
+        if (cached == null) {
+            seckillRedisService.cacheQuotaActivity(fromDb);
+            return fromDb;
+        }
+        Integer cachedStatus = cached.getStatus();
+        Integer dbStatus = fromDb.getStatus();
+        boolean statusMismatch = !Objects.equals(cachedStatus, dbStatus);
+        boolean staleNotStarted = QuotaActivityStatusEnum.NOT_STARTED.getCode().equals(cachedStatus)
+                && QuotaActivityStatusEnum.IN_PROGRESS.getCode().equals(dbStatus);
+        if (statusMismatch || staleNotStarted) {
+            seckillRedisService.cacheQuotaActivity(fromDb);
+            return fromDb;
+        }
+        return cached;
     }
 }

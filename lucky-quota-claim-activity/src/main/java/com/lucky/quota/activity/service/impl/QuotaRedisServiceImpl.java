@@ -96,6 +96,16 @@ public class QuotaRedisServiceImpl implements QuotaRedisService {
                 .get(RedisKeyConstants.seckillWarmupKey(activityId)));
     }
 
+    /**
+     * 执行秒杀Lua脚本
+     * @param activityId
+     * @param userId
+     * @param goodsId
+     * @param skuId
+     * @param buyNum
+     * @param limitNum
+     * @return
+     */
     @Override
     public int deductStock(Long activityId, Long userId, Long goodsId, Long skuId,
                            int buyNum, int limitNum) {
