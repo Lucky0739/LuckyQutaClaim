@@ -205,4 +205,40 @@
           AND isDelete = 0
     </update>
 
+    <update id="markPaidIfPending">
+        UPDATE t_order
+        SET status = 1,
+            pay_time = #{payTime,jdbcType=TIMESTAMP},
+            update_time = NOW()
+        WHERE order_no = #{orderNo,jdbcType=VARCHAR}
+          AND status = 0
+          AND isDelete = 0
+    </update>
+
+    <update id="updateStatusIfCurrent">
+        UPDATE t_order
+        SET status = #{targetStatus,jdbcType=TINYINT},
+            update_time = NOW()
+        WHERE order_no = #{orderNo,jdbcType=VARCHAR}
+          AND status = #{expectedStatus,jdbcType=TINYINT}
+          AND isDelete = 0
+    </update>
+
+    <update id="repairQuotaOrderFromSeckill">
+        UPDATE t_order o
+            INNER JOIN t_seckill_order s ON s.order_no = o.order_no AND s.isDeleted = 0
+        SET o.goods_name = s.goods_name,
+            o.goods_img = LEFT(s.goods_img, 255),
+            o.create_time = s.create_time,
+            o.expire_time = IF(
+                o.status = 0 AND s.status = 0 AND o.expire_time &lt; NOW(),
+                DATE_ADD(NOW(), INTERVAL 10 MINUTE),
+                s.expire_time
+            ),
+            o.update_time = NOW()
+        WHERE o.order_no = #{orderNo,jdbcType=VARCHAR}
+          AND o.isDelete = 0
+          AND o.order_no LIKE 'SK%'
+    </update>
+
 </mapper>

@@ -1,9 +1,11 @@
 package com.lucky.quota.activity.controller;
 
+import cn.dev33.satoken.annotation.SaCheckLogin;
 import cn.dev33.satoken.annotation.SaCheckRole;
 import cn.dev33.satoken.annotation.SaIgnore;
 import cn.dev33.satoken.annotation.SaMode;
 import cn.dev33.satoken.stp.StpUtil;
+import com.lucky.quota.activity.model.dto.QuotaActivityCreateRequest;
 import com.lucky.quota.activity.model.dto.QuotaGoodsApplyQueryRequest;
 import com.lucky.quota.activity.model.dto.QuotaGoodsApplyRequest;
 import com.lucky.quota.activity.model.dto.QuotaGoodsAuditRequest;
@@ -15,7 +17,10 @@ import com.lucky.quota.activity.model.vo.QuotaResultVO;
 import com.lucky.quota.activity.service.QuotaActivityService;
 import com.lucky.quota.activity.service.QuotaFailedOrderService;
 import com.lucky.quota.activity.service.QuotaGoodsService;
+import com.lucky.quota.activity.mapper.QuotaOrderMapper;
+import com.lucky.quota.activity.model.entity.QuotaOrder;
 import com.lucky.quota.activity.service.QuotaService;
+import com.lucky.quota.activity.support.QuotaOrderMirrorService;
 import com.lucky.quota.common.aspect.ApiOperationLog;
 import com.lucky.quota.common.model.entity.PageResult;
 import com.lucky.quota.common.utils.Response;
@@ -45,6 +50,12 @@ public class QuotaController {
 
     @Resource
     private QuotaFailedOrderService seckillFailedOrderService;
+
+    @Resource
+    private QuotaOrderMirrorService quotaOrderMirrorService;
+
+    @Resource
+    private QuotaOrderMapper quotaOrderMapper;
     @SaIgnore
     @GetMapping("/internal/ongoing-seckill")
     @ApiOperationLog(description = "查询规格是否处于进行中限量申领（服务间调用）")
@@ -139,6 +150,15 @@ public class QuotaController {
     }
 
     @SaCheckRole("admin")
+    @PostMapping("/admin/activities")
+    @ApiOperationLog(description = "创建限量场次")
+    public Response<QuotaActivityVO> createActivity(
+            @Validated @RequestBody QuotaActivityCreateRequest request) {
+        log.info("==> 创建限量场次, activityName={}", request.getActivityName());
+        return seckillActivityService.createActivity(request);
+    }
+
+    @SaCheckRole("admin")
     @PostMapping("/{activityId}/start")
     @ApiOperationLog(description = "开始限量场次")
     public Response<QuotaActivityVO> startActivity(@PathVariable Long activityId) {
@@ -183,5 +203,31 @@ public class QuotaController {
         String operator = String.valueOf(StpUtil.getLoginIdAsLong());
         log.info("==> 管理员手动放弃失败申领单, id={}, operator={}, remark={}", id, operator, remark);
         return seckillFailedOrderService.manualDiscard(id, remark, operator);
+    }
+
+    @SaCheckLogin
+    @PostMapping("/mirror-order")
+    @ApiOperationLog(description = "将本人限量单从 t_seckill_order 补镜像到 t_order")
+    public Response<Boolean> mirrorMyOrder(@RequestParam("orderNo") String orderNo) {
+        Long userId = StpUtil.getLoginIdAsLong();
+        QuotaOrder quotaOrder = quotaOrderMapper.selectByOrderNo(orderNo);
+        if (quotaOrder == null) {
+            return Response.fail("限量申领单不存在");
+        }
+        if (!userId.equals(quotaOrder.getUserId())) {
+            return Response.fail("无权操作该申领单");
+        }
+        quotaOrderMirrorService.mirrorFromSeckillOrder(orderNo);
+        return Response.success(true);
+    }
+
+    @SaCheckRole("admin")
+    @PostMapping("/admin/mirror-order")
+    @ApiOperationLog(description = "管理员补镜像限量单到 t_order")
+    public Response<Boolean> adminMirrorOrder(@RequestParam("orderNo") String orderNo) {
+        if (!quotaOrderMirrorService.mirrorFromSeckillOrder(orderNo)) {
+            return Response.fail("t_seckill_order 中无此单");
+        }
+        return Response.success(true);
     }
 }

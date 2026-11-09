@@ -2,6 +2,7 @@ package com.lucky.quota.order.controller;
 
 import cn.dev33.satoken.annotation.SaCheckLogin;
 import cn.dev33.satoken.annotation.SaCheckRole;
+import com.lucky.quota.common.model.dto.QuotaOrderSyncRequest;
 import com.lucky.quota.common.model.entity.PageResult;
 import com.lucky.quota.common.utils.Response;
 import com.lucky.quota.order.model.dto.AddOrderRequest;
@@ -155,5 +156,14 @@ public class OrderController {
     public Response<Boolean> closeExpiredOrder(@RequestParam("orderNo") String orderNo) {
         log.info("==> 关闭过期申领单, orderNo: {}", orderNo);
         return orderService.closeExpiredOrder(orderNo);
+    }
+
+    /**
+     * 限量申领异步落库后，由活动服务镜像写入 t_order（内部 Feign，幂等）。
+     */
+    @PostMapping("/syncFromQuota")
+    public Response<Boolean> syncFromQuota(@RequestBody QuotaOrderSyncRequest request) {
+        log.info("==> 同步限量申领单到 t_order, orderNo: {}", request != null ? request.getOrderNo() : null);
+        return orderService.syncFromQuota(request);
     }
 }

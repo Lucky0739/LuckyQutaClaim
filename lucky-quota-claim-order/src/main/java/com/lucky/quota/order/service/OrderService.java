@@ -1,5 +1,6 @@
 package com.lucky.quota.order.service;
 
+import com.lucky.quota.common.model.dto.QuotaOrderSyncRequest;
 import com.lucky.quota.common.model.entity.PageResult;
 import com.lucky.quota.common.utils.Response;
 import com.lucky.quota.order.model.dto.AddOrderRequest;
@@ -105,4 +106,9 @@ public interface OrderService {
      * @return true=处理成功
      */
     Response<Boolean> closeExpiredOrder(String orderNo);
+
+    /**
+     * 限量申领单镜像写入 t_order（幂等，不写物资预占库存）。
+     */
+    Response<Boolean> syncFromQuota(QuotaOrderSyncRequest request);
 }

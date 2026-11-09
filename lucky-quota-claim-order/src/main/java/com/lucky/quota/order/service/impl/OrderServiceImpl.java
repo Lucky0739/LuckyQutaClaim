@@ -5,6 +5,7 @@ import cn.hutool.core.util.IdUtil;
 import com.github.pagehelper.PageHelper;
 import com.github.pagehelper.PageInfo;
 import com.lucky.quota.common.enums.ResponseCodeEnum;
+import com.lucky.quota.common.model.dto.QuotaOrderSyncRequest;
 import com.lucky.quota.common.exception.BizException;
 import com.lucky.quota.common.model.entity.OrderDeliveryMessage;
 import com.lucky.quota.common.model.entity.OrderReceiveMessage;
@@ -45,6 +46,9 @@ import java.util.stream.Collectors;
 @Service
 @Slf4j
 public class OrderServiceImpl implements OrderService {
+
+    private static final String QUOTA_PLACEHOLDER_MOBILE = "10000000000";
+    private static final String QUOTA_PLACEHOLDER_TEXT = "待填写";
 
     @Resource
     private OrderMapper orderMapper;
@@ -219,6 +223,7 @@ public class OrderServiceImpl implements OrderService {
 
         orderGlobalTransactionService.updateStatusAndReleaseStock(
                 orderNo,
+                OrderStatusEnum.PENDING_PAYMENT.getCode(),
                 OrderStatusEnum.CANCELLED.getCode(),
                 order.getSkuId(),
                 order.getBuyGoodsNum());
@@ -297,6 +302,11 @@ public class OrderServiceImpl implements OrderService {
         if (OrderStatusEnum.PAID.getCode().equals(status)) {
             if (order.getStatus() != OrderStatusEnum.PENDING_PAYMENT.getCode()) {
                 throw new BizException(ResponseCodeEnum.ORDER_STATUS_ERROR, "当前状态无法确认领取");
+            }
+            // 收费订单必须通过支付宝回调/查单入账，禁止该接口绕过支付直接置为已支付
+            if (order.getTotalAmount() != null
+                    && order.getTotalAmount().compareTo(new BigDecimal("0.01")) >= 0) {
+                throw new BizException(ResponseCodeEnum.ORDER_STATUS_ERROR, "请先通过支付宝完成支付");
             }
             orderGlobalTransactionService.deductStockAndMarkPaid(
                     orderNo, order.getSkuId(), order.getBuyGoodsNum());
@@ -449,6 +459,7 @@ public class OrderServiceImpl implements OrderService {
         PageHelper.startPage(request.getPageNum(), request.getPageSize());
         List<Order> orderList = orderMapper.selectOrdersByUserId(
                 userId, request.getOrderNo(), request.getStatus(), request.getGoodsName());
+        orderList = refreshQuotaOrdersAfterRepair(orderList);
         PageInfo<Order> pageInfo = new PageInfo<>(orderList);
 
         List<OrderVO> voList = orderList.stream()
@@ -567,10 +578,81 @@ public class OrderServiceImpl implements OrderService {
 
         orderGlobalTransactionService.updateStatusAndReleaseStock(
                 order.getOrderNo(),
+                OrderStatusEnum.PENDING_PAYMENT.getCode(),
                 OrderStatusEnum.EXPIRED.getCode(),
                 order.getSkuId(),
                 order.getBuyGoodsNum());
         log.info("==> 超时未确认申领单已关闭，orderNo: {}, expireTime: {}", order.getOrderNo(), order.getExpireTime());
+    }
+
+    @Override
+    @Transactional(rollbackFor = Exception.class)
+    public Response<Boolean> syncFromQuota(QuotaOrderSyncRequest request) {
+        if (request == null || request.getOrderNo() == null || request.getOrderNo().isBlank()) {
+            throw new BizException(ResponseCodeEnum.PARAM_NOT_VALID, "申领单号不能为空");
+        }
+        if (request.getUserId() == null || request.getGoodsId() == null || request.getSkuId() == null) {
+            throw new BizException(ResponseCodeEnum.PARAM_NOT_VALID, "限量单同步参数不完整");
+        }
+        if (request.getSeckillPrice() == null) {
+            throw new BizException(ResponseCodeEnum.PARAM_NOT_VALID, "限量价格不能为空");
+        }
+        if (request.getExpireTime() == null) {
+            throw new BizException(ResponseCodeEnum.PARAM_NOT_VALID, "过期时间不能为空");
+        }
+
+        Order existing = orderMapper.selectByOrderNo(request.getOrderNo());
+        if (existing != null) {
+            log.info("==> 限量单 t_order 已存在，幂等跳过, orderNo={}", request.getOrderNo());
+            return Response.success(true);
+        }
+
+        int buyNum = request.getBuyNum() == null || request.getBuyNum() <= 0 ? 1 : request.getBuyNum();
+        BigDecimal totalAmount = request.getSeckillPrice().multiply(BigDecimal.valueOf(buyNum));
+        LocalDateTime now = LocalDateTime.now();
+
+        String goodsName = request.getGoodsName() != null && !request.getGoodsName().isBlank()
+                ? request.getGoodsName() : "限量物资";
+        String goodsImg = request.getGoodsImg() != null && !request.getGoodsImg().isBlank()
+                ? request.getGoodsImg() : "-";
+
+        Long shopId = request.getShopId();
+        if (shopId == null) {
+            Goods goods = queryGoods(request.getGoodsId());
+            if (goods != null) {
+                shopId = goods.getShopId();
+            }
+        }
+
+        Order order = Order.builder()
+                .id(IdUtil.getSnowflakeNextId())
+                .userId(request.getUserId())
+                .goodsId(request.getGoodsId())
+                .shopId(shopId)
+                .skuId(request.getSkuId())
+                .userAddressId(null)
+                .orderNo(request.getOrderNo())
+                .goodsPrice(request.getSeckillPrice())
+                .buyGoodsNum(buyNum)
+                .totalAmount(totalAmount)
+                .goodsName(goodsName)
+                .goodsImg(goodsImg)
+                .status(OrderStatusEnum.PENDING_PAYMENT.getCode())
+                .mobile(QUOTA_PLACEHOLDER_MOBILE)
+                .receiver(QUOTA_PLACEHOLDER_TEXT)
+                .province(QUOTA_PLACEHOLDER_TEXT)
+                .city(QUOTA_PLACEHOLDER_TEXT)
+                .area(QUOTA_PLACEHOLDER_TEXT)
+                .detailAddress(QUOTA_PLACEHOLDER_TEXT)
+                .expireTime(request.getExpireTime())
+                .isDelete(0)
+                .createTime(now)
+                .updateTime(now)
+                .build();
+
+        orderMapper.insertSelective(order);
+        log.info("==> 限量单同步 t_order 成功, orderNo={}, userId={}", request.getOrderNo(), request.getUserId());
+        return Response.success(true);
     }
 
     private String generateOrderNo(Long userId) {
@@ -604,6 +686,22 @@ public class OrderServiceImpl implements OrderService {
         if (goods != null) {
             order.setShopId(goods.getShopId());
         }
+    }
+
+    private List<Order> refreshQuotaOrdersAfterRepair(List<Order> orderList) {
+        if (orderList == null || orderList.isEmpty()) {
+            return orderList;
+        }
+        return orderList.stream()
+                .map(order -> {
+                    if (order == null || !OrderConstants.isQuotaOrderNo(order.getOrderNo())) {
+                        return order;
+                    }
+                    orderMapper.repairQuotaOrderFromSeckill(order.getOrderNo());
+                    Order fresh = orderMapper.selectByOrderNo(order.getOrderNo());
+                    return fresh != null ? fresh : order;
+                })
+                .collect(Collectors.toList());
     }
 
     private OrderVO toOrderVO(Order order) {

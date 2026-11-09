@@ -2,6 +2,7 @@ package com.lucky.quota.activity.mq;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.lucky.quota.activity.enums.QuotaOrderStatusEnum;
+import com.lucky.quota.activity.support.QuotaOrderMirrorService;
 import com.lucky.quota.activity.support.QuotaOrderProcessor;
 import com.lucky.quota.common.constant.RedisKeyConstants;
 import com.lucky.quota.common.exception.NonRetryableException;
@@ -59,6 +60,9 @@ public class QuotaOrderConsumer implements MessageListenerConcurrently {
     private QuotaOrderProcessor seckillOrderProcessor;
 
     @Resource
+    private QuotaOrderMirrorService quotaOrderMirrorService;
+
+    @Resource
     private RocketMQTemplate rocketMQTemplate;
 
     @Resource
@@ -103,6 +107,7 @@ public class QuotaOrderConsumer implements MessageListenerConcurrently {
 
         try {
             seckillOrderProcessor.createOrder(message);
+            quotaOrderMirrorService.mirrorToOrderService(message);
 
             // 成功 → 更新 Redis 状态为待确认领取
             updateOrderStatus(message.getUserId(), message.getOrderNo(),
@@ -118,6 +123,8 @@ public class QuotaOrderConsumer implements MessageListenerConcurrently {
             // Redis 库存已在 createOrder 中回滚
             log.error("==> 申领单创建失败(不可重试), orderNo={}, reason={}",
                     message.getOrderNo(), e.getMessage());
+            updateOrderStatus(message.getUserId(), message.getOrderNo(),
+                    RedisKeyConstants.ORDER_STATUS_FAILED);
 
         } catch (RetryableException e) {
             // ===== 瞬时失败 → 主队列快速重试 → 耗尽后升级 DLQ =====

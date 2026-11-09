@@ -4,6 +4,7 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import com.lucky.quota.activity.enums.QuotaOrderStatusEnum;
 import com.lucky.quota.activity.service.QuotaFailedOrderService;
 import com.lucky.quota.activity.service.QuotaRedisService;
+import com.lucky.quota.activity.support.QuotaOrderMirrorService;
 import com.lucky.quota.activity.support.QuotaOrderProcessor;
 import com.lucky.quota.common.constant.RedisKeyConstants;
 import com.lucky.quota.common.exception.NonRetryableException;
@@ -65,6 +66,9 @@ public class QuotaOrderDlqConsumer implements MessageListenerConcurrently {
     private QuotaOrderProcessor seckillOrderProcessor;
 
     @Resource
+    private QuotaOrderMirrorService quotaOrderMirrorService;
+
+    @Resource
     private QuotaRedisService seckillRedisService;
 
     @Resource
@@ -120,6 +124,7 @@ public class QuotaOrderDlqConsumer implements MessageListenerConcurrently {
         try {
             // 委托给共享处理器
             seckillOrderProcessor.createOrder(message);
+            quotaOrderMirrorService.mirrorToOrderService(message);
 
             // 重试成功 → 更新 Redis 状态为待确认领取(0)
             updateOrderStatus(message.getUserId(), message.getOrderNo(),

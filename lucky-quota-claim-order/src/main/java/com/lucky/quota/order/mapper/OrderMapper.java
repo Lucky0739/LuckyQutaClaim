@@ -4,6 +4,7 @@ import com.baomidou.mybatisplus.core.mapper.BaseMapper;
 import com.lucky.quota.order.model.entity.Order;
 import org.apache.ibatis.annotations.Param;
 
+import java.time.LocalDateTime;
 import java.util.List;
 
 public interface OrderMapper extends BaseMapper<Order> {
@@ -16,6 +17,20 @@ public interface OrderMapper extends BaseMapper<Order> {
     int updateByPrimaryKeySelective(Order record);
 
     int updateStatusByOrderNo(@Param("orderNo") String orderNo, @Param("status") Integer status);
+
+    /**
+     * 支付成功入账：仅当订单仍是待支付时置为已支付并写入支付时间。
+     * 返回 0 表示订单已支付/已取消/已过期，调用方需据此判断是否重复入账。
+     */
+    int markPaidIfPending(@Param("orderNo") String orderNo,
+                          @Param("payTime") LocalDateTime payTime);
+
+    /**
+     * 带前置状态的条件更新，避免取消/过期与支付完成并发覆盖。
+     */
+    int updateStatusIfCurrent(@Param("orderNo") String orderNo,
+                              @Param("expectedStatus") Integer expectedStatus,
+                              @Param("targetStatus") Integer targetStatus);
 
     /**
      * 根据用户ID查询申领列表
@@ -43,4 +58,9 @@ public interface OrderMapper extends BaseMapper<Order> {
      * @return 申领列表
      */
     List<Order> selectByIds(@Param("ids") List<Long> ids);
+
+    /**
+     * 限量单 SK*：用 t_seckill_order 修正 t_order 的图片与时间；待支付且已过期则续 10 分钟支付窗口。
+     */
+    int repairQuotaOrderFromSeckill(@Param("orderNo") String orderNo);
 }

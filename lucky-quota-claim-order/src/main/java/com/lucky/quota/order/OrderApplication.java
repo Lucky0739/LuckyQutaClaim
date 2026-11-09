@@ -23,6 +23,7 @@ import org.springframework.context.annotation.ComponentScan;
 })
 @MapperScan({
         "com.lucky.quota.order.mapper",
+        "com.lucky.quota.order.payment.mapper",
         "com.lucky.quota.common.mapper"
 })
 public class OrderApplication {

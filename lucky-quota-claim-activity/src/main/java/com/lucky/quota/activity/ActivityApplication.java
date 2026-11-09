@@ -13,6 +13,7 @@ import org.springframework.scheduling.annotation.EnableScheduling;
 @EnableScheduling
 @EnableFeignClients(basePackages = {
         "com.lucky.quota.activity",
+        "com.lucky.quota.activity.feign",
         "com.lucky.quota.goods.feign",
         "com.lucky.quota.shop.feign",
         "com.lucky.quota.notify.feign",
