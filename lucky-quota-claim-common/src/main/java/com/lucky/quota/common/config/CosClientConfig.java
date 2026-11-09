@@ -8,6 +8,7 @@ import com.qcloud.cos.http.HttpProtocol;
 import com.qcloud.cos.region.Region;
 import jakarta.annotation.PostConstruct;
 import lombok.Data;
+import lombok.ToString;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.boot.context.properties.ConfigurationProperties;
 import org.springframework.context.annotation.Bean;
@@ -19,7 +20,9 @@ import org.springframework.context.annotation.Configuration;
 @ConfigurationProperties(prefix = "cos.client")
 public class CosClientConfig {
 
+    @ToString.Exclude
     private String secretId;
+    @ToString.Exclude
     private String secretKey;
     private String region;
     private String bucketName;
@@ -28,7 +31,7 @@ public class CosClientConfig {
     @PostConstruct
     public void init() {
         log.info("=== CosClientConfig 初始化 ===");
-        log.info("secretId: {}", secretId);
+        log.info("secretId: {}", mask(secretId));
         log.info("region: {}", region);
         log.info("bucketName: {}", bucketName);
         log.info("host: {}", host);
@@ -50,7 +53,7 @@ public class CosClientConfig {
         }
 
         log.info("===== COS 客户端初始化 =====");
-        log.info("secretId: {}", secretId);
+        log.info("secretId: {}", mask(secretId));
         log.info("region: {}", region);
         log.info("bucketName: {}", bucketName);
 
@@ -58,5 +61,12 @@ public class CosClientConfig {
         ClientConfig clientConfig = new ClientConfig(new Region(region));
         clientConfig.setHttpProtocol(HttpProtocol.https);
         return new COSClient(cred, clientConfig);
+    }
+
+    private static String mask(String value) {
+        if (value == null || value.length() <= 8) {
+            return "***";
+        }
+        return value.substring(0, 4) + "****" + value.substring(value.length() - 4);
     }
 }
