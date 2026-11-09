@@ -102,14 +102,12 @@ public class GoodsServiceImpl implements GoodsService {
 
         long goodsId = IdUtil.getSnowflakeNextId();
 
-        String goodsImg = null;
-        List<GoodsSkuRequest> skuList = request.getSkuList();
-        if (skuList != null && !skuList.isEmpty()) {
-            GoodsSkuRequest firstSku = skuList.get(0);
-            if (firstSku.getSkuImg() != null && !firstSku.getSkuImg().isEmpty()) {
-                goodsImg = firstSku.getSkuImg();
-            }
+        String goodsImg = resolvePrimaryGoodsImg(request);
+        if (!StringUtils.hasText(goodsImg)) {
+            throw new BizException(ResponseCodeEnum.PARAM_NOT_VALID, "请上传商品主图或 SKU 图片");
         }
+
+        List<GoodsSkuRequest> skuList = request.getSkuList();
 
         Goods goods = Goods.builder()
                 .id(goodsId)
@@ -155,14 +153,6 @@ public class GoodsServiceImpl implements GoodsService {
                 }
             }
 
-            if (goods.getGoodsImg() == null || goods.getGoodsImg().isEmpty()) {
-                Goods.builder()
-                        .id(goodsId)
-                        .goodsImg(goodsImgList.get(0))
-                        .updateTime(LocalDateTime.now())
-                        .build();
-            }
-            goodsMapper.updateByPrimaryKeySelective(goods);
         }
 
         if (skuList != null && !skuList.isEmpty()) {
@@ -1186,6 +1176,35 @@ public class GoodsServiceImpl implements GoodsService {
                 && GoodsAuditRequest.AUDIT_PASS.equals(goods.getAuditStatus())) {
             throw new BizException(ResponseCodeEnum.PARAM_NOT_VALID, "请先下架物资后再编辑");
         }
+    }
+
+    /**
+     * 主图：请求字段 → 主图列表首张 → 任意 SKU 图
+     */
+    private static String resolvePrimaryGoodsImg(AddGoodsRequest request) {
+        if (request == null) {
+            return null;
+        }
+        if (StringUtils.hasText(request.getGoodsImg())) {
+            return request.getGoodsImg().trim();
+        }
+        List<String> goodsImgList = request.getGoodsImgList();
+        if (goodsImgList != null) {
+            for (String url : goodsImgList) {
+                if (StringUtils.hasText(url)) {
+                    return url.trim();
+                }
+            }
+        }
+        List<GoodsSkuRequest> skuList = request.getSkuList();
+        if (skuList != null) {
+            for (GoodsSkuRequest sku : skuList) {
+                if (sku != null && StringUtils.hasText(sku.getSkuImg())) {
+                    return sku.getSkuImg().trim();
+                }
+            }
+        }
+        return null;
     }
 
 }

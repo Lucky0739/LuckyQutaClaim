@@ -5,7 +5,7 @@ package com.lucky.quota.order.enums;
  */
 public enum OrderStatusEnum {
 
-    PENDING_PAYMENT(0, "待确认领取"),
+    PENDING_PAYMENT(0, "待支付"),
     PAID(1, "待发放"),
     SHIPPED(2, "已发放"),
     RECEIVED(3, "已到货"),
